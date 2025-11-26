@@ -7,6 +7,7 @@ on:
     # Review gh actions docs if you want to further define triggers, paths, etc
     paths:
       - 'docs/**'
+      - '.github/workflows/deploy.yml'
 
 permissions:
   contents: write
