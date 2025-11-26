@@ -289,12 +289,16 @@ class PathManager:
             return False
         
         path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         try:
             path.write_text(content, encoding='utf-8')
             return True
+        except IOError as e:
+            Output.error(f"File I/O error writing to {path}: {e}")
+            logger.exception(e)
+            return False
         except Exception as e:
-            Output.error(f"Failed to write {path}: {e}")
+            Output.error(f"An unexpected error occurred while writing to {path}: {e}")
             logger.exception(e)
             return False
     
@@ -307,8 +311,11 @@ class PathManager:
             elif path.is_dir():
                 shutil.rmtree(path)
             return True
+        except OSError as e:
+            Output.error(f"OS error while removing {path}: {e}")
+            return False
         except Exception as e:
-            Output.error(f"Failed to remove {path}: {e}")
+            Output.error(f"An unexpected error occurred while removing {path}: {e}")
             return False
 
 
@@ -728,7 +735,7 @@ def discover_routers(app: FastAPI):
                         if hasattr(module, "router"):
                             app.include_router(module.router)
                             logger.info(f"Registered feature router: {item.name}")
-                    except Exception as e:
+                    except (ModuleNotFoundError, AttributeError) as e:
                         logger.error(f"Failed to load feature {item.name}: {e}")
     
     # API routers
@@ -743,7 +750,7 @@ def discover_routers(app: FastAPI):
                         if hasattr(module, "router"):
                             app.include_router(module.router)
                             logger.info(f"Registered API router: {item.name}")
-                    except Exception as e:
+                    except (ModuleNotFoundError, AttributeError) as e:
                         logger.error(f"Failed to load API {item.name}: {e}")
 '''
 
@@ -781,7 +788,7 @@ def collect_schemas():
                     queries.append(module.Query)
                 if hasattr(module, "Mutation"):
                     mutations.append(module.Mutation)
-            except Exception as e:
+            except (ModuleNotFoundError, AttributeError) as e:
                 logger.error(f"Failed to load GraphQL schema from {item.name}: {e}")
     
     return queries, mutations
@@ -1049,7 +1056,11 @@ class NewCommand(Command):
     description = "Create a new FastAPI project"
     
     def handle(self):
-        name = self.validate_name(self.argument(0), "Project name is required")
+        name = self.argument(0)
+        if not name:
+            raise ValueError("Project name is required")
+        NameValidator.validate_path_component(name)
+
         minimal = self.flag("minimal")
         pattern = self.option("pattern", "feature").lower()
         package_manager = self.option("package", "uv").lower()
@@ -1410,23 +1421,26 @@ DATABASE_URL=sqlite:///./app.db
 """,
             "postgresql": f"""
 # Database (PostgreSQL with asyncpg)
-DATABASE_URL=postgresql+asyncpg://postgres:changeme@localhost:5432/{project_name}
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=changeme
+# IMPORTANT: Replace placeholders with your actual database credentials
+DATABASE_URL=postgresql+asyncpg://<YOUR_USER>:<YOUR_PASSWORD>@localhost:5432/{project_name}
+POSTGRES_USER=<YOUR_USER>
+POSTGRES_PASSWORD=<YOUR_PASSWORD>
 POSTGRES_DB={project_name}
 """,
             "mysql": f"""
 # Database (MySQL)
-DATABASE_URL=mysql+pymysql://root:changeme@localhost:3306/{project_name}
-MYSQL_USER=root
-MYSQL_PASSWORD=changeme
+# IMPORTANT: Replace placeholders with your actual database credentials
+DATABASE_URL=mysql+pymysql://<YOUR_USER>:<YOUR_PASSWORD>@localhost:3306/{project_name}
+MYSQL_USER=<YOUR_USER>
+MYSQL_PASSWORD=<YOUR_PASSWORD>
 MYSQL_DATABASE={project_name}
 """,
             "oracle": f"""
 # Database (Oracle)
-DATABASE_URL=oracle+cx_oracle://system:changeme@localhost:1521/XE
-ORACLE_USER=system
-ORACLE_PASSWORD=changeme
+# IMPORTANT: Replace placeholders with your actual database credentials
+DATABASE_URL=oracle+cx_oracle://<YOUR_USER>:<YOUR_PASSWORD>@localhost:1521/XE
+ORACLE_USER=<YOUR_USER>
+ORACLE_PASSWORD=<YOUR_PASSWORD>
 ORACLE_SID=XE
 """,
             "firebase": f"""
@@ -2339,17 +2353,21 @@ class MakeMigrationCommand(Command):
     def handle(self):
         message = self.argument(0, "update")
         
-        # Sanitize message
-        message = re.sub(r'[^\w\s-]', '', message).strip()
-        
+        # Sanitize message for use in filenames and commands
+        sanitized_message = re.sub(r'\s+', '_', message)
+        sanitized_message = re.sub(r'[^\w-]', '', sanitized_message).strip('_')
+
+        if not sanitized_message:
+            sanitized_message = "update"
+
         cmd = PackageManager.get_run_prefix() + [
-            "alembic", "revision", "--autogenerate", "-m", message
+            "alembic", "revision", "--autogenerate", "-m", sanitized_message
         ]
-        
+
         try:
             result = subprocess.run(cmd, capture_output=True, text=True)
             if result.returncode == 0:
-                Output.success(f"Migration created: {message}")
+                Output.success(f"Migration created: {sanitized_message}")
                 Output.info("Review the migration file before running migrate")
             else:
                 Output.error(f"Migration failed: {result.stderr}")
@@ -2479,9 +2497,12 @@ class RouteListCommand(Command):
                 Output.info(f"Total routes: {len(routes)}")
             else:
                 Output.warn("No routes found")
-        
+
+        except ImportError as e:
+            Output.error(f"Failed to import application: {e}")
+            logger.exception(e)
         except Exception as e:
-            Output.error(f"Failed to load routes: {e}")
+            Output.error(f"An unexpected error occurred while loading routes: {e}")
             logger.exception(e)
 
 
@@ -2504,8 +2525,11 @@ class TinkerCommand(Command):
                 "Base": Base,
                 "db": SessionLocal()
             })
-        except:
-            pass
+        except ImportError:
+            Output.warn(
+                "Could not import application components. "
+                "Run `fastman init` if this is not a Fastman project."
+            )
         
         Output.info("Fastman Interactive Shell")
         Output.info("Available: settings, SessionLocal, Base, db")
@@ -3236,20 +3260,26 @@ class DbSeedCommand(Command):
                             Output.info(f"Running {attr_name}...")
                             seeder_cls.run(db)
                             count += 1
-                
-                except Exception as e:
-                    Output.error(f"Failed to run {module_name}: {e}")
+
+                except (ImportError, AttributeError) as e:
+                    Output.error(f"Failed to load or run seeder {module_name}: {e}")
                     logger.exception(e)
-            
+                except Exception as e:
+                    Output.error(f"An unexpected error occurred while running {module_name}: {e}")
+                    logger.exception(e)
+
             db.close()
-            
+
             if count > 0:
                 Output.success(f"Ran {count} seeder(s)")
             else:
                 Output.warn("No seeders found")
-        
+
+        except ImportError as e:
+            Output.error(f"Failed to import database session: {e}")
+            logger.exception(e)
         except Exception as e:
-            Output.error(f"Seeding failed: {e}")
+            Output.error(f"An unexpected error occurred during seeding: {e}")
             logger.exception(e)
 
 
@@ -3721,8 +3751,8 @@ class InspectCommand(Command):
                     methods = ",".join(getattr(route, "methods", []))
                     path = getattr(route, "path", "")
                     Output.echo(f"    {methods.ljust(10)} {path}", Style.CYAN)
-        except:
-            pass
+        except (ImportError, AttributeError):
+            logger.debug(f"Could not inspect router for feature: {name}")
     
     def _inspect_api(self, name: str):
         """Inspect an API"""
@@ -3763,9 +3793,11 @@ class InspectCommand(Command):
                 nullable = "NULL" if column.nullable else "NOT NULL"
                 pk = "PRIMARY KEY" if column.primary_key else ""
                 Output.echo(f"    {column.name.ljust(20)} {col_type.ljust(15)} {nullable} {pk}", Style.CYAN)
-        
+
+        except (ImportError, AttributeError) as e:
+            Output.error(f"Could not load model '{pascal}': {e}")
         except Exception as e:
-            Output.error(f"Failed to inspect model: {e}")
+            Output.error(f"An unexpected error occurred while inspecting model: {e}")
 
 
 @register
@@ -3929,7 +3961,7 @@ class CLI:
             try:
                 importlib.import_module(f"app.console.commands.{module_name}")
                 logger.debug(f"Loaded custom command: {module_name}")
-            except Exception as e:
+            except (ImportError, AttributeError) as e:
                 logger.error(f"Failed to load custom command {module_name}: {e}")
     
     def run(self, args: List[str]):
@@ -3960,7 +3992,7 @@ class CLI:
                 Output.info("\nOperation cancelled")
                 sys.exit(130)
             except Exception as e:
-                Output.error(f"Command failed: {e}")
+                Output.error(f"An unexpected error occurred: {e}")
                 logger.exception(e)
                 sys.exit(1)
         else:
@@ -3971,13 +4003,10 @@ class CLI:
 
 def main():
     """Main entry point"""
-    try:
-        cli = CLI()
-        cli.run(sys.argv[1:])
-    except Exception as e:
-        Output.error(f"Fatal error: {e}")
-        logger.exception(e)
-        sys.exit(1)
+    # No top-level try-except needed as CLI.run() handles exceptions
+    # and provides user-friendly error messages.
+    cli = CLI()
+    cli.run(sys.argv[1:])
 
 
 if __name__ == "__main__":
