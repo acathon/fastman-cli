@@ -1,104 +1,163 @@
-# Fastman CLI
+# Fastman ⚡️ The Complete FastAPI CLI Framework
 
 ![Fastman Logo](docs/assets/fastman-logo.jpg)
 
+Fastman is a Laravel-inspired CLI tool for FastAPI. It eliminates boilerplate fatigue by generating project structures, handling database migrations, and scaffolding features, models, and middleware instantly.
 
-The CLI for Python FastAPI.
+Whether you prefer Vertical Slice (Feature) architecture or Layered architecture, Fastman sets it up for you in seconds.
 
-Fastman is a powerful command-line interface designed to streamline FastAPI development. It provides a suite of scaffolding commands to generate project structures, features, APIs, database models, and more, inspired by modern frameworks.
+## ✨ Features
 
-## Features
+- **Zero-Dependency Core**: Runs with standard library (Rich/Pyfiglet optional for UI).
+- **Smart Package Detection**: Automatically uses uv, poetry, pipenv, or pip.
+- **Multiple Architectures**: Supports feature (default), api, and layer patterns.
+- **Database Ready**: First-class support for SQLite, PostgreSQL, MySQL, Oracle, and Firebase.
+- **Interactive Shell**: Includes a tinker command to interact with your app context.
+- **Auth Scaffolding**: One-command JWT or Keycloak authentication setup.
 
-- **Project Scaffolding**: Create new FastAPI projects with a robust, production-ready structure.
-- **Vertical Slice Architecture**: Generate features with routers, services, models, and schemas in one go.
-- **Database Management**: Commands for migrations (Alembic), seeders, factories, and models.
-- **Authentication**: One-command installation for JWT or Keycloak authentication.
-- **Package Management**: Smart wrapper around `uv`, `poetry`, or `pip`.
-- **Development Tools**: Built-in server, interactive shell (tinker), and route listing.
+## 🚀 Quick Start
 
-## Installation
+### Installation
 
-Fastman is a dependency-free CLI tool (only requires standard library + `pyfiglet` for banner).
+Make the script executable and available in your path (assuming you have cli.py):
 
 ```bash
-# Install from PyPI
-pip install fastman
+# Rename to fastman and make executable
+mv cli.py fastman
+chmod +x fastman
 
-# Or install locally
-git clone https://github.com/acathon/fastman-cli.git
-cd fastman-cli
-pip install .
+# Move to a bin directory (optional)
+sudo mv fastman /usr/local/bin/
 ```
 
-> **Note:** Ensure your Python scripts directory is in your PATH to use the `fastman` command directly.
+### Create a New Project
 
-
-## Usage
-
-### Creating a New Project
+Generate a new API with a specific architecture and package manager:
 
 ```bash
+# Default (Feature pattern + UV + SQLite)
 fastman new my-project
+
+# Layered architecture with PostgreSQL and Poetry
+fastman new blog_api --pattern=layer --database=postgresql --package=poetry
+```
+
+### Run the Server
+
+```bash
 cd my-project
+fastman serve
 ```
 
-This will create a new directory `my-project` with a complete FastAPI application structure, including:
-- `app/core`: Configuration, database, security.
-- `app/features`: Vertical slice features.
-- `app/api`: Light endpoints.
-- `tests`: Test structure.
-- `alembic`: Database migrations.
+## 🏗 Project Architectures
 
-### Scaffolding Commands
+Fastman supports three directory structures out of the box:
 
-**Features & APIs:**
-```bash
-fastman make:feature user      # Creates app/features/user (Router, Service, Model, Schema)
-fastman make:api items         # Creates app/api/items (Simple Endpoint)
-fastman make:websocket chat    # Creates WebSocket endpoint
-```
+### 1. Feature Pattern (Default)
+Best for domain-driven design and vertical slices. Code is organized by "what it does" rather than "what it is."
 
-**Database:**
-```bash
-fastman make:model Product     # Creates app/models/product.py
-fastman make:migration "init"  # Creates Alembic migration
-fastman migrate                # Runs migrations
-fastman make:seeder User       # Creates database seeder
-fastman db:seed                # Runs seeders
-```
-
-**Core Components:**
-```bash
-fastman make:controller Auth   # Creates MVC Controller
-fastman make:service Payment   # Creates Service class
-fastman make:middleware Log    # Creates Middleware
-fastman make:exception Custom  # Creates Custom Exception
-```
-
-### Development
-
-```bash
-fastman serve       # Starts the development server (Uvicorn)
-fastman tinker      # Starts an interactive shell with app context
-fastman route:list  # Lists all registered API routes
-```
-
-## Project Structure
-
-Fastman encourages a clean, modular architecture:
-
-```
+```plaintext
 app/
-├── api/            # Simple, single-file endpoints
-├── console/        # Custom console commands
-├── core/           # Core config, DB, auth, middleware
-├── features/       # Vertical slice features (domain-driven)
-├── http/           # MVC Controllers (optional)
-├── models/         # Database models
-├── services/       # Business logic services
-└── main.py         # App entry point
+├── features/
+│   └── auth/           # Router, Service, Models, Schemas all in one place
+├── api/                # Simple endpoints
+└── core/               # Shared config
 ```
+
+### 2. Layer Pattern
+Traditional MVC-style architecture.
+
+```plaintext
+app/
+├── controllers/
+├── services/
+├── repositories/
+├── models/
+└── schemas/
+```
+
+### 3. API Pattern
+Lightweight structure for simple microservices.
+
+```plaintext
+app/
+├── api/
+├── schemas/
+└── models/
+```
+
+## 🛠 Command Reference
+
+### Scaffolding
+Generate boilerplate code instantly.
+
+| Command | Description |
+|---------|-------------|
+| `make:feature {name} --crud` | Create a vertical slice (Router, Service, Model, Schema) |
+| `make:model {name}` | Create a SQLAlchemy model |
+| `make:api {name}` | Create a lightweight REST or GraphQL endpoint |
+| `make:service {name}` | Create a business logic service class |
+| `make:repository {name}` | Create a repository data-access class |
+| `make:middleware {name}` | Create a standard HTTP middleware |
+| `make:dependency {name}` | Create a FastAPI dependency function/class |
+| `make:websocket {name}` | Create a WebSocket endpoint with connection manager |
+| `make:test {name}` | Create a pytest file |
+| `make:seeder {name}` | Create a database seeder |
+| `make:factory {name}` | Create a model factory for testing |
+
+### Database & Migrations
+Wrappers around Alembic to make migrations feel like Laravel.
+
+| Command | Description |
+|---------|-------------|
+| `make:migration {msg}` | Create a new migration file |
+| `migrate` | Run pending migrations |
+| `migrate:rollback` | Rollback the last migration |
+| `migrate:reset` | Rollback all migrations |
+| `db:seed` | Run database seeders |
+
+### Utilities
+
+| Command | Description |
+|---------|-------------|
+| `tinker` | Interactive Python Shell with app context loaded |
+| `route:list` | Show a table of all registered API routes |
+| `serve` | Start the development server (Uvicorn wrapper) |
+| `install:auth` | Scaffold JWT, OAuth, or Keycloak authentication |
+| `inspect {type} {name}` | Inspect a model, feature, or API |
+| `optimize` | Format code, sort imports, and remove unused variables |
+
+## 💡 The "Tinker" Shell
+
+Debugging FastAPI apps can be tedious. Fastman includes a tinker command that drops you into a shell with your settings, db session, and models pre-loaded.
+
+```bash
+$ fastman tinker
+
+Fastman Interactive Shell
+Available: settings, SessionLocal, Base, db
+
+>>> user = db.query(User).first()
+>>> print(user.email)
+admin@example.com
+>>> settings.DEBUG
+True
+```
+
+## 🔐 Authentication
+
+Don't write auth from scratch. Scaffold it:
+
+```bash
+fastman install:auth --type=jwt
+```
+
+This generates:
+- `app/features/auth/` (Router, Service, Schemas)
+- JWT handling utilities
+- User model and migration
+- Login/Register endpoints
 
 ## License
 
-MIT
+This project is licensed under the **Apache License 2.0**.
