@@ -3518,54 +3518,107 @@ class ListCommand(Command):
     description = "Show all available commands"
     
     def handle(self):
-        Output.banner()
+        """Display commands in Laravel Artisan style"""
         
-        # Group commands by category
+        # Header
+        if HAS_PYFIGLET:
+            banner = pyfiglet.figlet_format("Fastman", font="slant")
+            if HAS_RICH:
+                console.print(f"[cyan]{banner}[/cyan]", end="")
+            else:
+                print(f"{Style.CYAN}{banner}{Style.RESET}", end="")
+        else:
+            if HAS_RICH:
+                console.print(f"[bold cyan]Fastman[/bold cyan] [yellow]v{__version__}[/yellow]")
+            else:
+                print(f"{Style.BOLD}{Style.CYAN}Fastman{Style.RESET} {Style.YELLOW}v{__version__}{Style.RESET}")
+        
+        if HAS_RICH:
+            console.print(f"[yellow]v{__version__}[/yellow]")
+            console.print()
+        else:
+            print(f"{Style.YELLOW}v{__version__}{Style.RESET}\n")
+        
+        # Usage section
+        if HAS_RICH:
+            console.print("[yellow]Usage:[/yellow]")
+            console.print("  command [options] [arguments]")
+            console.print()
+            console.print("[yellow]Options:[/yellow]")
+            console.print("  [green]-h, --help[/green]     Display help for a command")
+            console.print("  [green]-v, --version[/green]  Display application version")
+            console.print()
+        else:
+            print(f"{Style.YELLOW}Usage:{Style.RESET}")
+            print("  command [options] [arguments]\n")
+            print(f"{Style.YELLOW}Options:{Style.RESET}")
+            print(f"  {Style.GREEN}-h, --help{Style.RESET}     Display help for a command")
+            print(f"  {Style.GREEN}-v, --version{Style.RESET}  Display application version\n")
+        
+        # Organize commands by namespace/category
         categories = {
-            "Project": [],
+            "Project Setup": [],
+            "Development": [],
             "Scaffolding": [],
-            "Database": [],
+            "Database & Migrations": [],
             "Testing": [],
+            "Authentication": [],
+            "Package Management": [],
             "Configuration": [],
             "Utilities": []
         }
         
         for name, cls in sorted(COMMAND_REGISTRY.items()):
-            sig = cls.signature.ljust(35)
-            desc = cls.description
-            
-            # Categorize
-            if name in ["new", "serve"]:
-                categories["Project"].append((sig, desc))
-            elif name.startswith("make:"):
-                categories["Scaffolding"].append((sig, desc))
-            elif name.startswith("migrate") or name.startswith("db:") or name == "make:migration":
-                categories["Database"].append((sig, desc))
-            elif name.startswith("make:test"):
-                categories["Testing"].append((sig, desc))
-            elif name.startswith("config:") or name.startswith("generate:") or name == "install:auth":
-                categories["Configuration"].append((sig, desc))
+            # Categorize commands
+            if name in ["new", "init"]:
+                categories["Project Setup"].append((name, cls.description))
+            elif name == "serve":
+                categories["Development"].append((name, cls.description))
+            elif name.startswith("make:") and name not in ["make:migration", "make:seeder", "make:factory", "make:test"]:
+                categories["Scaffolding"].append((name, cls.description))
+            elif name.startswith("migrate") or name.startswith("db:") or name in ["make:migration", "make:seeder"]:
+                categories["Database & Migrations"].append((name, cls.description))
+            elif name in ["make:test", "make:factory"]:
+                categories["Testing"].append((name, cls.description))
+            elif name.startswith("install:auth"):
+                categories["Authentication"].append((name, cls.description))
+            elif name in ["import", "pkg:list"]:
+                categories["Package Management"].append((name, cls.description))
+            elif name.startswith("config:") or name.startswith("cache:") or name.startswith("generate:"):
+                categories["Configuration"].append((name, cls.description))
             else:
-                categories["Utilities"].append((sig, desc))
+                categories["Utilities"].append((name, cls.description))
         
-        # Display by category
+        # Display commands by category
+        if HAS_RICH:
+            console.print("[yellow]Available commands:[/yellow]")
+        else:
+            print(f"{Style.YELLOW}Available commands:{Style.RESET}")
+        
         for category, commands in categories.items():
-            if commands:
-                Output.echo(f"\n{category}", Style.BOLD + Style.CYAN)
-                Output.echo("=" * 80)
-                for sig, desc in commands:
-                    if HAS_RICH:
-                        console.print(f"  [green]{sig}[/green] {desc}")
-                    else:
-                        print(f"  {Style.GREEN}{sig}{Style.RESET} {desc}")
-        
-        Output.echo("\n" + "=" * 80)
-        Output.info(f"Fastman v{__version__} - The Complete FastAPI CLI")
-        Output.info("For more info: fastman <command> --help")
-        Output.echo("\nQuick Start:", Style.BOLD)
-        Output.echo("  fastman new myproject      Create new project", Style.CYAN)
-        Output.echo("  cd myproject               Navigate to project", Style.CYAN)
-        Output.echo("  fastman serve              Start dev server", Style.CYAN)
+            if not commands:
+                continue
+            
+            # Category header
+            if HAS_RICH:
+                console.print(f" [bold yellow]{category}[/bold yellow]")
+            else:
+                print(f" {Style.BOLD}{Style.YELLOW}{category}{Style.RESET}")
+            
+            # Find the longest command name for alignment
+            max_length = max(len(cmd[0]) for cmd in commands) if commands else 0
+            
+            # Display commands in this category
+            for cmd_name, description in sorted(commands):
+                padding = " " * (max_length - len(cmd_name) + 2)
+                
+                if HAS_RICH:
+                    console.print(f"  [green]{cmd_name}[/green]{padding}{description}")
+                else:
+                    print(f"  {Style.GREEN}{cmd_name}{Style.RESET}{padding}{description}")
+            
+            # Empty line between categories
+            print()
 
 
 @register
