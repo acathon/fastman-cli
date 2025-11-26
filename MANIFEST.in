@@ -1,0 +1,27 @@
+# Include documentation
+include README.md
+include LICENSE
+include CHANGELOG.md
+include CONTRIBUTING.md
+
+# Include type stubs
+include src/fastman/py.typed
+
+# Exclude unnecessary files
+exclude .gitignore
+exclude .dockerignore
+exclude .editorconfig
+
+# Exclude development files
+recursive-exclude tests *
+recursive-include docs/assets *
+recursive-exclude docs *
+recursive-exclude examples *
+
+# Exclude cache and build files
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude *.so
+global-exclude .DS_Store
+global-exclude *.swp
+global-exclude *.swo

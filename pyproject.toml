@@ -1,0 +1,105 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fastman"
+version = "0.1.0"
+description = "Fastman CLI for FastAPI that makes building APIs a breeze"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "Mustapha Essouri", email = "mustapha.essour@gmail.com"}
+]
+maintainers = [
+    {name = "Fastman Contributors"}
+]
+keywords = [
+    "fastapi",
+    "cli",
+    "framework",
+    "api",
+    "rest",
+    "graphql",
+    "scaffold",
+    "generator"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Framework :: FastAPI",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+    "Environment :: Console",
+    "Operating System :: OS Independent",
+]
+
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "mypy>=1.0.0",
+    "flake8>=6.0.0",
+]
+rich = [
+    "rich>=13.0.0",
+]
+banner = [
+    "pyfiglet>=0.8.0",
+]
+all = [
+    "rich>=13.0.0",
+    "pyfiglet>=0.8.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/acathon/fastman-cli"
+Repository = "https://github.com/acathon/fastman-cli"
+"Bug Tracker" = "https://github.com/acathon/fastman-cli/issues"
+Changelog = "https://github.com/acathon/fastman-cli/blob/main/CHANGELOG.md"
+
+[project.scripts]
+fastman = "fastman.cli:main"
+
+[tool.setuptools]
+packages = ["fastman"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.setuptools.package-data]
+fastman = ["py.typed"]
+
+[tool.black]
+line-length = 100
+target-version = ["py39", "py310", "py311", "py312"]
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
