@@ -1,12 +1,12 @@
-# Fastman ⚡️ The Complete FastAPI CLI Framework
+# Fastman The Complete FastAPI CLI Framework
 
-![Fastman Logo](docs/assets/fastman-logo.jpg)
+![Fastman Logo](docs/static/img/fastman-logo.png)
 
 Fastman is a Laravel-inspired CLI tool for FastAPI. It eliminates boilerplate fatigue by generating project structures, handling database migrations, and scaffolding features, models, and middleware instantly.
 
 Whether you prefer Vertical Slice (Feature) architecture or Layered architecture, Fastman sets it up for you in seconds.
 
-## ✨ Features
+## Features
 
 - **Zero-Dependency Core**: Runs with standard library (Rich/Pyfiglet optional for UI).
 - **Smart Package Detection**: Automatically uses uv, poetry, pipenv, or pip.
@@ -15,7 +15,7 @@ Whether you prefer Vertical Slice (Feature) architecture or Layered architecture
 - **Interactive Shell**: Includes a tinker command to interact with your app context.
 - **Auth Scaffolding**: One-command JWT or Keycloak authentication setup.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Installation
 
@@ -49,7 +49,7 @@ cd my-project
 fastman serve
 ```
 
-## 🏗 Project Architectures
+## Project Architectures
 
 Fastman supports three directory structures out of the box:
 
@@ -86,7 +86,7 @@ app/
 └── models/
 ```
 
-## 🛠 Command Reference
+## Command Reference
 
 ### Scaffolding
 Generate boilerplate code instantly.
@@ -127,7 +127,7 @@ Wrappers around Alembic to make migrations feel like Laravel.
 | `inspect {type} {name}` | Inspect a model, feature, or API |
 | `optimize` | Format code, sort imports, and remove unused variables |
 
-## 💡 The "Tinker" Shell
+## The "Tinker" Shell
 
 Debugging FastAPI apps can be tedious. Fastman includes a tinker command that drops you into a shell with your settings, db session, and models pre-loaded.
 
@@ -144,7 +144,7 @@ admin@example.com
 True
 ```
 
-## 🔐 Authentication
+## Authentication
 
 Don't write auth from scratch. Scaffold it:
 
