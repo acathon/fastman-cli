@@ -1,6 +1,6 @@
 # Fastman The Complete FastAPI CLI Framework
 
-![Fastman Logo](docs/static/img/fastman-logo.png)
+![Fastman Logo](docs/static/img/fastman-logo.jpg)
 
 Fastman is a Laravel-inspired CLI tool for FastAPI. It eliminates boilerplate fatigue by generating project structures, handling database migrations, and scaffolding features, models, and middleware instantly.
 
