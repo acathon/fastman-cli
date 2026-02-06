@@ -100,3 +100,8 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
+
+[tool.uv.workspace]
+members = [
+    "examples/pizza-order",
+]
