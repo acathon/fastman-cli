@@ -36,7 +36,7 @@ class NewCommand(Command):
             return
 
         # Validate package manager
-        valid_packages = ["uv", "pipenv", "poetry"]
+        valid_packages = ["uv", "pipenv", "poetry", "pip"]
         if package_manager not in valid_packages:
             Output.error(f"Invalid package manager '{package_manager}'. Must be one of: {', '.join(valid_packages)}")
             return
