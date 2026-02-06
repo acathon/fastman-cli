@@ -245,13 +245,13 @@ Generated with ❤️ by Fastman
             os.chdir(original_dir)
 
         Output.success(f"Project '{name}' created successfully!")
-        Output.info(f"\nNext steps:")
+        Output.info("\nNext steps:")
         Output.echo(f"  cd {name}", Style.CYAN)
         if package_manager == "pipenv":
-            Output.echo(f"  pipenv shell", Style.CYAN)
+            Output.echo("  pipenv shell", Style.CYAN)
         elif package_manager == "poetry":
-            Output.echo(f"  poetry shell", Style.CYAN)
-        Output.echo(f"  fastman serve", Style.CYAN)
+            Output.echo("  poetry shell", Style.CYAN)
+        Output.echo("  fastman serve", Style.CYAN)
 
     def _get_install_command(self, package_manager: str) -> str:
         """Get install command for package manager"""
@@ -314,8 +314,12 @@ Generated with ❤️ by Fastman
             # Check if pipenv is available
             if not shutil.which("pipenv"):
                 Output.warn("pipenv not found. Installing...")
-                subprocess.run([sys.executable, "-m", "pip", "install", "pipenv"],
-                             capture_output=True)
+                try:
+                    subprocess.run([sys.executable, "-m", "pip", "install", "pipenv"],
+                                 capture_output=True, check=True)
+                except subprocess.CalledProcessError as e:
+                    Output.error(f"Failed to install pipenv: {e}")
+                    return
 
             Output.info("Initializing with pipenv...")
             try:
@@ -406,7 +410,7 @@ MYSQL_USER=<YOUR_USER>
 MYSQL_PASSWORD=<YOUR_PASSWORD>
 MYSQL_DATABASE={project_name}
 """,
-            "oracle": f"""
+            "oracle": """
 # Database (Oracle)
 # IMPORTANT: Replace placeholders with your actual database credentials
 DATABASE_URL=oracle+cx_oracle://<YOUR_USER>:<YOUR_PASSWORD>@localhost:1521/XE
@@ -414,7 +418,7 @@ ORACLE_USER=<YOUR_USER>
 ORACLE_PASSWORD=<YOUR_PASSWORD>
 ORACLE_SID=XE
 """,
-            "firebase": f"""
+            "firebase": """
 # Firebase
 FIREBASE_PROJECT_ID=your-project-id
 FIREBASE_CREDENTIALS_PATH=./firebase-credentials.json

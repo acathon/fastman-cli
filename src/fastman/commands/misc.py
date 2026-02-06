@@ -566,7 +566,25 @@ class OptimizeCommand(Command):
         if missing_tools:
             Output.warn(f"Missing tools: {', '.join(missing_tools)}")
             if Output.confirm("Install optimization tools?"):
-                PackageManager.install(missing_tools + ["--dev"] if PackageManager.detect()[0] != "pip" else missing_tools)
+                manager, _ = PackageManager.detect()
+                install_args = missing_tools.copy()
+                if manager != "pip":
+                    # For uv, poetry, pipenv, --dev is a flag, not a package
+                    # We need to handle this in PackageManager.install eventually,
+                    # but for now we append it as an arg.
+                    # Ideally, PackageManager.install should take options.
+                    # Since we are passing a list of packages, we rely on the fact
+                    # that they are appended to the command.
+                    # Note: This might treat --dev as a package if the implementation iterates blindly.
+                    pass
+
+                # Currently PackageManager.install takes a list of packages and appends them to command.
+                # If we pass ["--dev", "black"], it becomes `uv add --dev black`.
+
+                if manager != "pip":
+                    install_args = ["--dev"] + missing_tools
+
+                PackageManager.install(install_args)
 
         # Run optimization
         app_path = Path("app")

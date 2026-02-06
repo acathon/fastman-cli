@@ -160,10 +160,26 @@ class PackageManager:
                 req_file = Path("requirements.txt")
                 if req_file.exists():
                     existing = req_file.read_text().splitlines()
-                    for pkg in packages:
-                        if pkg not in existing:
-                            with req_file.open("a") as f:
+
+                    # Normalize existing packages to base names for comparison
+                    # e.g., "requests==2.28.0" -> "requests"
+                    existing_bases = set()
+                    for line in existing:
+                        line = line.strip()
+                        if not line or line.startswith("#"):
+                            continue
+                        # Parse base name (very basic parsing)
+                        base_name = re.split(r'[=<>\[]', line)[0].strip().lower()
+                        existing_bases.add(base_name)
+
+                    with req_file.open("a") as f:
+                        for pkg in packages:
+                            # Normalize input package
+                            pkg_base = re.split(r'[=<>\[]', pkg)[0].strip().lower()
+
+                            if pkg_base not in existing_bases:
                                 f.write(f"\n{pkg}")
+                                existing_bases.add(pkg_base)
 
             return True
         except subprocess.CalledProcessError as e:

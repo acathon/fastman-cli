@@ -69,16 +69,24 @@ class MigrateRollbackCommand(Command):
     def handle(self):
         steps = self.option("steps", "1")
 
-        if not Output.confirm(f"Rollback {steps} migration(s)?", default=False):
+        try:
+            steps_int = int(steps)
+            if steps_int < 1:
+                raise ValueError
+        except ValueError:
+            Output.error("Invalid steps value. Must be a positive integer.")
+            return
+
+        if not Output.confirm(f"Rollback {steps_int} migration(s)?", default=False):
             Output.info("Cancelled")
             return
 
-        cmd = PackageManager.get_run_prefix() + ["alembic", "downgrade", f"-{steps}"]
+        cmd = PackageManager.get_run_prefix() + ["alembic", "downgrade", f"-{steps_int}"]
 
         try:
             result = subprocess.run(cmd)
             if result.returncode == 0:
-                Output.success(f"Rolled back {steps} migration(s)")
+                Output.success(f"Rolled back {steps_int} migration(s)")
             else:
                 Output.error("Rollback failed")
         except Exception as e:
