@@ -175,6 +175,14 @@ class NewCommand(Command):
             "layer": "Layered architecture (controllers, services, repositories)"
         }
 
+        # Prepare activation strings to avoid backslash syntax errors in f-string
+        linux_activate = "source .venv/bin/activate  # Linux/Mac"
+        windows_activate = ".\\.venv\\Scripts\\activate  # Windows"
+        uv_note = "# uv handles venv automatically"
+
+        activation_linux = linux_activate if package_manager != "uv" else uv_note
+        activation_windows = windows_activate if package_manager != "uv" else ""
+
         readme = f"""# {name}
 
 FastAPI project generated with Fastman v{__version__}
@@ -188,8 +196,8 @@ FastAPI project generated with Fastman v{__version__}
 cd {name}
 
 # Activate virtual environment (if created)
-{"source .venv/bin/activate  # Linux/Mac" if package_manager != "uv" else "# uv handles venv automatically"}
-{".\\.venv\\\\Scripts\\\\activate  # Windows" if package_manager != "uv" else ""}
+{activation_linux}
+{activation_windows}
 
 # Install dependencies
 {self._get_install_command(package_manager)}

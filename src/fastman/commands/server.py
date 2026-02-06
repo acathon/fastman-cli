@@ -8,13 +8,22 @@ from ..utils import PackageManager
 
 @register
 class ServeCommand(Command):
-    signature = "serve {--host=127.0.0.1} {--port=8000} {--reload}"
+    signature = "serve {--host=127.0.0.1} {--port=8000} {--reload} {--no-reload}"
     description = "Start development server"
 
     def handle(self):
         host = self.option("host", "127.0.0.1")
         port = self.option("port", "8000")
-        reload = self.flag("reload") or True  # Default to reload in dev
+
+        # Reload is enabled by default unless --no-reload is specified
+        reload_flag = self.flag("reload")
+        no_reload_flag = self.flag("no-reload")
+
+        reload = True
+        if no_reload_flag:
+            reload = False
+        elif reload_flag:
+            reload = True
 
         cmd = PackageManager.get_run_prefix() + [
             "uvicorn",

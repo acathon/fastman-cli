@@ -15,7 +15,10 @@ from pathlib import Path
 from .. import __version__
 from .base import Command, register, COMMAND_REGISTRY
 from ..console import Output, Style, HAS_PYFIGLET, HAS_RICH, console
-from ..utils import PackageManager, NameValidator
+from ..utils import PackageManager, NameValidator, PathManager
+
+if HAS_PYFIGLET:
+    import pyfiglet
 
 logger = logging.getLogger('fastman')
 
@@ -77,30 +80,40 @@ class TinkerCommand(Command):
 
         # Import commonly used items
         namespace = {}
+        db_session = None
+
         try:
             from app.core.config import settings
             from app.core.database import SessionLocal, Base
+
+            db_session = SessionLocal()
             namespace.update({
                 "settings": settings,
                 "SessionLocal": SessionLocal,
                 "Base": Base,
-                "db": SessionLocal()
+                "db": db_session
             })
+
+            Output.info("Fastman Interactive Shell")
+            Output.info("Available: settings, SessionLocal, Base, db")
+
         except ImportError:
             Output.warn(
                 "Could not import application components. "
                 "Run `fastman init` if this is not a Fastman project."
             )
-
-        Output.info("Fastman Interactive Shell")
-        Output.info("Available: settings, SessionLocal, Base, db")
+            Output.info("Fastman Interactive Shell")
 
         try:
-            import IPython
-            IPython.start_ipython(argv=[], user_ns=namespace)
-        except ImportError:
-            import code
-            code.interact(local=namespace)
+            try:
+                import IPython
+                IPython.start_ipython(argv=[], user_ns=namespace)
+            except ImportError:
+                import code
+                code.interact(local=namespace)
+        finally:
+            if db_session:
+                db_session.close()
 
 
 @register
@@ -269,11 +282,15 @@ class ListCommand(Command):
             else:
                 print(f"{Style.BOLD}{Style.CYAN}Fastman{Style.RESET} {Style.YELLOW}v{__version__}{Style.RESET}")
 
-        if HAS_RICH:
-            console.print(f"[yellow]v{__version__}[/yellow]")
-            console.print()
-        else:
-            print(f"{Style.YELLOW}v{__version__}{Style.RESET}\n")
+        # If we used pyfiglet, we haven't printed the version number yet (except in rich title),
+        # so we print it below the banner.
+        # If we didn't use pyfiglet, we already printed "Fastman vX.Y.Z" in the fallback header.
+        if HAS_PYFIGLET:
+            if HAS_RICH:
+                console.print(f"[yellow]v{__version__}[/yellow]")
+                console.print()
+            else:
+                print(f"{Style.YELLOW}v{__version__}{Style.RESET}\n")
 
         # Usage section
         if HAS_RICH:

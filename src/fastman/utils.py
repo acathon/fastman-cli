@@ -77,18 +77,15 @@ class PathManager:
     def write_file(path: Path, content: str, overwrite: bool = False) -> bool:
         """Write file with safety checks"""
         try:
+            # Ensure parent directories exist
+            path.parent.mkdir(parents=True, exist_ok=True)
+
             with path.open('x' if not overwrite else 'w', encoding='utf-8') as f:
                 f.write(content)
             return True
         except FileExistsError:
             Output.warn(f"File already exists: {path}")
             return False
-
-        path.parent.mkdir(parents=True, exist_ok=True)
-
-        try:
-            path.write_text(content, encoding='utf-8')
-            return True
         except IOError as e:
             Output.error(f"File I/O error writing to {path}: {e}")
             logger.exception(e)

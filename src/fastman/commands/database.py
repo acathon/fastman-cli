@@ -134,44 +134,48 @@ class DbSeedCommand(Command):
         try:
             from app.core.database import SessionLocal
 
-            db = SessionLocal()
+            db = None
+            try:
+                db = SessionLocal()
 
-            seeders_path = Path("database/seeders")
-            if not seeders_path.exists():
-                Output.error("Seeders directory not found")
-                return
+                seeders_path = Path("database/seeders")
+                if not seeders_path.exists():
+                    Output.error("Seeders directory not found")
+                    return
 
-            count = 0
-            for file_path in seeders_path.glob("*_seeder.py"):
-                module_name = file_path.stem
+                count = 0
+                for file_path in seeders_path.glob("*_seeder.py"):
+                    module_name = file_path.stem
 
-                if seeder_class and module_name != seeder_class:
-                    continue
+                    if seeder_class and module_name != seeder_class:
+                        continue
 
-                try:
-                    module = importlib.import_module(f"database.seeders.{module_name}")
+                    try:
+                        module = importlib.import_module(f"database.seeders.{module_name}")
 
-                    # Find seeder class
-                    for attr_name in dir(module):
-                        if attr_name.endswith("Seeder") and attr_name != "Seeder":
-                            seeder_cls = getattr(module, attr_name)
-                            Output.info(f"Running {attr_name}...")
-                            seeder_cls.run(db)
-                            count += 1
+                        # Find seeder class
+                        for attr_name in dir(module):
+                            if attr_name.endswith("Seeder") and attr_name != "Seeder":
+                                seeder_cls = getattr(module, attr_name)
+                                Output.info(f"Running {attr_name}...")
+                                seeder_cls.run(db)
+                                count += 1
 
-                except (ImportError, AttributeError) as e:
-                    Output.error(f"Failed to load or run seeder {module_name}: {e}")
-                    # logger.exception(e)
-                except Exception as e:
-                    Output.error(f"An unexpected error occurred while running {module_name}: {e}")
-                    # logger.exception(e)
+                    except (ImportError, AttributeError) as e:
+                        Output.error(f"Failed to load or run seeder {module_name}: {e}")
+                        # logger.exception(e)
+                    except Exception as e:
+                        Output.error(f"An unexpected error occurred while running {module_name}: {e}")
+                        # logger.exception(e)
 
-            db.close()
+                if count > 0:
+                    Output.success(f"Ran {count} seeder(s)")
+                else:
+                    Output.warn("No seeders found")
 
-            if count > 0:
-                Output.success(f"Ran {count} seeder(s)")
-            else:
-                Output.warn("No seeders found")
+            finally:
+                if db:
+                    db.close()
 
         except ImportError as e:
             Output.error(f"Failed to import database session: {e}")
