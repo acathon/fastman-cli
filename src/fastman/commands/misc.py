@@ -33,41 +33,117 @@ class RouteListCommand(Command):
 
         sys.path.insert(0, str(Path.cwd()))
 
+        routes = []
+
         try:
             from app.main import app
-
-            routes = []
-            for route in app.routes:
-                route_path = getattr(route, "path", "")
-                route_methods = getattr(route, "methods", set())
-
-                # Apply filters
-                if path_filter and path_filter not in route_path:
-                    continue
-                if method_filter and method_filter not in route_methods:
-                    continue
-
-                methods_str = ",".join(sorted(route_methods)) if route_methods else "WS"
-                name = getattr(route, "name", "-")
-
-                routes.append([methods_str, route_path, name])
-
-            if routes:
-                Output.table(
-                    ["Methods", "Path", "Name"],
-                    routes,
-                    "API Routes"
-                )
-                Output.info(f"Total routes: {len(routes)}")
-            else:
-                Output.warn("No routes found")
-
-        except ImportError as e:
-            Output.error(f"Failed to import application: {e}")
-            logger.exception(e)
+            routes = self._get_routes_from_app(app)
+        except ImportError:
+            # Fallback to subprocess if fastman is running in isolated environment
+            try:
+                routes = self._get_routes_via_subprocess()
+            except Exception as e:
+                Output.error(f"Failed to load routes: {e}")
+                return
         except Exception as e:
             Output.error(f"An unexpected error occurred while loading routes: {e}")
             logger.exception(e)
+            return
+
+        # Filter and display routes
+        filtered_routes = []
+        for methods_str, route_path, name in routes:
+            # Apply filters
+            if path_filter and path_filter not in route_path:
+                continue
+            if method_filter and method_filter not in methods_str:
+                continue
+
+            filtered_routes.append([methods_str, route_path, name])
+
+        if filtered_routes:
+            Output.table(
+                ["Methods", "Path", "Name"],
+                filtered_routes,
+                "API Routes"
+            )
+            Output.info(f"Total routes: {len(filtered_routes)}")
+        else:
+            Output.warn("No routes found")
+
+    def _get_routes_from_app(self, app):
+        """Extract routes from loaded app instance"""
+        routes = []
+        for route in app.routes:
+            route_path = getattr(route, "path", "")
+            route_methods = getattr(route, "methods", set())
+
+            methods_str = ",".join(sorted(route_methods)) if route_methods else "WS"
+            name = getattr(route, "name", "-")
+
+            routes.append([methods_str, route_path, name])
+        return routes
+
+    def _get_routes_via_subprocess(self):
+        """Get routes by running a script in the project environment"""
+        script_content = """
+import json
+import sys
+from pathlib import Path
+
+# Add CWD to path
+sys.path.insert(0, str(Path.cwd()))
+
+try:
+    from app.main import app
+
+    routes_data = []
+    for route in app.routes:
+        route_path = getattr(route, "path", "")
+        route_methods = getattr(route, "methods", set())
+
+        methods_str = ",".join(sorted(route_methods)) if route_methods else "WS"
+        name = getattr(route, "name", "-")
+
+        routes_data.append([methods_str, route_path, name])
+
+    print(json.dumps(routes_data))
+except Exception as e:
+    print(json.dumps({"error": str(e)}))
+    sys.exit(1)
+"""
+        script_path = Path("_fastman_routes.py")
+        PathManager.write_file(script_path, script_content, overwrite=True)
+
+        try:
+            manager_prefix = PackageManager.get_run_prefix()
+            if manager_prefix:
+                cmd = manager_prefix + ["python", str(script_path)]
+            else:
+                cmd = ["python", str(script_path)]
+
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                check=False
+            )
+
+            if result.returncode != 0:
+                # Try to parse error from stdout if available, else stderr
+                try:
+                    data = json.loads(result.stdout)
+                    if "error" in data:
+                        raise Exception(data["error"])
+                except json.JSONDecodeError:
+                    pass
+
+                raise Exception(result.stderr or "Unknown error in subprocess")
+
+            return json.loads(result.stdout)
+
+        finally:
+            PathManager.safe_remove(script_path)
 
 
 @register
