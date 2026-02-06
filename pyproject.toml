@@ -70,13 +70,10 @@ Repository = "https://github.com/acathon/fastman-cli"
 Changelog = "https://github.com/acathon/fastman-cli/blob/main/CHANGELOG.md"
 
 [project.scripts]
-fastman = "fastman.cli:main"
+fastman = "fastman.main:main"
 
-[tool.setuptools]
-packages = ["fastman"]
-
-[tool.setuptools.package-dir]
-"" = "src"
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.setuptools.package-data]
 fastman = ["py.typed"]

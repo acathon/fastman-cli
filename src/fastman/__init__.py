@@ -1,18 +1,4 @@
-"""
-Fastman - The Complete FastAPI CLI Framework
+__version__ = "0.1.0"
 
-A Fastman CLI for FastAPI that makes building APIs a breeze.
-"""
-
-from .cli import main, __version__, CLI, Command, COMMAND_REGISTRY
-
-__all__ = [
-    "main",
-    "__version__",
-    "CLI",
-    "Command",
-    "COMMAND_REGISTRY",
-]
-
-__author__ = "Fastman Contributors"
-__license__ = "MIT"
+from .commands.base import Command, register
+from .console import Output
