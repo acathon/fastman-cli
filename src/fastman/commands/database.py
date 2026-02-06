@@ -9,7 +9,7 @@ from pathlib import Path
 
 from .base import Command, register
 from ..console import Output, Style
-from ..utils import PackageManager
+from ..utils import PackageManager, NameValidator
 
 
 @register
@@ -155,7 +155,11 @@ class DbSeedCommand(Command):
                 for file_path in seeders_path.glob("*_seeder.py"):
                     module_name = file_path.stem
 
-                    if seeder_class and module_name != seeder_class:
+                    # Match class name or module name
+                    # Normalize file stem to PascalCase to match typical class names (e.g. user_seeder -> UserSeeder)
+                    expected_class = NameValidator.to_pascal_case(module_name)
+
+                    if seeder_class and seeder_class != module_name and seeder_class != expected_class:
                         continue
 
                     try:

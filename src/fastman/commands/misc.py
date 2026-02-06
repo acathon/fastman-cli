@@ -126,7 +126,7 @@ class GenerateKeyCommand(Command):
         show_only = self.flag("show")
 
         if show_only:
-            Output.success(f"Generated key: {key}")
+            Output.echo(f"Generated key: {key}")
             return
 
         env_file = Path(".env")
@@ -152,7 +152,7 @@ class GenerateKeyCommand(Command):
             env_file.write_text(f"SECRET_KEY={key}\n")
             Output.success("Secret key created in .env")
 
-        Output.info(f"Key: {key}")
+        Output.echo(f"Key: {key}")
 
 
 @register
@@ -251,14 +251,17 @@ class PkgListCommand(Command):
 
         Output.info(f"Using package manager: {manager}")
 
-        if manager == "uv":
-            subprocess.run(["uv", "pip", "list"])
-        elif manager == "poetry":
-            subprocess.run(["poetry", "show"])
-        elif manager == "pipenv":
-            subprocess.run(["pipenv", "list"])
-        else:
-            subprocess.run([sys.executable, "-m", "pip", "list"])
+        try:
+            if manager == "uv":
+                subprocess.run(["uv", "pip", "list"], check=True)
+            elif manager == "poetry":
+                subprocess.run(["poetry", "show"], check=True)
+            elif manager == "pipenv":
+                subprocess.run(["pipenv", "list"], check=True)
+            else:
+                subprocess.run([sys.executable, "-m", "pip", "list"], check=True)
+        except (FileNotFoundError, subprocess.CalledProcessError) as e:
+            Output.error(f"Failed to list packages: {e}")
 
 
 @register

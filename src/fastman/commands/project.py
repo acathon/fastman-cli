@@ -217,7 +217,7 @@ fastman list
 │   ├── core/          # Core configuration and utilities
 {self._get_structure_docs(pattern)}
 ├── tests/             # Test files
-├── alembic/           # Database migrations
+{self._get_alembic_docs(database)}
 └── logs/              # Application logs
 ```
 
@@ -278,6 +278,12 @@ Generated with ❤️ by Fastman
 │   └── schemas/       # Pydantic schemas"""
         }
         return structures.get(pattern, "")
+
+    def _get_alembic_docs(self, database: str) -> str:
+        """Get alembic documentation line if applicable"""
+        if database == "firebase":
+            return ""
+        return "├── alembic/           # Database migrations"
 
     def _initialize_package_manager(self, package_manager: str, dependencies: list, project_name: str):
         """Initialize project with specified package manager"""
@@ -346,8 +352,11 @@ Generated with ❤️ by Fastman
             Output.info("Initializing with poetry...")
             try:
                 # Configure poetry to create venv in project
-                subprocess.run(["poetry", "config", "virtualenvs.in-project", "true"],
-                             capture_output=True)
+                try:
+                    subprocess.run(["poetry", "config", "virtualenvs.in-project", "true"],
+                                 capture_output=True, check=True)
+                except subprocess.CalledProcessError as e:
+                    Output.warn(f"Failed to configure poetry virtualenvs.in-project: {e}")
 
                 # Initialize poetry project
                 subprocess.run(["poetry", "init", "--no-interaction",

@@ -43,9 +43,12 @@ class NameValidator:
     @staticmethod
     def to_snake_case(name: str) -> str:
         """Convert to snake_case"""
+        # Normalize hyphens to underscores
+        name = name.replace('-', '_')
         name = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
         name = re.sub('([a-z0-9])([A-Z])', r'\1_\2', name)
-        return name.lower().strip('_')
+        # Collapse multiple underscores and strip
+        return re.sub(r'_+', '_', name).lower().strip('_')
 
     @staticmethod
     def to_pascal_case(name: str) -> str:
@@ -158,13 +161,13 @@ class PackageManager:
 
                 # Update requirements.txt
                 req_file = Path("requirements.txt")
-                if req_file.exists():
-                    existing = req_file.read_text().splitlines()
 
-                    # Normalize existing packages to base names for comparison
-                    # e.g., "requests==2.28.0" -> "requests"
-                    existing_bases = set()
-                    for line in existing:
+                existing_bases = set()
+                existing_lines = []
+
+                if req_file.exists():
+                    existing_lines = req_file.read_text().splitlines()
+                    for line in existing_lines:
                         line = line.strip()
                         if not line or line.startswith("#"):
                             continue
@@ -172,14 +175,22 @@ class PackageManager:
                         base_name = re.split(r'[=<>\[]', line)[0].strip().lower()
                         existing_bases.add(base_name)
 
-                    with req_file.open("a") as f:
-                        for pkg in packages:
-                            # Normalize input package
-                            pkg_base = re.split(r'[=<>\[]', pkg)[0].strip().lower()
+                # If file doesn't exist, we'll create it.
+                # If it exists, we append.
+                mode = "a" if req_file.exists() else "w"
 
-                            if pkg_base not in existing_bases:
-                                f.write(f"\n{pkg}")
-                                existing_bases.add(pkg_base)
+                with req_file.open(mode) as f:
+                    # If creating new file, add header comments if desired, or nothing.
+                    for pkg in packages:
+                        # Normalize input package
+                        pkg_base = re.split(r'[=<>\[]', pkg)[0].strip().lower()
+
+                        if pkg_base not in existing_bases:
+                            prefix = "\n" if existing_lines or mode == "a" else ""
+                            f.write(f"{prefix}{pkg}")
+                            existing_bases.add(pkg_base)
+                            # Ensure subsequent writes have newlines
+                            existing_lines.append(pkg)
 
             return True
         except subprocess.CalledProcessError as e:
