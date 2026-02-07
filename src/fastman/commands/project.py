@@ -147,6 +147,7 @@ class NewCommand(Command):
         if database != "firebase":
             files["alembic/env.py"] = Templates.ALEMBIC_ENV
             files["alembic.ini"] = Templates.ALEMBIC_INI
+            files["alembic/script.py.mako"] = Templates.ALEMBIC_SCRIPT_MAKO
         else:
             # Add Firebase credentials example for Firebase projects
             firebase_creds_example = '''{
@@ -373,6 +374,25 @@ Generated with ❤️ by Fastman
                 Output.error(f"poetry initialization failed: {e}")
                 self._create_requirements_txt(dependencies)
 
+        elif package_manager == "pip":
+            Output.info("Initializing with pip...")
+            try:
+                # Create virtual environment
+                Output.info("Creating virtual environment...")
+                subprocess.run([sys.executable, "-m", "venv", ".venv"], check=True)
+
+                # Create requirements.txt
+                self._create_requirements_txt(dependencies)
+
+                # Install dependencies
+                Output.info("Installing dependencies...")
+                pip_path = ".venv/bin/pip" if os.name != "nt" else ".venv\\Scripts\\pip"
+                subprocess.run([pip_path, "install", "-r", "requirements.txt"], check=True)
+
+                Output.success("Virtual environment created at .venv/")
+            except subprocess.CalledProcessError as e:
+                Output.error(f"pip initialization failed: {e}")
+
     def _get_database_template(self, database: str) -> str:
         """Get database configuration template based on database type"""
         templates = {
@@ -444,7 +464,8 @@ FIREBASE_CREDENTIALS_PATH=./firebase-credentials.json
             "fastapi",
             "uvicorn[standard]",
             "pydantic-settings",
-            "python-dotenv"
+            "python-dotenv",
+            "pydantic[email]"
         ]
 
         # Database-specific dependencies
