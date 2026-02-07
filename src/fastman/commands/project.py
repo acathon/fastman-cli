@@ -444,7 +444,8 @@ FIREBASE_CREDENTIALS_PATH=./firebase-credentials.json
             "fastapi",
             "uvicorn[standard]",
             "pydantic-settings",
-            "python-dotenv"
+            "python-dotenv",
+            "pydantic[email]"
         ]
 
         # Database-specific dependencies

@@ -138,7 +138,11 @@ except Exception as e:
                 except json.JSONDecodeError:
                     pass
 
-                raise Exception(result.stderr or "Unknown error in subprocess")
+                error_msg = result.stderr or "Unknown error in subprocess"
+                if "email-validator is not installed" in error_msg:
+                     raise Exception("email-validator is not installed, run `pip install 'pydantic[email]'`")
+
+                raise Exception(error_msg)
 
             return json.loads(result.stdout)
 
