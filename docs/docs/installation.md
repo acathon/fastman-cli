@@ -1,46 +1,85 @@
 ---
-sidebar_position: 2
+sidebar_position: 1
 ---
 
 # Installation
 
-Getting started with Fastman is simple. You can install it globally or use it as a script.
+Get Fastman up and running in under a minute.
 
-## Prerequisites
+## Requirements
 
-- Python 3.8+
-- pip (or uv/poetry)
+- Python 3.9 or higher
+- pip, uv, poetry, or pipenv
 
 ## Installation Methods
 
-### Option 1: Global Installation (Recommended)
+### Using uv (Recommended)
 
-If `fastman-cli` is published to PyPI (coming soon), you can install it via pip:
-
-```bash
-pip install fastman-cli
-```
-
-### Option 2: Manual Setup
-
-1.  Clone the repository or download the `cli.py` script.
-2.  Make it executable and move it to your path.
+[uv](https://github.com/astral-sh/uv) is the fastest Python package manager. Install Fastman as a global tool:
 
 ```bash
-# Rename to fastman and make executable
-mv cli.py fastman
-chmod +x fastman
-
-# Move to a bin directory (optional)
-sudo mv fastman /usr/local/bin/
+uv tool install fastman
 ```
 
-## Verification
+### Using pip
 
-Verify the installation by running:
+```bash
+pip install fastman
+```
+
+### Using pipx
+
+For isolated global installs:
+
+```bash
+pipx install fastman
+```
+
+## Verify Installation
 
 ```bash
 fastman --version
 ```
 
-You should see the current version of Fastman CLI.
+You should see output like:
+
+```
+Fastman v0.3.0
+Python 3.12.0
+Package Manager: uv
+```
+
+## Optional Dependencies
+
+Fastman works out of the box, but you can enhance the experience:
+
+```bash
+# Rich terminal output (colors, tables, progress bars)
+pip install rich
+
+# ASCII art banners
+pip install pyfiglet
+
+# Interactive shell enhancements
+pip install ipython
+```
+
+## Updating Fastman
+
+```bash
+# With uv
+uv tool upgrade fastman
+
+# With pip
+pip install --upgrade fastman
+```
+
+## Next Steps
+
+Now that Fastman is installed, create your first project:
+
+```bash
+fastman new my-api
+```
+
+Continue to [Creating Your First Project →](/getting-started/first-project)

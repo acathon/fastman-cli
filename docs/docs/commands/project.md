@@ -1,121 +1,114 @@
 ---
-sidebar_position: 4
+sidebar_position: 1
 ---
 
 # Project Commands
 
-Commands for creating, initializing, and building Fastman projects.
+Commands for creating and managing FastAPI projects.
 
-## `new`
+## new
 
-The `new` command is the starting point for any Fastman application. It scaffolds a complete, production-ready directory structure configured with your preferred tools and architecture.
+Create a new FastAPI project with a complete scaffold.
 
 ```bash
-fastman new {name} [options]
+fastman new <project-name> [options]
 ```
-
-### Arguments
-
-- **`name`** (Required): The name of your project. This will create a directory with this name and set it as the project name in `pyproject.toml`.
 
 ### Options
 
-#### `--pattern`
-Defines the architectural style of the generated project.
-
-- **`feature`** (Default): **Vertical Slice Architecture**.
-    - Best for: Medium to large applications, domain-driven design.
-    - Structure: Code is organized by "features" (e.g., `auth`, `billing`, `users`), where each feature contains its own models, schemas, services, and routes.
-    - **Why use it?** Keeps related code together, making it easier to scale and maintain as the team grows.
-
-- **`layer`**: **Layered (MVC) Architecture**.
-    - Best for: Traditional web apps, teams familiar with Django/Laravel/Spring.
-    - Structure: Code is organized by technical layer (`controllers`, `models`, `services`, `repositories`).
-    - **Why use it?** Familiar separation of concerns. Good for smaller projects or strict technical separation.
-
-- **`api`**: **Minimal API**.
-    - Best for: Microservices, simple endpoints, prototypes.
-    - Structure: Flat structure with a single `main.py` or simple `api` folder.
-    - **Why use it?** Low overhead, maximum speed for simple tasks.
-
-#### `--database`
-Configures the database connection, drivers, and initial migration setup.
-
-- **`sqlite`** (Default):
-    - Sets up `sqlite:///./sql_app.db`.
-    - Great for development and testing. No external server required.
-- **`postgresql`**:
-    - Installs `psycopg2-binary`.
-    - Configures `.env` for Postgres connection.
-    - Production standard.
-- **`mysql`**:
-    - Installs `mysqlclient`.
-    - Configures `.env` for MySQL/MariaDB.
-- **`oracle`**:
-    - Installs `cx_Oracle`.
-    - Enterprise grade setup.
-- **`firebase`**:
-    - Sets up Firebase Admin SDK.
-    - Good for NoSQL/Real-time apps.
-
-#### `--package`
-Selects the Python package manager to initialize the project with.
-
-- **`uv`** (Default):
-    - The fastest option. Uses `uv` for lightning-fast installs and dependency resolution.
-    - **Highly Recommended**.
-- **`poetry`**:
-    - Uses `poetry` for dependency management.
-    - Robust, standard for many Python teams.
-- **`pipenv`**:
-    - Uses `Pipfile` and `pipenv`.
-- **`pip`**:
-    - Standard `requirements.txt` and `venv`.
-    - Simple, no extra tools required.
-
-#### `--minimal`
-Skips the creation of optional directories and files (like `tests`, `scripts`, etc.) for a cleaner start.
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--pattern` | Architecture pattern: `feature`, `api`, `layer` | `feature` |
+| `--database` | Database: `sqlite`, `postgresql`, `mysql`, `oracle`, `firebase` | `sqlite` |
+| `--package` | Package manager: `uv`, `poetry`, `pipenv`, `pip` | auto-detect |
 
 ### Examples
 
-**Standard Project (Recommended)**
 ```bash
-fastman new my-app
-```
-*Creates a Vertical Slice app with SQLite and uv.*
+# Simple project with defaults
+fastman new my-api
 
-**Production Ready Stack**
-```bash
-fastman new enterprise-app --pattern=feature --database=postgresql --package=poetry
-```
-*Creates a robust feature-based app with Postgres and Poetry.*
+# Production-ready with PostgreSQL
+fastman new my-api --pattern=feature --database=postgresql
 
-**Microservice**
-```bash
-fastman new payment-service --pattern=api --minimal
+# Quick prototype with API pattern
+fastman new prototype --pattern=api --database=sqlite
+
+# Firebase project (no Alembic)
+fastman new mobile-backend --database=firebase
 ```
-*Creates a lightweight API service.*
+
+### What Gets Created
+
+```
+my-api/
+├── app/
+│   ├── core/
+│   │   ├── config.py          # Pydantic settings
+│   │   ├── database.py        # SQLAlchemy setup
+│   │   └── dependencies.py    # Common dependencies
+│   ├── features/              # Your feature modules
+│   └── main.py               # App entry point
+├── database/
+│   ├── migrations/           # Alembic migrations
+│   └── seeders/              # Database seeders
+├── tests/                    # Test directory
+├── .env                      # Environment variables
+├── .gitignore
+├── alembic.ini              # Migration config
+├── pyproject.toml           # Dependencies
+└── README.md
+```
 
 ---
 
-## `init`
+## serve
 
-Initializes Fastman in an existing project directory.
+Start the development server.
+
+```bash
+fastman serve [options]
+```
+
+### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--host` | Host to bind | `127.0.0.1` |
+| `--port` | Port number | `8000` |
+| `--reload` | Enable hot reload | `true` |
+| `--no-reload` | Disable hot reload | — |
+
+### Examples
+
+```bash
+# Default (localhost:8000 with reload)
+fastman serve
+
+# Custom port
+fastman serve --port=3000
+
+# Production-like (no reload)
+fastman serve --host=0.0.0.0 --no-reload
+```
+
+---
+
+## init
+
+Initialize Fastman in an existing project.
 
 ```bash
 fastman init
 ```
 
-This command is useful if you have an existing FastAPI project and want to start using Fastman's CLI tools (like `make:controller` or `migrate`). It will:
-1. Create the `.fastman` configuration.
-2. Scaffold necessary directories (`app/console`, `app/core`).
-3. Set up the base `Command` structure.
+Creates configuration files if missing.
 
 ---
 
-## `build`
+## build
 
-Builds the project for production.
+Build the project for production.
 
 ```bash
 fastman build [--docker]
@@ -123,20 +116,16 @@ fastman build [--docker]
 
 ### Options
 
-- **`--docker`**: Automatically generates a `Dockerfile` and builds a Docker image for your application.
-    - The generated Dockerfile is optimized for size and security (using `python:slim`).
-    - It includes build steps for your chosen package manager.
+| Option | Description |
+|--------|-------------|
+| `--docker` | Build Docker image |
 
-- **Default (no flags)**:
-
-- **`--open`**: Automatically opens `https://fastman.dev/docs` in your default browser.
-
----
-
-## `version`
-
-Shows version information.
+### Examples
 
 ```bash
-fastman version
+# Standard build
+fastman build
+
+# Docker build
+fastman build --docker
 ```

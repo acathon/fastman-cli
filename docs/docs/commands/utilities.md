@@ -23,11 +23,15 @@ fastman tinker
 
 ### `route:list`
 
-Displays a table of all registered API routes.
+Displays a table of all registered API routes. Supports filtering by path or HTTP method.
 
 ```bash
 fastman route:list [--path=/api] [--method=GET]
 ```
+
+- **Options**:
+    - `--path`: Filter routes containing this path.
+    - `--method`: Filter by HTTP method (GET, POST, PUT, DELETE).
 
 ### `inspect`
 
@@ -41,13 +45,15 @@ fastman inspect {type} {name}
 
 ### `optimize`
 
-Optimizes the codebase by formatting and sorting imports.
+Optimizes the codebase by formatting and sorting imports. Will prompt to install missing tools.
 
 ```bash
 fastman optimize [--check]
 ```
 
 - Uses `black`, `isort`, and `autoflake`.
+- **Options**:
+    - `--check`: Only check for issues without modifying files.
 
 ## Configuration
 
@@ -77,7 +83,7 @@ fastman config:clear
 
 ### `cache:clear`
 
-Clears Python `__pycache__` and `.pyc` files.
+Clears Python `__pycache__` directories and `.pyc` files. Handles permission errors gracefully.
 
 ```bash
 fastman cache:clear
@@ -85,18 +91,26 @@ fastman cache:clear
 
 ## Package Management
 
-### `import`
+### `package:import`
 
-Installs a Python package using the detected package manager.
+Installs a Python package using the detected package manager (uv, poetry, pipenv, or pip).
 
 ```bash
-fastman import {package_name}
+fastman package:import {package_name}
 ```
 
-### `pkg:list`
+### `package:list`
 
 Lists installed packages.
 
 ```bash
-fastman pkg:list
+fastman package:list
+```
+
+### `package:remove`
+
+Removes a Python package.
+
+```bash
+fastman package:remove {package_name}
 ```

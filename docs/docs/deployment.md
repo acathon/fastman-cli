@@ -1,44 +1,54 @@
 ---
-sidebar_position: 6
+sidebar_position: 10
 ---
 
 # Deployment
 
-Fastman applications are standard FastAPI applications, so they can be deployed anywhere Python is supported.
+Overview of deployment strategies for Fastman applications.
 
-## Docker
+## Quick Deploy Options
 
-Fastman generates a `Dockerfile` for you when you create a new project.
+| Platform | Difficulty | Best For |
+|----------|------------|----------|
+| [Railway](https://railway.app) | Easy | Quick deploys, free tier |
+| [Render](https://render.com) | Easy | Full-stack apps |
+| [Fly.io](https://fly.io) | Medium | Edge deployment |
+| [AWS ECS](https://aws.amazon.com) | Advanced | Enterprise scale |
+| [DigitalOcean](https://digitalocean.com) | Medium | VPS control |
 
-1.  **Build the image**:
-    ```bash
-    docker build -t my-app .
-    ```
+## Environment Setup
 
-2.  **Run the container**:
-    ```bash
-    docker run -d -p 8000:8000 my-app
-    ```
+### Production .env
 
-## Manual Deployment (Gunicorn/Uvicorn)
+```env
+# Core
+DEBUG=false
+SECRET_KEY=your-production-secret-here
 
-For production, it is recommended to use Gunicorn with Uvicorn workers.
+# Database
+DATABASE_URL=postgresql://user:pass@host:5432/db
 
-```bash
-pip install gunicorn
-gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app
+# Optional
+CORS_ORIGINS=https://myapp.com,https://www.myapp.com
 ```
 
-## Cloud Providers
+### Generate Secret Key
 
-### Heroku
+```bash
+fastman generate:key
+```
 
-1.  Create a `Procfile`:
-    ```plaintext
-    web: gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app
-    ```
-2.  Push to Heroku.
+## Health Checks
 
-### AWS / Google Cloud / Azure
+Add a health endpoint for container orchestration:
 
-Deploy as a standard Docker container or Python application.
+```python
+# app/main.py
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
+```
+
+## Next Steps
+
+See the [Production Build](/advanced/production-build) guide for detailed Docker and optimization instructions.

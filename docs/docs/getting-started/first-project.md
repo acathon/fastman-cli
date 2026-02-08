@@ -2,78 +2,103 @@
 sidebar_position: 1
 ---
 
-# Your First Project
+# Creating Your First Project
 
-Let's build a simple "Pizza Ordering" API to see Fastman in action.
+Let's build a REST API in 5 minutes.
 
-## 1. Create a New Project
-
-Run the `new` command to generate a project. We'll use the default **Feature Architecture** and **uv** package manager.
+## Create the Project
 
 ```bash
-fastman new pizza-api
+fastman new blog-api
 ```
 
-This will:
-- Create a `pizza-api` directory.
-- Set up a virtual environment.
-- Install FastAPI, SQLAlchemy, and other dependencies.
-- Initialize a SQLite database.
-
-## 2. Enter the Project
+You'll be prompted for options, or specify them directly:
 
 ```bash
-cd pizza-api
+fastman new blog-api --pattern=feature --database=postgresql --package=uv
 ```
 
-## 3. Scaffold a Feature
+### Available Options
 
-We want to manage Pizzas. Instead of creating files manually, use `make:feature`.
+| Option | Values | Default |
+|--------|--------|---------|
+| `--pattern` | `feature`, `api`, `layer` | `feature` |
+| `--database` | `sqlite`, `postgresql`, `mysql`, `oracle`, `firebase` | `sqlite` |
+| `--package` | `uv`, `poetry`, `pipenv`, `pip` | auto-detected |
 
-```bash
-fastman make:feature pizza --crud
+## Project Structure
+
+After creation, your project looks like this:
+
+```
+blog-api/
+├── app/
+│   ├── core/           # Configuration, database, dependencies
+│   │   ├── config.py
+│   │   ├── database.py
+│   │   └── dependencies.py
+│   ├── features/       # Feature modules (vertical slices)
+│   └── main.py         # Application entry point
+├── database/
+│   ├── migrations/     # Alembic migrations
+│   └── seeders/        # Database seeders
+├── tests/              # Test files
+├── .env                # Environment variables
+└── pyproject.toml      # Dependencies
 ```
 
-This single command generates:
-- `app/features/pizza/router.py` (API Endpoints)
-- `app/features/pizza/service.py` (Business Logic)
-- `app/features/pizza/model.py` (Database Model)
-- `app/features/pizza/schema.py` (Pydantic Schemas)
-
-It also automatically registers the router in `app/main.py`.
-
-## 4. Run Migrations
-
-Fastman uses Alembic for migrations. Create a migration for the new Pizza model:
+## Start the Development Server
 
 ```bash
-fastman make:migration "create pizza table"
-fastman migrate
-```
-
-## 5. Start the Server
-
-```bash
+cd blog-api
 fastman serve
 ```
 
-Visit `http://localhost:8000/docs`. You'll see full CRUD endpoints for `/pizza` ready to use!
+Your API is now running at `http://localhost:8000`.
 
-## 6. Interact with the Shell
+Visit `http://localhost:8000/docs` for the interactive Swagger documentation.
 
-Want to test your model without the API? Use `tinker`.
+## Create Your First Feature
+
+Let's add a posts feature with full CRUD:
 
 ```bash
-fastman tinker
+fastman make:feature post --crud
 ```
 
-```python
->>> from app.features.pizza.model import Pizza
->>> p = Pizza(name="Margherita", price=10.99)
->>> db.add(p)
->>> db.commit()
->>> db.query(Pizza).all()
-[<Pizza(id=1, name='Margherita')>]
+This creates:
+
+```
+app/features/post/
+├── __init__.py
+├── models.py      # SQLAlchemy model
+├── schemas.py     # Pydantic schemas
+├── service.py     # Business logic
+└── router.py      # API endpoints
 ```
 
-Congratulations! You've built a working API in under a minute.
+## Run Migrations
+
+```bash
+# Create a migration
+fastman make:migration "create posts table"
+
+# Apply migrations
+fastman database:migrate
+```
+
+## Test Your API
+
+Open `http://localhost:8000/docs` and try the endpoints:
+
+- `GET /posts` — List all posts
+- `POST /posts` — Create a post
+- `GET /posts/{id}` — Get a post
+- `PUT /posts/{id}` — Update a post
+- `DELETE /posts/{id}` — Delete a post
+
+## Next Steps
+
+- [Add authentication](/concepts/authentication)
+- [Understand the architecture](/concepts/architecture)
+- [Explore all commands](/commands/project)

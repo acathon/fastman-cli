@@ -4,60 +4,86 @@ sidebar_position: 2
 
 # Directory Structure
 
-Fastman supports multiple architectural patterns. Understanding the structure is key to scaling your application.
+Understanding how Fastman organizes your code.
 
 ## Feature Pattern (Default)
 
-The **Feature Pattern** (Vertical Slice) organizes code by domain feature rather than technical layer. This is recommended for most projects as it keeps related code together.
+The feature pattern uses **vertical slices**—each feature contains everything it needs.
 
-```plaintext
-app/
-├── core/               # Shared configuration, database, security
-│   ├── config.py
-│   └── database.py
-├── features/           # Your domain features
-│   ├── auth/           # Auth feature
-│   │   ├── router.py
-│   │   ├── service.py
-│   │   ├── model.py
-│   │   └── schema.py
-│   └── pizza/          # Pizza feature
-│       ├── router.py
-│       ├── ...
-├── main.py             # App entrypoint
-└── ...
 ```
-
-## Layer Pattern
-
-The **Layer Pattern** follows a traditional MVC/Clean Architecture approach.
-
-```plaintext
-app/
-├── api/                # Controllers/Routers
-│   └── v1/
-│       └── endpoints/
-├── core/
-├── models/             # Database Models
-├── schemas/            # Pydantic Schemas
-├── services/           # Business Logic
-└── repositories/       # Data Access Layer
+my-api/
+├── app/
+│   ├── core/                    # Shared infrastructure
+│   │   ├── __init__.py
+│   │   ├── config.py            # Settings from environment
+│   │   ├── database.py          # SQLAlchemy session
+│   │   └── dependencies.py      # FastAPI dependencies
+│   │
+│   ├── features/                # Feature modules
+│   │   ├── user/
+│   │   │   ├── __init__.py
+│   │   │   ├── models.py        # User SQLAlchemy model
+│   │   │   ├── schemas.py       # User Pydantic schemas
+│   │   │   ├── service.py       # User business logic
+│   │   │   └── router.py        # User API endpoints
+│   │   │
+│   │   └── post/
+│   │       ├── models.py
+│   │       ├── schemas.py
+│   │       ├── service.py
+│   │       └── router.py
+│   │
+│   └── main.py                  # App entry point
+│
+├── database/
+│   ├── migrations/              # Alembic migrations
+│   │   └── versions/
+│   └── seeders/                 # Database seeders
+│
+├── tests/
+│   ├── factories/               # Model factories
+│   └── test_*.py                # Test files
+│
+├── .env                         # Environment variables
+├── alembic.ini                  # Migration config
+└── pyproject.toml               # Dependencies
 ```
 
 ## API Pattern
 
-The **API Pattern** is a lightweight structure for simple microservices.
+The API pattern groups code by HTTP resource:
 
-```plaintext
+```
 app/
-├── api/                # Routers
-├── models/             # Models
-├── schemas/            # Schemas
-└── main.py
+├── api/
+│   ├── v1/
+│   │   ├── users.py
+│   │   └── posts.py
+│   └── v2/
+├── models/
+├── schemas/
+└── services/
 ```
 
-## Choosing a Pattern
+## Layer Pattern
 
-- **Feature**: Best for medium-to-large monoliths. Easy to extract services later.
-- **Layer**: Best if you prefer strict separation of concerns or have a very large team used to MVC.
-- **API**: Best for small, single-purpose microservices.
+The layer pattern separates by technical concern:
+
+```
+app/
+├── controllers/
+├── models/
+├── repositories/
+├── schemas/
+└── services/
+```
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `app/main.py` | Application factory, router mounting |
+| `app/core/config.py` | Pydantic settings from `.env` |
+| `app/core/database.py` | SQLAlchemy engine and session |
+| `alembic.ini` | Database migration configuration |
+| `.env` | Environment variables (never commit!) |

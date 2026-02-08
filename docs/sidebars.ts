@@ -7,6 +7,7 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Getting Started',
+      collapsed: false,
       items: ['getting-started/first-project', 'getting-started/directory-structure'],
     },
     {
@@ -14,18 +15,19 @@ const sidebars: SidebarsConfig = {
       label: 'Core Concepts',
       items: [
         'concepts/architecture',
+        'concepts/examples',
         'concepts/database',
         'concepts/authentication',
       ],
     },
     {
       type: 'category',
-      label: 'Command Reference',
+      label: 'Commands',
       items: [
+        'commands/project',
         'commands/scaffolding',
         'commands/database',
         'commands/utilities',
-        'commands/project',
       ],
     },
     {

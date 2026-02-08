@@ -1,135 +1,187 @@
 ---
-sidebar_position: 1
+sidebar_position: 2
 ---
 
 # Scaffolding Commands
 
-Fastman provides a comprehensive suite of commands to generate boilerplate code instantly.
+Generate application components quickly with make commands.
 
-## Feature & API
+## Features
 
-### `make:feature`
+### make:feature
 
-Creates a new Vertical Slice feature.
-
-```bash
-fastman make:feature {name} [--crud]
-```
-
-- **Arguments**:
-    - `name`: Name of the feature (e.g., `pizza`, `auth`).
-- **Options**:
-    - `--crud`: Generates Router, Service, Model, and Schema with full CRUD operations.
-
-### `make:api`
-
-Creates a lightweight API endpoint.
+Create a complete feature module with all components.
 
 ```bash
-fastman make:api {name} [--style=rest|graphql]
+fastman make:feature <name> [--crud]
 ```
 
-- **Options**:
-    - `--style`: `rest` (default) or `graphql`.
-
-### `make:websocket`
-
-Creates a WebSocket endpoint with a connection manager.
+| Option | Description |
+|--------|-------------|
+| `--crud` | Generate CRUD endpoints automatically |
 
 ```bash
-fastman make:websocket {name}
+# Basic feature
+fastman make:feature product
+
+# Feature with CRUD endpoints
+fastman make:feature product --crud
 ```
 
-## Components
+**Creates:**
+```
+app/features/product/
+├── __init__.py
+├── models.py      # SQLAlchemy model
+├── schemas.py     # Pydantic schemas
+├── service.py     # Business logic
+└── router.py      # API endpoints (with CRUD if --crud)
+```
 
-### `make:model`
+---
 
-Creates a SQLAlchemy model.
+## Models & Schemas
+
+### make:model
 
 ```bash
-fastman make:model {name} [--table=tablename]
+fastman make:model <name>
 ```
 
-### `make:service`
+Creates a SQLAlchemy model file.
 
-Creates a Service class for business logic.
+### make:schema
 
 ```bash
-fastman make:service {name}
+fastman make:schema <name>
 ```
 
-### `make:controller`
+Creates Pydantic request/response schemas.
 
-Creates a Controller class (for Layered architecture).
+---
+
+## Services & Logic
+
+### make:service
 
 ```bash
-fastman make:controller {name}
+fastman make:service <name>
 ```
 
-### `make:repository`
+Creates a service class for business logic.
 
-Creates a Repository class for data access.
+### make:repository
 
 ```bash
-fastman make:repository {name}
+fastman make:repository <name>
 ```
 
-### `make:middleware`
+Creates a repository pattern class for data access.
 
-Creates a standard HTTP middleware.
+---
+
+## HTTP Components
+
+### make:controller
 
 ```bash
-fastman make:middleware {name}
+fastman make:controller <name>
 ```
 
-### `make:dependency`
+Creates a controller class (for layer pattern).
 
-Creates a FastAPI dependency function or class.
+### make:middleware
 
 ```bash
-fastman make:dependency {name}
+fastman make:middleware <name>
 ```
 
-### `make:exception`
+Creates HTTP middleware.
 
-Creates a custom exception class with standard HTTP error handling.
+### make:dependency
 
 ```bash
-fastman make:exception {name}
+fastman make:dependency <name>
 ```
 
-## Testing & Seeding
+Creates a FastAPI dependency.
 
-### `make:test`
+---
 
-Creates a pytest file for a feature or unit.
+## API & WebSocket
+
+### make:api
 
 ```bash
-fastman make:test {name}
+fastman make:api <name> [--type=rest|graphql]
 ```
 
-### `make:seeder`
+Creates REST or GraphQL API endpoints.
 
-Creates a database seeder class.
+### make:websocket
 
 ```bash
-fastman make:seeder {name}
+fastman make:websocket <name>
 ```
 
-### `make:factory`
+Creates WebSocket feature with connection manager.
+
+---
+
+## Testing
+
+### make:test
+
+```bash
+fastman make:test <name>
+```
+
+Creates a test file with pytest fixtures.
+
+### make:factory
+
+```bash
+fastman make:factory <name>
+```
 
 Creates a model factory for generating test data.
 
-```bash
-fastman make:factory {name}
-```
+---
 
-## System
+## Database
 
-### `make:command`
-
-Creates a custom CLI command for your application.
+### make:migration
 
 ```bash
-fastman make:command {name}
+fastman make:migration "<message>"
 ```
+
+Creates an Alembic migration file.
+
+### make:seeder
+
+```bash
+fastman make:seeder <name>
+```
+
+Creates a database seeder for initial/test data.
+
+---
+
+## Exceptions & Commands
+
+### make:exception
+
+```bash
+fastman make:exception <name>
+```
+
+Creates a custom exception class with handler.
+
+### make:command
+
+```bash
+fastman make:command <name>
+```
+
+Creates a custom CLI command.

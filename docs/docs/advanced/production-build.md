@@ -1,57 +1,135 @@
 ---
-sidebar_position: 2
+sidebar_position: 1
 ---
 
-# Production & Docker
+# Production Deployment
 
-Fastman makes it easy to prepare your application for production.
+Deploy your Fastman application to production.
 
-## Building for Production
+## Pre-Deployment Checklist
 
-Run the `build` command to run tests and type checks:
+Before deploying, ensure you:
 
-```bash
-fastman build
-```
+- [ ] Set `DEBUG=false` in production
+- [ ] Generate a secure `SECRET_KEY`
+- [ ] Configure production database URL
+- [ ] Run all migrations
+- [ ] Set up proper logging
 
-## Docker Support
+## Docker Deployment
 
-Fastman can automatically generate a `Dockerfile` and build an image for you.
+### Build the Image
 
 ```bash
 fastman build --docker
 ```
 
-This will:
-1.  Create a production-ready `Dockerfile` (if missing).
-2.  Build the image using your project name.
+Or manually with the generated Dockerfile:
 
-### Generated Dockerfile
-
-The generated Dockerfile is optimized for python 3.11-slim:
-
-```dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-
-# Install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy application
-COPY . .
-
-# Run migrations and start server
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+```bash
+docker build -t my-api:latest .
 ```
 
-## Configuration Caching
+### Run the Container
 
-In production, parsing `.env` files can be slow. Use config caching to speed up boot time.
+```bash
+docker run -d \
+  -p 8000:8000 \
+  -e DATABASE_URL=postgresql://user:pass@host/db \
+  -e SECRET_KEY=your-production-secret \
+  my-api:latest
+```
+
+### Docker Compose
+
+```yaml
+# docker-compose.yml
+version: '3.8'
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@db:5432/app
+      - SECRET_KEY=${SECRET_KEY}
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+```
+
+## Performance Optimization
+
+### Cache Configuration
+
+Cache your environment configuration for faster startup:
 
 ```bash
 fastman config:cache
 ```
 
-This creates a `config_cache.json` file that Fastman loads instantly.
+To clear:
+
+```bash
+fastman config:clear
+```
+
+### Code Optimization
+
+Remove unused imports and format code:
+
+```bash
+fastman optimize
+```
+
+### Clear Cache
+
+Remove Python bytecode cache:
+
+```bash
+fastman cache:clear
+```
+
+## Cloud Platforms
+
+### Railway / Render
+
+Most platforms auto-detect Python projects. Ensure your `Procfile`:
+
+```
+web: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
+### AWS / GCP / Azure
+
+Use the Docker deployment method with your cloud's container service.
+
+## Reverse Proxy
+
+Example Nginx configuration:
+
+```nginx
+server {
+    listen 80;
+    server_name api.example.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```

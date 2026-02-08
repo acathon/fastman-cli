@@ -1,140 +1,159 @@
 ---
-sidebar_position: 1
+sidebar_position: 2
 ---
 
 # Custom Commands
 
-Fastman allows you to extend the CLI with your own commands. This is incredibly powerful for automating tasks like cron jobs, maintenance scripts, data imports, or domain-specific operations.
+Extend Fastman with your own CLI commands.
 
 ## Creating a Command
 
-To create a new command, use the `make:command` generator:
-
 ```bash
-fastman make:command {Name}
+fastman make:command send-newsletter
 ```
 
-For example, to create a command that cleans up inactive users:
-
-```bash
-fastman make:command PruneUsers
-```
-
-This will generate a file at `app/console/commands/prune_users.py`.
+This creates a command file that you can register with your application.
 
 ## Command Structure
 
-A command is a Python class decorated with `@register` that inherits from `Command`. It must implement a `handle` method.
-
-### The `signature`
-
-The `signature` property defines how your command is called from the CLI. It supports arguments and options.
-
-- **Command Name**: The first part of the signature (e.g., `email:send`).
-- **Arguments**: Required parameters enclosed in braces (e.g., `{user}`).
-- **Options**: Optional parameters prefixed with `--` (e.g., `{--dry-run}`). You can also specify defaults (e.g., `{--days=30}`).
-
-### The `handle` Method
-
-This is the entry point of your command. Inside `handle`, you can access:
-- `self.argument(index)`: Get a positional argument.
-- `self.option(name, default)`: Get a named option.
-- `self.flag(name)`: Check if a boolean flag is present.
-- `self.context`: Access project context (root path, package manager).
-
-## Real-World Example: Pruning Inactive Users
-
-Let's build a command that deletes users who haven't logged in for a certain number of days.
-
-**File**: `app/console/commands/prune_users.py`
-
 ```python
-from datetime import datetime, timedelta
-from fastman.cli import Command, register, Output
-from app.core.database import SessionLocal
-from app.models.user import User
+# commands/send_newsletter.py
+from fastman.commands.base import Command, register
+from fastman.console import Output
 
 @register
-class PruneUsersCommand(Command):
-    """
-    Delete users who haven't logged in for X days.
-    
-    Usage:
-        fastman users:prune {--days=30} {--dry-run}
-    """
-    
-    # Signature defines the command name and options
-    signature = "users:prune {--days=30} {--dry-run}"
-    description = "Delete inactive users"
-    
+class SendNewsletterCommand(Command):
+    signature = "newsletter:send {--test}"
+    description = "Send newsletter to all subscribers"
+
     def handle(self):
-        # 1. Parse options
-        days = int(self.option("days", "30"))
-        dry_run = self.flag("dry-run")
+        test_mode = self.flag("test")
         
-        # 2. Calculate cutoff date
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        if test_mode:
+            Output.info("Running in test mode...")
+            recipient = "test@example.com"
+        else:
+            # Get subscribers from database
+            recipient = "all subscribers"
         
-        Output.info(f"Finding users inactive since {cutoff_date.date()}...")
+        Output.info(f"Sending newsletter to {recipient}...")
         
-        # 3. Database operations
-        db = SessionLocal()
-        try:
-            # Find users
-            query = db.query(User).filter(User.last_login < cutoff_date)
-            users_to_delete = query.all()
-            count = len(users_to_delete)
-            
-            if count == 0:
-                Output.success("No inactive users found.")
-                return
-
-            # Display users to be deleted
-            rows = [[str(u.id), u.email, str(u.last_login)] for u in users_to_delete]
-            Output.table(["ID", "Email", "Last Login"], rows, title="Inactive Users")
-            
-            # 4. Confirm and Execute
-            if dry_run:
-                Output.info(f"[DRY RUN] Would delete {count} users.")
-                return
-            
-            if Output.confirm(f"Are you sure you want to delete {count} users?"):
-                # Bulk delete for efficiency
-                query.delete(synchronize_session=False)
-                db.commit()
-                Output.success(f"Successfully deleted {count} users.")
-            else:
-                Output.info("Operation cancelled.")
-                
-        except Exception as e:
-            Output.error(f"An error occurred: {e}")
-            db.rollback()
-        finally:
-            db.close()
+        # Your logic here
+        self._send_emails(test_mode)
+        
+        Output.success("Newsletter sent successfully!")
+    
+    def _send_emails(self, test_mode: bool):
+        # Implementation
+        pass
 ```
 
-## Running Your Command
+## Signature Syntax
 
-Once you save the file, Fastman automatically discovers it.
+The `signature` attribute defines how your command is called:
 
-```bash
-# List commands to see it registered
-fastman list
+```python
+# Basic command
+signature = "newsletter:send"
 
-# Run help (if you implemented it, or just run it)
-fastman users:prune --days=60 --dry-run
+# With required argument
+signature = "newsletter:send {email}"
+
+# With optional argument (default value)
+signature = "newsletter:send {email?}"
+
+# With options (flags)
+signature = "newsletter:send {--test} {--limit=}"
 ```
 
-## Output Helpers
+## Getting Arguments and Options
 
-The `Output` class provides styled output methods to make your CLI tools look professional.
+```python
+def handle(self):
+    # Get positional argument (index 0)
+    email = self.argument(0)
+    
+    # Get optional argument with default
+    limit = self.argument(1, default="10")
+    
+    # Get named option
+    format_type = self.option("format", default="html")
+    
+    # Check if flag is present
+    is_test = self.flag("test")
+```
 
-| Method | Description |
-|--------|-------------|
-| `Output.info("msg")` | Prints blue informational text. |
-| `Output.success("msg")` | Prints green success text with a checkmark. |
-| `Output.error("msg")` | Prints red error text with an X. |
-| `Output.warn("msg")` | Prints yellow warning text. |
-| `Output.table(headers, rows)` | Renders a formatted ASCII table. |
-| `Output.confirm("msg")` | Prompts the user for Yes/No confirmation. |
-| `Output.banner()` | Prints the Fastman banner. |
+## Output Methods
+
+Fastman provides rich output methods:
+
+```python
+from fastman.console import Output
+
+# Messages
+Output.success("Operation completed!")
+Output.error("Something went wrong")
+Output.warn("This might be dangerous")
+Output.info("Processing...")
+
+# Interactive
+confirmed = Output.confirm("Are you sure?")
+name = Output.ask("Enter your name")
+choice = Output.choice("Select option", ["A", "B", "C"])
+
+# Progress
+with Output.progress(total=100) as progress:
+    for i in range(100):
+        # do work
+        progress.advance()
+
+# Tables
+Output.table(
+    headers=["ID", "Name", "Email"],
+    rows=[
+        ["1", "John", "john@example.com"],
+        ["2", "Jane", "jane@example.com"],
+    ],
+    title="Users"
+)
+```
+
+## Example: Database Backup Command
+
+```python
+@register
+class BackupCommand(Command):
+    signature = "database:backup {--output=}"
+    description = "Create a database backup"
+
+    def handle(self):
+        output_path = self.option("output", default="backup.sql")
+        
+        Output.info("Starting database backup...")
+        
+        with Output.spinner("Creating backup..."):
+            self._create_backup(output_path)
+        
+        Output.success(f"Backup saved to {output_path}")
+    
+    def _create_backup(self, path: str):
+        import subprocess
+        subprocess.run([
+            "pg_dump", 
+            "-h", "localhost",
+            "-U", "postgres",
+            "-d", "myapp",
+            "-f", path
+        ], check=True)
+```
+
+## Registering Commands
+
+Commands decorated with `@register` are automatically discovered. Make sure your command file is imported in your application.
+
+For project-specific commands, add to your `app/commands/__init__.py`:
+
+```python
+from . import send_newsletter
+from . import backup
+```
