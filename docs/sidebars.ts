@@ -3,6 +3,7 @@ import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
 const sidebars: SidebarsConfig = {
   tutorialSidebar: [
     'intro',
+    'whats-new',
     'installation',
     {
       type: 'category',
@@ -34,6 +35,7 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Advanced',
       items: [
+        'advanced/tinker',
         'advanced/custom-commands',
         'advanced/production-build',
       ],
