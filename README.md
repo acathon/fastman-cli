@@ -1,102 +1,291 @@
-# Fastman - The Complete FastAPI CLI Framework
+<div align="center">
 
 ![Fastman Logo](docs/static/img/fastman-logo.jpg)
 
-Fastman is a Laravel-inspired CLI tool for FastAPI. It eliminates boilerplate fatigue by generating project structures, handling database migrations, and scaffolding features, models, and middleware instantly.
+# Fastman
 
-Whether you prefer Vertical Slice (Feature) architecture or Layered architecture, Fastman sets it up for you in seconds.
+### The Complete FastAPI CLI Framework
 
-## Features
+[![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Code style](https://img.shields.io/badge/code%20style-black-black)](https://github.com/psf/black)
+[![Version](https://img.shields.io/badge/version-0.2.0-orange.svg)](https://github.com/acathon/fastman-cli)
 
-- **Zero-Dependency Core**: Runs with standard library (Rich/Pyfiglet optional for UI)
-- **Smart Package Detection**: Automatically uses `uv`, `poetry`, `pipenv`, or `pip`
-- **Multiple Architectures**: Supports `feature` (default), `api`, and `layer` patterns
-- **Database Ready**: First-class support for SQLite, PostgreSQL (sync via `psycopg2-binary`), MySQL, Oracle, and Firebase
-- **Interactive Shell**: Includes a `tinker` command to interact with your app context
-- **Auth Scaffolding**: One-command JWT, OAuth, or Keycloak authentication setup
-- **Extensible**: Create custom CLI commands with `make:command`
+**Laravel-inspired CLI for FastAPI. Eliminate boilerplate. Ship faster.**
 
-## Installation
+[Installation](#installation) • [Quick Start](#quick-start) • [Documentation](https://acathon.github.io/fastman-cli) • [Contributing](#contributing)
 
-### From PyPI (Coming Soon)
+</div>
+
+---
+
+## ✨ Why Fastman?
+
+Building FastAPI applications shouldn't be tedious. Fastman brings the **developer experience of Laravel** to the FastAPI ecosystem, eliminating boilerplate fatigue and letting you focus on what matters: building great APIs.
+
+### 🚀 What Makes Fastman Different?
+
+- **🏗️ Zero-Dependency Core** - Runs with Python standard library (Rich/Pyfiglet optional)
+- **📦 Smart Package Detection** - Auto-detects `uv`, `poetry`, `pipenv`, or `pip`
+- **🎨 Multiple Architectures** - Feature-based, API-focused, or Layered patterns
+- **⚡ Lightning Fast** - Professional console UI with progress indicators
+- **🔒 Security First** - Path traversal protection, input validation, secret generation
+- **🐚 Shell Completions** - Bash, Zsh, Fish, PowerShell support
+- **🗄️ Database Ready** - SQLite, PostgreSQL, MySQL, Oracle, Firebase support
+
+---
+
+## 📦 Installation
+
+### From PyPI (Recommended)
 
 ```bash
 pip install fastman
 ```
 
-### From Source (Build)
-
-To install Fastman globally from the source code (e.g., if you've cloned this repository):
-
-**Option 1: Using pipx (Recommended)**
-`pipx` installs the tool in an isolated environment so dependencies don't conflict.
+### From Source
 
 ```bash
-# In the root of the repository
-pipx install .
+git clone https://github.com/acathon/fastman-cli.git
+cd fastman-cli
+pip install -e .
 ```
 
-**Option 2: Using pip**
+### With uv (Fastest)
 
 ```bash
-# In the root of the repository
-pip install .
+uv tool install fastman
 ```
 
-**Option 3: Using uv**
+---
+
+## 🚀 Quick Start
+
+### Create Your First Project
 
 ```bash
-# In the root of the repository
-uv tool install .
-```
+# Create a new FastAPI project
+fastman new my-api --pattern=feature --database=sqlite
 
-Once installed, verify it works:
-```bash
-fastman --version
-```
+# Navigate to project
+cd my-api
 
-## Tutorial: Building a Pizza Order API
+# Activate virtual environment
+fastman activate  # Shows the correct command for your OS/shell
 
-Let's build a simple API to manage pizza orders to see Fastman in action.
-
-### 1. Create a New Project
-
-We'll use `uv` as our package manager and SQLite for the database.
-
-```bash
-fastman new pizza-api --package=uv --database=sqlite
-cd pizza-api
-```
-
-This creates a new directory `pizza-api` with a virtual environment set up.
-
-### 2. Start the Server
-
-Start the development server to make sure everything is running.
-
-```bash
+# Start development server
 fastman serve
 ```
 
-Visit `http://127.0.0.1:8000/docs` to see the Swagger UI. Press `Ctrl+C` to stop the server.
+### Generate Your First Feature
 
-### 3. Create a Feature
+```bash
+# Create a complete CRUD feature with one command
+fastman make:feature users --crud
 
-We'll use the **Feature Pattern** (Vertical Slice) architecture. Let's create a `orders` feature with full CRUD operations.
+# This generates:
+# - app/features/users/models.py      (SQLAlchemy model)
+# - app/features/users/schemas.py     (Pydantic schemas)
+# - app/features/users/service.py     (Business logic)
+# - app/features/users/router.py      (CRUD endpoints)
+```
+
+### Database Migrations Made Easy
+
+```bash
+# Create migration
+fastman make:migration "create users table"
+
+# Run migrations
+fastman migrate
+
+# Rollback if needed
+fastman migrate:rollback --steps=1
+```
+
+---
+
+## 🎨 Architecture Patterns
+
+Fastman supports multiple architectural approaches to fit your project's needs:
+
+### Feature Pattern (Default) 🎯
+Vertical slice architecture where everything related to a feature is in one place.
+
+```
+app/
+├── features/
+│   ├── users/          # Everything about users
+│   │   ├── models.py
+│   │   ├── schemas.py
+│   │   ├── service.py
+│   │   └── router.py
+│   └── orders/         # Everything about orders
+├── core/               # Shared infrastructure
+└── api/                # Lightweight endpoints
+```
+
+### API Pattern 🌐
+Traditional API-focused structure with clear separation.
+
+```
+app/
+├── api/                # API routes
+├── schemas/            # Pydantic schemas
+├── models/             # Database models
+└── core/
+```
+
+### Layer Pattern 🥞
+Layered architecture with clear responsibilities.
+
+```
+app/
+├── controllers/        # Request handlers
+├── services/          # Business logic
+├── repositories/      # Data access
+├── models/            # Database models
+└── schemas/           # Pydantic schemas
+```
+
+---
+
+## 🐚 Shell Completions
+
+Fastman includes intelligent shell completions for all major shells:
+
+```bash
+# Bash
+fastman completion bash --install
+
+# Zsh
+fastman completion zsh --install
+
+# Fish
+fastman completion fish --install
+
+# PowerShell
+fastman completion powershell --install
+```
+
+**Features:**
+- ✅ Command name completion
+- ✅ Option completion
+- ✅ Value suggestions (e.g., `--database=sqlite|postgresql|mysql`)
+- ✅ Context-aware completions
+
+---
+
+## 📚 Command Reference
+
+### Project Commands
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `fastman new` | Create new FastAPI project | `fastman new my-api --pattern=feature` |
+| `fastman init` | Initialize Fastman in existing project | `fastman init` |
+| `fastman activate` | Show venv activation command | `fastman activate` |
+
+### Development Commands
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `fastman serve` | Start development server | `fastman serve --reload` |
+| `fastman tinker` | Interactive shell with DB session | `fastman tinker` |
+| `fastman route:list` | List all API routes | `fastman route:list --method=GET` |
+
+### Scaffolding Commands
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `fastman make:feature` | Create vertical slice feature | `fastman make:feature orders --crud` |
+| `fastman make:model` | Create SQLAlchemy model | `fastman make:model User --table=users` |
+| `fastman make:api` | Create API endpoint | `fastman make:api products --style=rest` |
+| `fastman make:middleware` | Create middleware | `fastman make:middleware Auth` |
+
+### Database Commands
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `fastman make:migration` | Create Alembic migration | `fastman make:migration "add users"` |
+| `fastman migrate` | Run migrations | `fastman migrate` |
+| `fastman migrate:rollback` | Rollback migrations | `fastman migrate:rollback --steps=1` |
+| `fastman db:seed` | Run database seeders | `fastman db:seed --class=UserSeeder` |
+
+### Authentication
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `fastman install:auth` | Install auth system | `fastman install:auth --type=jwt` |
+
+### Utilities
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `fastman generate:key` | Generate secret key | `fastman generate:key` |
+| `fastman optimize` | Optimize code (black/isort) | `fastman optimize` |
+| `fastman build --docker` | Generate Dockerfile | `fastman build --docker` |
+
+---
+
+## 🎯 Advanced Features
+
+### Interactive Shell (`tinker`)
+
+Explore your application with an interactive Python shell:
+
+```bash
+$ fastman tinker
+
+Fastman Interactive Shell
+Available: settings, SessionLocal, Base, db
+
+>>> from app.features.users.models import User
+>>> user = db.query(User).first()
+>>> print(user.email)
+user@example.com
+```
+
+### Smart Package Manager Detection
+
+Fastman automatically detects and uses your preferred package manager:
+
+1. **uv** (fastest, recommended) - Detected by `uv.lock`
+2. **Poetry** - Detected by `poetry.lock`
+3. **Pipenv** - Detected by `Pipfile`
+4. **pip** - Fallback, creates `requirements.txt`
+
+### Professional Console UI
+
+Fastman features a modern console interface with:
+- 🎨 Rich color schemes (with fallback to ANSI)
+- ⏳ Progress indicators for long operations
+- 📊 Professional tables for data display
+- ✅ Clear success/error messaging
+- 🖼️ Beautiful ASCII/figlet banners
+
+---
+
+## 🏗️ Tutorial: Build a Pizza Order API
+
+Let's build a complete pizza ordering system to see Fastman in action.
+
+### Step 1: Create Project
+
+```bash
+fastman new pizza-api --pattern=feature --package=uv --database=sqlite
+cd pizza-api
+```
+
+### Step 2: Create Orders Feature
 
 ```bash
 fastman make:feature orders --crud
 ```
 
-This generates:
-- `app/features/orders/models.py`
-- `app/features/orders/schemas.py`
-- `app/features/orders/service.py`
-- `app/features/orders/router.py`
+### Step 3: Define the Model
 
-### 4. Define the Data Model
-
-Open `app/features/orders/models.py` and define your pizza order model.
+Edit `app/features/orders/models.py`:
 
 ```python
 from sqlalchemy import Column, Integer, String, DateTime, Float
@@ -105,7 +294,7 @@ from app.core.database import Base
 
 class Order(Base):
     __tablename__ = "orders"
-
+    
     id = Column(Integer, primary_key=True, index=True)
     customer_name = Column(String(255), nullable=False)
     pizza_type = Column(String(100), nullable=False)
@@ -116,177 +305,81 @@ class Order(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 ```
 
-### 5. Update Schemas
-
-Update `app/features/orders/schemas.py` to match your model.
-
-```python
-from pydantic import BaseModel, Field
-from datetime import datetime
-from typing import Optional
-
-class OrderBase(BaseModel):
-    customer_name: str
-    pizza_type: str
-    quantity: int = 1
-    price: float
-
-class OrderCreate(OrderBase):
-    pass
-
-class OrderUpdate(BaseModel):
-    status: Optional[str] = None
-
-class OrderRead(OrderBase):
-    id: int
-    status: str
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-```
-
-### 6. Database Migrations
-
-Now we need to create the table in the database.
+### Step 4: Create Migration
 
 ```bash
-# Create migration file
 fastman make:migration "create orders table"
-
-# Apply migration
 fastman migrate
 ```
 
-### 7. Seed Data (Optional)
+### Step 5: Start Server
 
-Let's add some fake data. Generate a seeder:
-
-```bash
-fastman make:seeder OrderSeeder
-```
-
-Edit `database/seeders/order_seeder.py` (Fastman installs `faker` automatically):
-
-```python
-from sqlalchemy.orm import Session
-from app.features.orders.models import Order
-from faker import Faker
-import random
-
-fake = Faker()
-
-class OrderSeeder:
-    @staticmethod
-    def run(db: Session):
-        pizzas = ["Margherita", "Pepperoni", "Hawaiian", "Veggie"]
-        for _ in range(10):
-            order = Order(
-                customer_name=fake.name(),
-                pizza_type=random.choice(pizzas),
-                quantity=random.randint(1, 3),
-                price=random.uniform(10.0, 25.0),
-                status="pending"
-            )
-            db.add(order)
-        db.commit()
-```
-
-Run the seeder:
-```bash
-fastman db:seed --class=OrderSeeder
-```
-
-### 8. Test It Out
-
-Start the server again:
 ```bash
 fastman serve
 ```
 
-Go to `http://127.0.0.1:8000/docs`. You'll see your `Orders` endpoints ready to use!
+Visit `http://127.0.0.1:8000/docs` to see your API documentation!
 
-## Command Reference
+---
 
-### Project Setup
+## 🧪 Testing
 
-#### `new` - Create a new FastAPI project
+Fastman includes comprehensive test suites:
+
 ```bash
-fastman new {name} [--minimal] [--pattern=feature] [--package=uv] [--database=sqlite]
+# Run all tests
+pytest tests/
+
+# Run with coverage
+pytest tests/ --cov=fastman
+
+# Run specific test file
+pytest tests/test_integration.py
 ```
 
-**Options:**
-- `--pattern`: `feature` (default), `layer`, `api`
-- `--package`: `uv`, `poetry`, `pipenv`, `pip`
-- `--database`: `sqlite`, `postgresql`, `mysql`, `oracle`, `firebase`
+---
 
-#### `init` - Initialize Fastman in existing project
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+### Development Setup
+
 ```bash
-fastman init
+git clone https://github.com/acathon/fastman-cli.git
+cd fastman-cli
+
+# Install in editable mode
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Format code
+black src/
+isort src/
 ```
 
-### Scaffolding
+---
 
-#### `make:feature`
-Create a vertical slice feature (router, service, model, schema).
-```bash
-fastman make:feature {name} [--crud]
-```
+## 📄 License
 
-#### `make:api`
-Create a simple API endpoint (REST or GraphQL).
-```bash
-fastman make:api {name} [--style=rest|graphql]
-```
+Fastman is open-source software licensed under the [MIT license](LICENSE).
 
-#### `make:model`
-Create a SQLAlchemy model.
-```bash
-fastman make:model {name} [--table=custom_name]
-```
+---
 
-#### `make:schema`
-Create a Pydantic schema.
-```bash
-fastman make:schema {name}
-```
+## 🙏 Acknowledgments
 
-#### `make:service`, `make:repository`, `make:controller`
-Create individual architectural components.
+- Inspired by [Laravel Artisan](https://laravel.com/docs/artisan) - The gold standard for CLI frameworks
+- Built on [FastAPI](https://fastapi.tiangolo.com/) - The modern, fast web framework
+- Powered by [Typer](https://typer.tiangolo.com/) and [Click](https://click.palletsprojects.com/) concepts
 
-#### `make:command`
-Create a custom Fastman CLI command.
+---
 
-### Database
+<div align="center">
 
-- `fastman make:migration {message}`: Create Alembic migration
-- `fastman migrate`: Run migrations
-- `fastman migrate:rollback [--steps=1]`: Rollback migrations
-- `fastman migrate:reset`: Reset database
-- `fastman make:seeder {name}`: Create data seeder
-- `fastman db:seed [--class=Name]`: Run seeders
+**Made with ❤️ by the Fastman Team**
 
-### Authentication
+[⭐ Star us on GitHub](https://github.com/acathon/fastman-cli) • [🐛 Report Bug](https://github.com/acathon/fastman-cli/issues) • [💡 Request Feature](https://github.com/acathon/fastman-cli/issues)
 
-Install full authentication system (Models, JWT logic, Routes).
-```bash
-fastman install:auth --type=jwt
-```
-
-### Utilities
-
-- `fastman serve`: Start dev server
-- `fastman tinker`: Interactive shell with DB session
-- `fastman generate:key`: Generate secret key
-- `fastman optimize`: Format and clean code (using black/isort/autoflake)
-- `fastman build --docker`: Generate Dockerfile
-
-## Contributing
-
-Fastman is open source! Contributions are welcome.
-
-Repository: https://github.com/fastman/fastman
-
-## License
-
-This project is licensed under the **MIT License**.
+</div>

@@ -1,0 +1,100 @@
+2026-02-07 23:48:43,071 - fastman - INFO - To install this completion script, run:
+2026-02-07 23:48:43,071 - fastman - INFO - Or save it manually and source it in your shell profile
+Testing completion command...
+#!/bin/bash
+# Fastman CLI Bash Completion
+# Source this file: source /path/to/fastman-completion.bash
+
+_fastman_completions() {
+    local cur prev opts
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    
+    # Main commands
+    local commands="new init serve make:feature make:api make:websocket make:controller make:model make:service make:middleware make:dependency make:test make:seeder make:factory make:exception make:repository make:command make:schema make:migration migrate migrate:rollback migrate:reset migrate:status db:seed install:auth route:list tinker generate:key config:cache config:clear cache:clear import pkg:list list version docs inspect optimize build activate"
+    
+    # Options for specific commands
+    case "${COMP_WORDS[1]}" in
+        new)
+            opts="--minimal --pattern= --package= --database= --help"
+            ;;
+        make:feature)
+            opts="--crud --help"
+            ;;
+        make:api)
+            opts="--style= --help"
+            ;;
+        make:model)
+            opts="--table= --help"
+            ;;
+        migrate:rollback)
+            opts="--steps= --help"
+            ;;
+        db:seed)
+            opts="--class= --help"
+            ;;
+        install:auth)
+            opts="--type= --help"
+            ;;
+        route:list)
+            opts="--path= --method= --help"
+            ;;
+        serve)
+            opts="--host= --port= --reload --no-reload --help"
+            ;;
+        build)
+            opts="--docker --help"
+            ;;
+        activate)
+            opts="--create-script --help"
+            ;;
+        *)
+            opts="--help"
+            ;;
+    esac
+    
+    # Handle option values
+    case "${prev}" in
+        --pattern)
+            COMPREPLY=( $(compgen -W "feature api layer" -- "${cur}") )
+            return 0
+            ;;
+        --package)
+            COMPREPLY=( $(compgen -W "uv poetry pipenv pip" -- "${cur}") )
+            return 0
+            ;;
+        --database)
+            COMPREPLY=( $(compgen -W "sqlite postgresql mysql oracle firebase" -- "${cur}") )
+            return 0
+            ;;
+        --style)
+            COMPREPLY=( $(compgen -W "rest graphql" -- "${cur}") )
+            return 0
+            ;;
+        --type)
+            COMPREPLY=( $(compgen -W "jwt oauth keycloak" -- "${cur}") )
+            return 0
+            ;;
+        --method)
+            COMPREPLY=( $(compgen -W "GET POST PUT PATCH DELETE" -- "${cur}") )
+            return 0
+            ;;
+    esac
+    
+    # Complete commands or options
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+    else
+        COMPREPLY=( $(compgen -W "${commands}" -- "${cur}") )
+    fi
+}
+
+complete -F _fastman_completions fastman
+
+
+[94m[INFO][0m To install this completion script, run:
+[93;1m  fastman completion bash --install[0m
+
+[94m[INFO][0m Or save it manually and source it in your shell profile
+Command completed

@@ -31,24 +31,30 @@ class RouteListCommand(Command):
         path_filter = self.option("path")
         method_filter = self.option("method", "").upper()
 
-        sys.path.insert(0, str(Path.cwd()))
+        cwd_path = str(Path.cwd())
+        sys.path.insert(0, cwd_path)
 
         routes = []
 
         try:
-            from app.main import app
-            routes = self._get_routes_from_app(app)
-        except ImportError:
-            # Fallback to subprocess if fastman is running in isolated environment
             try:
-                routes = self._get_routes_via_subprocess()
+                from app.main import app
+                routes = self._get_routes_from_app(app)
+            except ImportError:
+                # Fallback to subprocess if fastman is running in isolated environment
+                try:
+                    routes = self._get_routes_via_subprocess()
+                except Exception as e:
+                    Output.error(f"Failed to load routes: {e}")
+                    return
             except Exception as e:
-                Output.error(f"Failed to load routes: {e}")
+                Output.error(f"An unexpected error occurred while loading routes: {e}")
+                logger.exception(e)
                 return
-        except Exception as e:
-            Output.error(f"An unexpected error occurred while loading routes: {e}")
-            logger.exception(e)
-            return
+        finally:
+            # Clean up sys.path to avoid pollution
+            if cwd_path in sys.path:
+                sys.path.remove(cwd_path)
 
         # Filter and display routes
         filtered_routes = []
@@ -85,69 +91,93 @@ class RouteListCommand(Command):
         return routes
 
     def _get_routes_via_subprocess(self):
-        """Get routes by running a script in the project environment"""
-        script_content = """
+        """Get routes by running inline Python in the project environment"""
+        # Use a unique marker to identify the JSON output
+        marker = "__FASTMAN_ROUTES_JSON__"
+        script_content = f'''
 import json
 import sys
+import warnings
 from pathlib import Path
 
-# Add CWD to path
+warnings.filterwarnings("ignore")
 sys.path.insert(0, str(Path.cwd()))
 
 try:
     from app.main import app
-
     routes_data = []
     for route in app.routes:
         route_path = getattr(route, "path", "")
         route_methods = getattr(route, "methods", set())
-
         methods_str = ",".join(sorted(route_methods)) if route_methods else "WS"
         name = getattr(route, "name", "-")
-
         routes_data.append([methods_str, route_path, name])
-
-    print(json.dumps(routes_data))
+    print("{marker}" + json.dumps(routes_data) + "{marker}")
 except Exception as e:
-    print(json.dumps({"error": str(e)}))
+    print("{marker}" + json.dumps(dict(error=str(e))) + "{marker}")
     sys.exit(1)
-"""
-        script_path = Path("_fastman_routes.py")
-        PathManager.write_file(script_path, script_content, overwrite=True)
-
+'''
         try:
             manager_prefix = PackageManager.get_run_prefix()
             if manager_prefix:
-                cmd = manager_prefix + ["python", str(script_path)]
+                cmd = manager_prefix + ["python", "-c", script_content]
             else:
-                cmd = ["python", str(script_path)]
+                cmd = ["python", "-c", script_content]
 
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
-                check=False
+                check=False,
+                timeout=60
             )
 
+            # Extract JSON from output using our marker
+            stdout = result.stdout
+            json_data = None
+            
+            if marker in stdout:
+                # Find the JSON between the markers
+                parts = stdout.split(marker)
+                if len(parts) >= 3:
+                    json_str = parts[1]
+                    try:
+                        json_data = json.loads(json_str)
+                    except json.JSONDecodeError as e:
+                        raise Exception(f"Failed to parse routes JSON: {e}")
+            
             if result.returncode != 0:
-                # Try to parse error from stdout if available, else stderr
-                try:
-                    data = json.loads(result.stdout)
-                    if "error" in data:
-                        raise Exception(data["error"])
-                except json.JSONDecodeError:
-                    pass
-
+                # Check if we got an error in the JSON
+                if json_data and isinstance(json_data, dict) and "error" in json_data:
+                    raise Exception(json_data["error"])
+                
                 error_msg = result.stderr or "Unknown error in subprocess"
                 if "email-validator is not installed" in error_msg:
-                     raise Exception("email-validator is not installed, run `pip install 'pydantic[email]'`")
+                    raise Exception("email-validator is not installed, run `pip install 'pydantic[email]'`")
 
                 raise Exception(error_msg)
 
-            return json.loads(result.stdout)
+            if json_data is None:
+                # Fallback: try direct parsing for backward compatibility
+                try:
+                    json_data = json.loads(stdout)
+                except json.JSONDecodeError:
+                    # Try to extract JSON from stdout (look for array/object)
+                    for i, char in enumerate(stdout):
+                        if char in '[{':
+                            try:
+                                json_data = json.loads(stdout[i:])
+                                break
+                            except json.JSONDecodeError:
+                                continue
+                    
+                    if json_data is None:
+                        raise Exception(f"Could not parse routes output. Raw output: {stdout[:200]}")
+            
+            return json_data
 
-        finally:
-            PathManager.safe_remove(script_path)
+        except subprocess.TimeoutExpired:
+            raise Exception("Route list command timed out")
 
 
 @register
@@ -281,29 +311,41 @@ class CacheClearCommand(Command):
     description = "Clear Python cache files"
 
     def handle(self):
-        count = 0
-
+        # Collect paths first, then delete (avoid modifying dirs during iteration)
+        pycache_dirs = []
+        pyc_files = []
+        
         for root, dirs, files in os.walk("."):
-            # Remove __pycache__ directories
-            for dir_name in dirs:
+            for dir_name in dirs[:]:
                 if dir_name == "__pycache__":
-                    dir_path = Path(root) / dir_name
-                    shutil.rmtree(dir_path)
-                    count += 1
-
-            # Remove .pyc files
+                    pycache_dirs.append(Path(root) / dir_name)
+                    dirs.remove(dir_name)  # Don't descend into __pycache__
+            
             for file_name in files:
                 if file_name.endswith(".pyc"):
-                    file_path = Path(root) / file_name
-                    file_path.unlink()
-                    count += 1
+                    pyc_files.append(Path(root) / file_name)
+        
+        count = 0
+        for dir_path in pycache_dirs:
+            try:
+                shutil.rmtree(dir_path)
+                count += 1
+            except (PermissionError, OSError) as e:
+                Output.warn(f"Could not remove {dir_path}: {e}")
+        
+        for file_path in pyc_files:
+            try:
+                file_path.unlink()
+                count += 1
+            except (PermissionError, OSError) as e:
+                Output.warn(f"Could not remove {file_path}: {e}")
 
         Output.success(f"Cleared {count} cache files/directories")
 
 
 @register
-class ImportCommand(Command):
-    signature = "import {package}"
+class PackageImportCommand(Command):
+    signature = "package:import {package}"
     description = "Install Python package"
 
     def handle(self):
@@ -322,8 +364,8 @@ class ImportCommand(Command):
 
 
 @register
-class PkgListCommand(Command):
-    signature = "pkg:list"
+class PackageListCommand(Command):
+    signature = "package:list"
     description = "List installed packages"
 
     def handle(self):
@@ -342,6 +384,26 @@ class PkgListCommand(Command):
                 subprocess.run([sys.executable, "-m", "pip", "list"], check=True)
         except (FileNotFoundError, subprocess.CalledProcessError) as e:
             Output.error(f"Failed to list packages: {e}")
+
+
+@register
+class PackageRemoveCommand(Command):
+    signature = "package:remove {package}"
+    description = "Remove Python package"
+
+    def handle(self):
+        package = self.argument(0)
+
+        if not package:
+            Output.error("Package name required")
+            return
+
+        Output.info(f"Removing {package}...")
+
+        if PackageManager.remove([package]):
+            Output.success(f"Package '{package}' removed")
+        else:
+            Output.error(f"Failed to remove '{package}'")
 
 
 @register
@@ -396,11 +458,13 @@ class ListCommand(Command):
             "Project Setup": [],
             "Development": [],
             "Scaffolding": [],
-            "Database & Migrations": [],
+            "Routes": [],
+            "Database": [],
             "Testing": [],
             "Authentication": [],
             "Package Management": [],
             "Configuration": [],
+            "Cache": [],
             "Utilities": []
         }
 
@@ -408,20 +472,28 @@ class ListCommand(Command):
             # Categorize commands
             if name in ["new", "init"]:
                 categories["Project Setup"].append((name, cls.description))
-            elif name == "serve":
+            elif name in ["serve", "build"]:
                 categories["Development"].append((name, cls.description))
             elif name.startswith("make:") and name not in ["make:migration", "make:seeder", "make:factory", "make:test"]:
                 categories["Scaffolding"].append((name, cls.description))
-            elif name.startswith("migrate") or name.startswith("db:") or name in ["make:migration", "make:seeder"]:
-                categories["Database & Migrations"].append((name, cls.description))
+            elif name == "route:list":
+                categories["Routes"].append((name, cls.description))
+            elif name.startswith("database:") or name.startswith("migrate") or name in ["make:migration", "make:seeder"]:
+                categories["Database"].append((name, cls.description))
             elif name in ["make:test", "make:factory"]:
                 categories["Testing"].append((name, cls.description))
             elif name.startswith("install:auth"):
                 categories["Authentication"].append((name, cls.description))
-            elif name in ["import", "pkg:list"]:
+            elif name.startswith("package:"):
                 categories["Package Management"].append((name, cls.description))
-            elif name.startswith("config:") or name.startswith("cache:") or name.startswith("generate:"):
+            elif name.startswith("config:") or name.startswith("generate:"):
                 categories["Configuration"].append((name, cls.description))
+            elif name == "completion":
+                categories["Utilities"].append((name, cls.description))
+            elif name.startswith("cache:"):
+                categories["Cache"].append((name, cls.description))
+            elif name == "activate":
+                categories["Utilities"].append((name, cls.description))
             else:
                 categories["Utilities"].append((name, cls.description))
 
@@ -499,11 +571,11 @@ class DocsCommand(Command):
             Output.echo("  3. fastman serve", Style.GREEN)
 
             Output.echo("\nCommon Commands:")
-            Output.echo("  make:feature {name}  - Create vertical slice with CRUD", Style.CYAN)
-            Output.echo("  make:api {name}      - Create lightweight endpoint", Style.CYAN)
-            Output.echo("  make:migration {msg} - Create database migration", Style.CYAN)
-            Output.echo("  migrate              - Run migrations", Style.CYAN)
-            Output.echo("  route:list           - List all routes", Style.CYAN)
+            Output.echo("  make:feature {name}    - Create vertical slice with CRUD", Style.CYAN)
+            Output.echo("  make:api {name}        - Create lightweight endpoint", Style.CYAN)
+            Output.echo("  make:migration {msg}   - Create database migration", Style.CYAN)
+            Output.echo("  database:migrate       - Run migrations", Style.CYAN)
+            Output.echo("  route:list             - List all routes", Style.CYAN)
 
             Output.echo("\nDocumentation: https://fastman.dev/docs")
             Output.echo("Repository: https://github.com/fastman/fastman")
@@ -650,24 +722,22 @@ class OptimizeCommand(Command):
             Output.warn(f"Missing tools: {', '.join(missing_tools)}")
             if Output.confirm("Install optimization tools?"):
                 manager, _ = PackageManager.detect()
-                install_args = missing_tools.copy()
-                if manager != "pip":
-                    # For uv, poetry, pipenv, --dev is a flag, not a package
-                    # We need to handle this in PackageManager.install eventually,
-                    # but for now we append it as an arg.
-                    # Ideally, PackageManager.install should take options.
-                    # Since we are passing a list of packages, we rely on the fact
-                    # that they are appended to the command.
-                    # Note: This might treat --dev as a package if the implementation iterates blindly.
-                    pass
-
-                # Currently PackageManager.install takes a list of packages and appends them to command.
-                # If we pass ["--dev", "black"], it becomes `uv add --dev black`.
-
-                if manager != "pip":
-                    install_args = ["--dev"] + missing_tools
-
-                PackageManager.install(install_args)
+                
+                # Install dev packages properly based on package manager
+                try:
+                    if manager == "uv":
+                        subprocess.run(["uv", "add", "--dev"] + missing_tools, check=True, timeout=300)
+                    elif manager == "poetry":
+                        subprocess.run(["poetry", "add", "--group", "dev"] + missing_tools, check=True, timeout=300)
+                    elif manager == "pipenv":
+                        subprocess.run(["pipenv", "install", "--dev"] + missing_tools, check=True, timeout=300)
+                    else:
+                        PackageManager.install(missing_tools)
+                    Output.success("Optimization tools installed")
+                except subprocess.CalledProcessError as e:
+                    Output.error(f"Failed to install tools: {e}")
+                except subprocess.TimeoutExpired:
+                    Output.error("Installation timed out")
 
         # Run optimization
         app_path = Path("app")
@@ -679,12 +749,12 @@ class OptimizeCommand(Command):
             # Format with black
             if shutil.which("black"):
                 Output.info("Formatting code with black...")
-                subprocess.run(["black", "app/", "tests/"], capture_output=True)
+                subprocess.run(["black", "app/", "tests/"], capture_output=True, timeout=120)
 
             # Sort imports
             if shutil.which("isort"):
                 Output.info("Sorting imports with isort...")
-                subprocess.run(["isort", "app/", "tests/"], capture_output=True)
+                subprocess.run(["isort", "app/", "tests/"], capture_output=True, timeout=120)
 
             # Remove unused imports
             if shutil.which("autoflake"):
@@ -696,7 +766,7 @@ class OptimizeCommand(Command):
                     "--in-place",
                     "app/",
                     "tests/"
-                ], capture_output=True)
+                ], capture_output=True, timeout=120)
 
             Output.success("Project optimized!")
         else:
@@ -770,3 +840,204 @@ CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --
             subprocess.run(["mypy", "app/"], capture_output=True)
 
         Output.success("Build complete!")
+
+
+@register
+class CompletionCommand(Command):
+    """Generate shell completion scripts"""
+    signature = "completion {shell} {--install}"
+    description = "Generate shell completion script (bash, zsh, fish, powershell)"
+    
+    def handle(self):
+        shell = self.argument(0, "bash").lower()
+        install = self.flag("install")
+        
+        from ..shell_completion import ShellCompletion, get_completion_install_instructions
+        
+        generators = {
+            "bash": ShellCompletion.generate_bash,
+            "zsh": ShellCompletion.generate_zsh,
+            "fish": ShellCompletion.generate_fish,
+            "powershell": ShellCompletion.generate_powershell,
+            "ps": ShellCompletion.generate_powershell,
+        }
+        
+        if shell not in generators:
+            Output.error(f"Unknown shell: {shell}")
+            Output.info("Supported shells: bash, zsh, fish, powershell")
+            return
+        
+        # Generate completion script
+        completion_script = generators[shell]()
+        
+        if install:
+            # Install to appropriate location
+            self._install_completion(shell, completion_script)
+        else:
+            # Just print the script
+            print(completion_script)
+            
+            Output.new_line()
+            Output.info("To install this completion script, run:")
+            Output.highlight(f"  fastman completion {shell} --install")
+            Output.new_line()
+            Output.info("Or save it manually and source it in your shell profile")
+    
+    def _install_completion(self, shell: str, script: str):
+        """Install completion script to appropriate location"""
+        home = Path.home()
+        
+        if shell in ["bash"]:
+            target = home / ".fastman-completion.bash"
+            profile_file = home / ".bashrc"
+            source_line = f"source {target}"
+            
+        elif shell in ["zsh"]:
+            completions_dir = home / ".zsh" / "completions"
+            completions_dir.mkdir(parents=True, exist_ok=True)
+            target = completions_dir / "_fastman"
+            profile_file = home / ".zshrc"
+            source_line = None  # zsh finds it automatically via fpath
+            
+        elif shell in ["fish"]:
+            completions_dir = home / ".config" / "fish" / "completions"
+            completions_dir.mkdir(parents=True, exist_ok=True)
+            target = completions_dir / "fastman.fish"
+            profile_file = None
+            source_line = None
+            
+        elif shell in ["powershell", "ps"]:
+            target = home / "fastman-completion.ps1"
+            profile_file = None
+            source_line = f". {target}"
+            
+        else:
+            Output.error(f"Installation not supported for {shell}")
+            return
+        
+        # Write completion script
+        target.write_text(script)
+        Output.success(f"Completion script installed to: {target}")
+        
+        # Update profile if needed
+        if profile_file and source_line:
+            if profile_file.exists():
+                content = profile_file.read_text()
+                if source_line not in content:
+                    with open(profile_file, "a") as f:
+                        f.write(f"\n# Fastman CLI completion\n{source_line}\n")
+                    Output.success(f"Updated {profile_file}")
+            else:
+                profile_file.write_text(f"# Fastman CLI completion\n{source_line}\n")
+                Output.success(f"Created {profile_file}")
+        
+        Output.new_line()
+        Output.info("Please restart your shell or run:")
+        if shell == "bash":
+            Output.highlight("  source ~/.bashrc")
+        elif shell == "zsh":
+            Output.highlight("  source ~/.zshrc")
+        elif shell == "fish":
+            Output.highlight("  source ~/.config/fish/completions/fastman.fish")
+        elif shell == "powershell":
+            Output.highlight(f"  . {target}")
+
+
+@register
+class ActivateCommand(Command):
+    """Detect and display virtual environment activation command"""
+    signature = "activate"
+    description = "Show virtual environment activation command"
+
+    def handle(self):
+        """Detect venv and display activation command"""
+        cwd = Path.cwd()
+        
+        # Common venv locations
+        venv_paths = [
+            cwd / ".venv",
+            cwd / "venv",
+            cwd / ".env",
+            cwd / "env",
+        ]
+        
+        # Find existing venv
+        venv_path = None
+        for path in venv_paths:
+            if path.exists():
+                venv_path = path
+                break
+        
+        if not venv_path:
+            Output.error("No virtual environment found")
+            Output.info("Expected one of: .venv, venv, .env, env")
+            Output.info("Run 'fastman new' to create a new project with venv")
+            return
+        
+        # Detect OS
+        is_windows = os.name == 'nt'
+        
+        # Detect shell (Unix only)
+        shell = os.environ.get('SHELL', '').split('/')[-1] if not is_windows else 'cmd'
+        
+        Output.section("Virtual Environment Detected", str(venv_path))
+        
+        if is_windows:
+            # Windows
+            activate_cmd = f"{venv_path}\\Scripts\\activate.bat"
+            activate_ps = f"{venv_path}\\Scripts\\Activate.ps1"
+            
+            Output.info("Windows detected")
+            Output.new_line()
+            Output.highlight("Command Prompt (cmd.exe):")
+            Output.echo(f"  {activate_cmd}")
+            Output.new_line()
+            Output.highlight("PowerShell:")
+            Output.echo(f"  {activate_ps}")
+            
+        else:
+            # Unix-like
+            activate_path = venv_path / "bin" / "activate"
+            
+            if shell in ['fish']:
+                activate_cmd = f"source {activate_path}.fish"
+            elif shell in ['csh', 'tcsh']:
+                activate_cmd = f"source {activate_path}.csh"
+            else:
+                # bash, zsh, sh, etc.
+                activate_cmd = f"source {activate_path}"
+            
+            Output.info(f"Shell detected: {shell}")
+            Output.new_line()
+            Output.highlight("Activation command:")
+            Output.echo(f"  {activate_cmd}")
+            
+            # Also show how to deactivate
+            Output.new_line()
+            Output.comment("To deactivate, run: deactivate")
+        
+        Output.new_line()
+        Output.info("Copy and paste the command above to activate your environment")
+        
+        # Optional: Create activation helper script
+        if self.flag("create-script"):
+            self._create_activation_script(venv_path, is_windows)
+    
+    def _create_activation_script(self, venv_path: Path, is_windows: bool):
+        """Create a helper script for activation"""
+        if is_windows:
+            script_path = Path("activate.bat")
+            content = f"@echo off\n call {venv_path}\\Scripts\\activate.bat"
+        else:
+            script_path = Path("activate.sh")
+            content = f"#!/bin/bash\n source {venv_path}/bin/activate"
+        
+        PathManager.write_file(script_path, content)
+        
+        if not is_windows:
+            # Make executable on Unix
+            os.chmod(script_path, 0o755)
+        
+        Output.success(f"Created {script_path}")
+        Output.info(f"Run: ./{script_path}")
+

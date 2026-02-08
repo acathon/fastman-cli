@@ -83,11 +83,20 @@ class PathManager:
             # Ensure parent directories exist
             path.parent.mkdir(parents=True, exist_ok=True)
 
-            with path.open('x' if not overwrite else 'w', encoding='utf-8') as f:
+            mode = 'x' if not overwrite else 'w'
+            with path.open(mode, encoding='utf-8') as f:
                 f.write(content)
             return True
         except FileExistsError:
             Output.warn(f"File already exists: {path}")
+            return False
+        except PermissionError as e:
+            Output.error(f"Permission denied writing to {path}: {e}")
+            logger.exception(e)
+            return False
+        except IsADirectoryError as e:
+            Output.error(f"Cannot write file {path}: it is a directory")
+            logger.exception(e)
             return False
         except IOError as e:
             Output.error(f"File I/O error writing to {path}: {e}")
@@ -102,11 +111,20 @@ class PathManager:
     def safe_remove(path: Path) -> bool:
         """Safely remove file or directory"""
         try:
+            if not path.exists():
+                Output.warn(f"Path does not exist: {path}")
+                return False
             if path.is_file():
                 path.unlink()
             elif path.is_dir():
                 shutil.rmtree(path)
+            else:
+                Output.warn(f"Unknown file type: {path}")
+                return False
             return True
+        except PermissionError as e:
+            Output.error(f"Permission denied removing {path}: {e}")
+            return False
         except OSError as e:
             Output.error(f"OS error while removing {path}: {e}")
             return False
@@ -142,7 +160,7 @@ class PackageManager:
         return ("pip", [])
 
     @staticmethod
-    def install(packages: List[str]) -> bool:
+    def install(packages: List[str], timeout: int = 300) -> bool:
         """Install packages using detected package manager"""
         if not packages:
             return True
@@ -151,13 +169,13 @@ class PackageManager:
 
         try:
             if manager == "uv":
-                subprocess.run(["uv", "add"] + packages, check=True)
+                subprocess.run(["uv", "add"] + packages, check=True, timeout=timeout)
             elif manager == "poetry":
-                subprocess.run(["poetry", "add"] + packages, check=True)
+                subprocess.run(["poetry", "add"] + packages, check=True, timeout=timeout)
             elif manager == "pipenv":
-                subprocess.run(["pipenv", "install"] + packages, check=True)
+                subprocess.run(["pipenv", "install"] + packages, check=True, timeout=timeout)
             else:
-                subprocess.run([sys.executable, "-m", "pip", "install"] + packages, check=True)
+                subprocess.run([sys.executable, "-m", "pip", "install"] + packages, check=True, timeout=timeout)
 
                 # Update requirements.txt
                 req_file = Path("requirements.txt")
@@ -187,7 +205,7 @@ class PackageManager:
 
                         if pkg_base not in existing_bases:
                             prefix = "\n" if existing_lines or mode == "a" else ""
-                            f.write(f"{prefix}{pkg}")
+                            f.write(f"{prefix}{pkg}\n")
                             existing_bases.add(pkg_base)
                             # Ensure subsequent writes have newlines
                             existing_lines.append(pkg)
@@ -202,3 +220,53 @@ class PackageManager:
         """Get command prefix for running scripts"""
         _, prefix = PackageManager.detect()
         return prefix
+
+    @staticmethod
+    def remove(packages: List[str], timeout: int = 300) -> bool:
+        """Remove packages using detected package manager"""
+        if not packages:
+            return True
+
+        manager, _ = PackageManager.detect()
+
+        try:
+            if manager == "uv":
+                subprocess.run(["uv", "remove"] + packages, check=True, timeout=timeout)
+            elif manager == "poetry":
+                subprocess.run(["poetry", "remove"] + packages, check=True, timeout=timeout)
+            elif manager == "pipenv":
+                subprocess.run(["pipenv", "uninstall"] + packages, check=True, timeout=timeout)
+            else:
+                subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y"] + packages, check=True, timeout=timeout)
+
+                # Update requirements.txt
+                req_file = Path("requirements.txt")
+                if req_file.exists():
+                    existing_lines = req_file.read_text().splitlines()
+                    new_lines = []
+
+                    for line in existing_lines:
+                        line_stripped = line.strip()
+                        if not line_stripped or line_stripped.startswith("#"):
+                            new_lines.append(line)
+                            continue
+
+                        # Parse base name
+                        base_name = re.split(r'[=<>,[]', line_stripped)[0].strip().lower()
+                        # Check if this line should be removed
+                        should_remove = False
+                        for pkg in packages:
+                            pkg_base = re.split(r'[=<>,[]', pkg)[0].strip().lower()
+                            if base_name == pkg_base:
+                                should_remove = True
+                                break
+
+                        if not should_remove:
+                            new_lines.append(line)
+
+                    req_file.write_text('\n'.join(new_lines))
+
+            return True
+        except subprocess.CalledProcessError as e:
+            Output.error(f"Package removal failed: {e}")
+            return False

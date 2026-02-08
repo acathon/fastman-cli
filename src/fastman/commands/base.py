@@ -8,9 +8,19 @@ from ..utils import PackageManager, NameValidator
 
 class CommandContext:
     """Context passed to commands"""
+    # Class-level cache for package manager detection
+    _cached_manager = None
+    _cached_prefix = None
+    _cached_cwd = None
+    
     def __init__(self):
         self.project_root = Path.cwd()
-        self.package_manager, self.run_prefix = PackageManager.detect()
+        # Use cached values if we're in the same directory
+        if CommandContext._cached_cwd != self.project_root:
+            CommandContext._cached_manager, CommandContext._cached_prefix = PackageManager.detect()
+            CommandContext._cached_cwd = self.project_root
+        self.package_manager = CommandContext._cached_manager
+        self.run_prefix = CommandContext._cached_prefix
 
 
 class Command(ABC):
@@ -35,11 +45,20 @@ class Command(ABC):
             return default
 
     def option(self, name: str, default: Optional[str] = None) -> Optional[str]:
-        """Get named option (--name=value)"""
+        """Get named option (--name=value or --name value)"""
         prefix = f"--{name}="
-        for arg in self.args:
+        flag = f"--{name}"
+        
+        for i, arg in enumerate(self.args):
+            # Handle --name=value format
             if arg.startswith(prefix):
                 return arg[len(prefix):]
+            # Handle --name value format
+            if arg == flag and i + 1 < len(self.args):
+                next_arg = self.args[i + 1]
+                # Make sure next arg is not another flag
+                if not next_arg.startswith("-"):
+                    return next_arg
         return default
 
     def flag(self, name: str) -> bool:

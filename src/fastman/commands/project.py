@@ -53,12 +53,10 @@ class NewCommand(Command):
             Output.error(f"Directory '{name}' already exists")
             return
 
-        Output.info(f"Creating new project: {name}")
-        Output.info(f"Pattern: {pattern}")
-        Output.info(f"Package Manager: {package_manager}")
-        Output.info(f"Database: {database}")
-
-        # Create directory structure based on pattern
+        Output.banner(__version__)
+        Output.section("Creating Project", f"{name} ({pattern} pattern with {database})")
+        
+        Output.task("Setting up project structure", status="in progress", status_style="yellow")
         if pattern == "feature":
             dirs = [
                 "app/core",
@@ -116,6 +114,7 @@ class NewCommand(Command):
 
         for dir_path in dirs:
             PathManager.ensure_dir(project_path / dir_path)
+            Output.directory_created(dir_path)
 
         # Generate secret key
         secret_key = secrets.token_urlsafe(32)
@@ -164,10 +163,12 @@ class NewCommand(Command):
 }'''
             files["firebase-credentials.json.example"] = firebase_creds_example
 
+        Output.line()
         for file_path, template in files.items():
             full_path = project_path / file_path
             content = Template.render(template, ctx)
             PathManager.write_file(full_path, content)
+            Output.file_created(file_path)
 
         # Create README
         pattern_desc = {
@@ -245,14 +246,24 @@ Generated with ❤️ by Fastman
         finally:
             os.chdir(original_dir)
 
-        Output.success(f"Project '{name}' created successfully!")
-        Output.info("\nNext steps:")
-        Output.echo(f"  cd {name}", Style.CYAN)
+        Output.line()
+        Output.success(f"Project '{name}' created successfully!", icon=True)
+        
+        steps = [(f"cd {name}", "Navigate to project directory")]
         if package_manager == "pipenv":
-            Output.echo("  pipenv shell", Style.CYAN)
+            steps.append(("pipenv shell", "Activate pipenv environment"))
         elif package_manager == "poetry":
-            Output.echo("  poetry shell", Style.CYAN)
-        Output.echo("  fastman serve", Style.CYAN)
+            steps.append(("poetry shell", "Activate poetry environment"))
+        elif package_manager == "pip":
+            steps.append(("source .venv/bin/activate", "Activate virtual environment (Linux/Mac)"))
+            steps.append((".\\.venv\\Scripts\\activate", "Activate virtual environment (Windows)"))
+        
+        steps.extend([
+            ("fastman serve", "Start the development server"),
+            ("fastman list", "View all available commands"),
+        ])
+        
+        Output.next_steps(steps)
 
     def _get_install_command(self, package_manager: str) -> str:
         """Get install command for package manager"""
@@ -289,30 +300,35 @@ Generated with ❤️ by Fastman
     def _initialize_package_manager(self, package_manager: str, dependencies: list, project_name: str):
         """Initialize project with specified package manager"""
 
+        Output.section("Initializing Package Manager", f"Using {package_manager}")
+        
         if package_manager == "uv":
             # Check if uv is available
             if not shutil.which("uv"):
-                Output.warn("uv not found. Creating requirements.txt instead.")
+                Output.warn("uv not found. Falling back to requirements.txt")
                 self._create_requirements_txt(dependencies)
                 return
 
-            Output.info("Initializing with uv...")
+            Output.task("Initializing uv project", status="in progress", status_style="yellow")
             try:
                 # Initialize uv project
                 subprocess.run(["uv", "init", "--no-readme", "--no-pin-python"],
-                             check=True, capture_output=True)
+                             check=True, capture_output=True, timeout=60)
 
                 # Create virtual environment in .venv
-                Output.info("Creating virtual environment...")
+                Output.task("Creating virtual environment", status="in progress", status_style="yellow")
                 subprocess.run(["uv", "venv", ".venv"],
-                             check=True, capture_output=True)
+                             check=True, capture_output=True, timeout=120)
 
                 # Add dependencies
-                Output.info("Installing dependencies...")
+                Output.task("Installing dependencies", status="in progress", status_style="yellow")
                 subprocess.run(["uv", "add"] + dependencies,
-                             check=True, capture_output=True)
+                             check=True, capture_output=True, timeout=300)
 
-                Output.success("Virtual environment created at .venv/")
+                Output.task("Virtual environment created", status="done", status_style="green")
+            except subprocess.TimeoutExpired:
+                Output.error("uv initialization timed out. Try again with a faster connection.")
+                self._create_requirements_txt(dependencies)
             except subprocess.CalledProcessError as e:
                 Output.error(f"uv initialization failed: {e}")
                 self._create_requirements_txt(dependencies)
@@ -320,15 +336,18 @@ Generated with ❤️ by Fastman
         elif package_manager == "pipenv":
             # Check if pipenv is available
             if not shutil.which("pipenv"):
-                Output.warn("pipenv not found. Installing...")
+                Output.task("Installing pipenv", status="in progress", status_style="yellow")
                 try:
                     subprocess.run([sys.executable, "-m", "pip", "install", "pipenv"],
-                                 capture_output=True, check=True)
+                                 capture_output=True, check=True, timeout=60)
+                except subprocess.TimeoutExpired:
+                    Output.error("pipenv installation timed out. Please install pipenv manually.")
+                    return
                 except subprocess.CalledProcessError as e:
                     Output.error(f"Failed to install pipenv: {e}")
                     return
 
-            Output.info("Initializing with pipenv...")
+            Output.task("Initializing pipenv project", status="in progress", status_style="yellow")
             try:
                 # Set environment variable to create venv in project
                 env = os.environ.copy()
@@ -336,9 +355,12 @@ Generated with ❤️ by Fastman
 
                 # Install dependencies (creates .venv in project)
                 subprocess.run(["pipenv", "install"] + dependencies,
-                             env=env, check=True, capture_output=True)
+                             env=env, check=True, capture_output=True, timeout=300)
 
-                Output.success("Virtual environment created at .venv/")
+                Output.task("Virtual environment created", status="done", status_style="green")
+            except subprocess.TimeoutExpired:
+                Output.error("pipenv initialization timed out. Try again with a faster connection.")
+                self._create_requirements_txt(dependencies)
             except subprocess.CalledProcessError as e:
                 Output.error(f"pipenv initialization failed: {e}")
                 self._create_requirements_txt(dependencies)
@@ -346,50 +368,55 @@ Generated with ❤️ by Fastman
         elif package_manager == "poetry":
             # Check if poetry is available
             if not shutil.which("poetry"):
-                Output.warn("poetry not found. Please install poetry first.")
+                Output.warn("poetry not found. Falling back to requirements.txt")
                 self._create_requirements_txt(dependencies)
                 return
 
-            Output.info("Initializing with poetry...")
+            Output.task("Initializing poetry project", status="in progress", status_style="yellow")
             try:
                 # Configure poetry to create venv in project
                 try:
                     subprocess.run(["poetry", "config", "virtualenvs.in-project", "true"],
-                                 capture_output=True, check=True)
+                                 capture_output=True, check=True, timeout=30)
                 except subprocess.CalledProcessError as e:
-                    Output.warn(f"Failed to configure poetry virtualenvs.in-project: {e}")
+                    Output.warn(f"Could not configure virtualenvs.in-project: {e}")
 
                 # Initialize poetry project
                 subprocess.run(["poetry", "init", "--no-interaction",
                               f"--name={project_name}",
                               "--python=^3.9"],
-                             check=True, capture_output=True)
+                             check=True, capture_output=True, timeout=60)
 
                 # Add dependencies
+                Output.task("Installing dependencies", status="in progress", status_style="yellow")
                 subprocess.run(["poetry", "add"] + dependencies,
-                             check=True, capture_output=True)
+                             check=True, capture_output=True, timeout=300)
 
-                Output.success("Virtual environment created at .venv/")
+                Output.task("Virtual environment created", status="done", status_style="green")
+            except subprocess.TimeoutExpired:
+                Output.error("poetry initialization timed out. Try again with a faster connection.")
+                self._create_requirements_txt(dependencies)
             except subprocess.CalledProcessError as e:
                 Output.error(f"poetry initialization failed: {e}")
                 self._create_requirements_txt(dependencies)
 
         elif package_manager == "pip":
-            Output.info("Initializing with pip...")
+            Output.task("Creating virtual environment", status="in progress", status_style="yellow")
             try:
                 # Create virtual environment
-                Output.info("Creating virtual environment...")
-                subprocess.run([sys.executable, "-m", "venv", ".venv"], check=True)
+                subprocess.run([sys.executable, "-m", "venv", ".venv"], check=True, timeout=120)
 
                 # Create requirements.txt
                 self._create_requirements_txt(dependencies)
 
                 # Install dependencies
-                Output.info("Installing dependencies...")
+                Output.task("Installing dependencies", status="in progress", status_style="yellow")
                 pip_path = ".venv/bin/pip" if os.name != "nt" else ".venv\\Scripts\\pip"
-                subprocess.run([pip_path, "install", "-r", "requirements.txt"], check=True)
+                subprocess.run([pip_path, "install", "-r", "requirements.txt"], check=True, timeout=300)
 
-                Output.success("Virtual environment created at .venv/")
+                Output.task("Virtual environment created", status="done", status_style="green")
+            except subprocess.TimeoutExpired:
+                Output.error("pip initialization timed out. Try again with a faster connection.")
             except subprocess.CalledProcessError as e:
                 Output.error(f"pip initialization failed: {e}")
 

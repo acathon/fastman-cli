@@ -10,6 +10,9 @@ from pathlib import Path
 from .base import Command, register
 from ..console import Output, Style
 from ..utils import PackageManager, NameValidator
+import logging
+
+logger = logging.getLogger("fastman")
 
 
 @register
@@ -43,8 +46,8 @@ class MakeMigrationCommand(Command):
 
 
 @register
-class MigrateCommand(Command):
-    signature = "migrate"
+class DatabaseMigrateCommand(Command):
+    signature = "database:migrate"
     description = "Run database migrations"
 
     def handle(self):
@@ -130,14 +133,15 @@ class MigrateStatusCommand(Command):
 
 
 @register
-class DbSeedCommand(Command):
-    signature = "db:seed {--class=}"
+class DatabaseSeedCommand(Command):
+    signature = "database:seed {--class=}"
     description = "Run database seeders"
 
     def handle(self):
         seeder_class = self.option("class")
 
-        sys.path.insert(0, str(Path.cwd()))
+        cwd_path = str(Path.cwd())
+        sys.path.insert(0, cwd_path)
 
         try:
             from app.core.database import SessionLocal
@@ -175,10 +179,10 @@ class DbSeedCommand(Command):
 
                     except (ImportError, AttributeError) as e:
                         Output.error(f"Failed to load or run seeder {module_name}: {e}")
-                        # logger.exception(e)
+                        logger.exception(e)
                     except Exception as e:
                         Output.error(f"An unexpected error occurred while running {module_name}: {e}")
-                        # logger.exception(e)
+                        logger.exception(e)
 
                 if count > 0:
                     Output.success(f"Ran {count} seeder(s)")
@@ -191,7 +195,11 @@ class DbSeedCommand(Command):
 
         except ImportError as e:
             Output.error(f"Failed to import database session: {e}")
-            # logger.exception(e)
+            logger.exception(e)
         except Exception as e:
             Output.error(f"An unexpected error occurred during seeding: {e}")
-            # logger.exception(e)
+            logger.exception(e)
+        finally:
+            # Clean up sys.path to avoid pollution
+            if cwd_path in sys.path:
+                sys.path.remove(cwd_path)

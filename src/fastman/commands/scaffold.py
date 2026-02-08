@@ -243,16 +243,29 @@ def list_{snake}s(db: Session = Depends(get_db)):
         PathManager.write_file(base / "service.py", service_content)
         PathManager.write_file(base / "router.py", router_content)
 
-        Output.success(f"Feature '{snake}' created at app/features/{snake}/")
-        Output.info("Files created:")
-        Output.echo(f"  - models.py (Database model)", Style.CYAN)
-        Output.echo(f"  - schemas.py (Pydantic schemas)", Style.CYAN)
-        Output.echo(f"  - service.py (Business logic)", Style.CYAN)
-        Output.echo(f"  - router.py ({'CRUD' if crud else 'Basic'} endpoints)", Style.CYAN)
-
+        from .. import __version__
+        Output.banner(__version__)
+        Output.section("Feature Created", f"{snake} at app/features/{snake}/")
+        
+        files_created = [
+            ("models.py", "Database model with SQLAlchemy"),
+            ("schemas.py", "Pydantic schemas for validation"),
+            ("service.py", "Business logic layer"),
+            ("router.py", f"{'CRUD' if crud else 'Basic'} API endpoints"),
+        ]
+        
+        Output.listing(files_created, title="Files Created")
+        
         if crud:
-            Output.info(f"\nGenerated CRUD endpoints:")
-            Output.echo(f"  GET    /{snake}s       - List all", Style.GREEN)
+            Output.section("Generated Endpoints")
+            endpoints = [
+                (f"GET    /{snake}s", "List all items"),
+                (f"GET    /{snake}s/{{id}}", "Get single item"),
+                (f"POST   /{snake}s", "Create new item"),
+                (f"PUT    /{snake}s/{{id}}", "Update item"),
+                (f"DELETE /{snake}s/{{id}}", "Delete item"),
+            ]
+            Output.listing(endpoints)
             Output.echo(f"  GET    /{snake}s/{{id}}  - Get by ID", Style.GREEN)
             Output.echo(f"  POST   /{snake}s       - Create", Style.GREEN)
             Output.echo(f"  PUT    /{snake}s/{{id}}  - Update", Style.GREEN)

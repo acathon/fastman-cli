@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fastman"
-version = "0.1.0"
+version = "0.2.0"
 description = "Fastman CLI for FastAPI that makes building APIs a breeze"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -101,4 +101,8 @@ python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
 
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
 ]
+
