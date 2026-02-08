@@ -2,34 +2,23 @@ import { themes as prismThemes } from 'prism-react-renderer';
 import type { Config } from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
-// This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
-
 const config: Config = {
-  title: 'fastman-cli documentation',
-  tagline: 'Fastman CLI',
+  title: 'Fastman',
+  tagline: 'The elegant CLI for FastAPI artisans',
   favicon: 'img/favicon.ico',
 
-  // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
-    v4: true, // Improve compatibility with the upcoming Docusaurus v4
+    v4: true,
   },
 
-  // Set the production url of your site here
   url: 'https://acathon.github.io',
-  // Set the /<baseUrl>/ pathname under which your site is served
-  // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: '/fastman-cli/',
 
-  // GitHub pages deployment config.
-  // If you aren't using GitHub pages, you don't need these.
-  organizationName: 'acathon', // Usually your GitHub org/user name.
-  projectName: 'fastman-cli', // Usually your repo name.
+  organizationName: 'acathon',
+  projectName: 'fastman-cli',
 
   onBrokenLinks: 'throw',
 
-  // Even if you don't use internationalization, you can use this field to set
-  // useful metadata like html lang. For example, if your site is Chinese, you
-  // may want to replace "en" with "zh-Hans".
   i18n: {
     defaultLocale: 'en',
     locales: ['en'],
@@ -41,10 +30,8 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/acathon/fastman-cli/tree/main/docs/',
+          editUrl: 'https://github.com/acathon/fastman-cli/tree/main/docs/',
+          showLastUpdateTime: true,
         },
         blog: false,
         theme: {
@@ -55,15 +42,31 @@ const config: Config = {
   ],
 
   themeConfig: {
-    // Replace with your project's social card
-    image: 'img/docusaurus-social-card.jpg',
+    image: 'img/fastman-social.png',
+
+    metadata: [
+      { name: 'keywords', content: 'fastapi, cli, python, framework, scaffold, generator' },
+      { name: 'twitter:card', content: 'summary_large_image' },
+    ],
+
     colorMode: {
+      defaultMode: 'light',
+      disableSwitch: false,
       respectPrefersColorScheme: true,
     },
+
+    announcementBar: {
+      id: 'v0.3.0',
+      content: '🎉 <strong>Fastman v0.3.0</strong> is out! Performance improvements and Laravel-style CLI output. <a href="/docs/intro#whats-new">Learn more</a>',
+      backgroundColor: '#0ea5e9',
+      textColor: '#ffffff',
+      isCloseable: true,
+    },
+
     navbar: {
-      title: 'Fastman CLI',
+      title: 'Fastman',
       logo: {
-        alt: 'Fastman CLI Logo',
+        alt: 'Fastman Logo',
         src: 'img/fastman-logo.png',
       },
       items: [
@@ -71,42 +74,61 @@ const config: Config = {
           type: 'docSidebar',
           sidebarId: 'tutorialSidebar',
           position: 'left',
-          label: 'Docs',
+          label: 'Documentation',
+        },
+        {
+          to: '/docs/commands/project',
+          position: 'left',
+          label: 'Commands',
         },
         {
           href: 'https://github.com/acathon/fastman-cli',
-          label: 'GitHub',
           position: 'right',
+          className: 'header-github-link',
+          'aria-label': 'GitHub repository',
         },
       ],
     },
+
     footer: {
       style: 'dark',
       links: [
         {
-          title: 'Docs',
+          title: 'Documentation',
           items: [
-            {
-              label: 'Introduction',
-              to: '/docs/intro',
-            },
+            { label: 'Getting Started', to: '/docs/intro' },
+            { label: 'Architecture', to: '/docs/concepts/architecture' },
+            { label: 'Commands', to: '/docs/commands/project' },
           ],
         },
         {
           title: 'Community',
           items: [
-            {
-              label: 'GitHub',
-              href: 'https://github.com/acathon/fastman-cli',
-            },
+            { label: 'GitHub', href: 'https://github.com/acathon/fastman-cli' },
+            { label: 'Issues', href: 'https://github.com/acathon/fastman-cli/issues' },
+            { label: 'Discussions', href: 'https://github.com/acathon/fastman-cli/discussions' },
+          ],
+        },
+        {
+          title: 'More',
+          items: [
+            { label: 'PyPI', href: 'https://pypi.org/project/fastman/' },
+            { label: 'Changelog', href: 'https://github.com/acathon/fastman-cli/releases' },
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Fastman CLI. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Fastman. Built with Docusaurus.`,
     },
+
     prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
+      additionalLanguages: ['bash', 'python', 'json', 'yaml', 'toml'],
+    },
+
+    tableOfContents: {
+      minHeadingLevel: 2,
+      maxHeadingLevel: 4,
     },
   } satisfies Preset.ThemeConfig,
 };
