@@ -96,7 +96,7 @@ const config: Config = {
         {
           title: 'Documentation',
           items: [
-            { label: 'Getting Started', to: '/docs/' },
+            { label: 'Getting Started', to: '/docs/intro' },
             { label: 'Architecture', to: '/docs/concepts/architecture' },
             { label: 'Commands', to: '/docs/commands/project' },
           ],
