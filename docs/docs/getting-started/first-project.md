@@ -99,6 +99,6 @@ Open `http://localhost:8000/docs` and try the endpoints:
 
 ## Next Steps
 
-- [Add authentication](/concepts/authentication)
-- [Understand the architecture](/concepts/architecture)
-- [Explore all commands](/commands/project)
+- [Add authentication](../concepts/authentication)
+- [Understand the architecture](../concepts/architecture)
+- [Explore all commands](../commands/project)

@@ -51,4 +51,4 @@ def health_check():
 
 ## Next Steps
 
-See the [Production Build](/advanced/production-build) guide for detailed Docker and optimization instructions.
+See the [Production Build](./advanced/production-build) guide for detailed Docker and optimization instructions.

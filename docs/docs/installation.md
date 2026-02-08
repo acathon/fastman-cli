@@ -82,4 +82,4 @@ Now that Fastman is installed, create your first project:
 fastman new my-api
 ```
 
-Continue to [Creating Your First Project →](/getting-started/first-project)
+Continue to [Creating Your First Project →](./getting-started/first-project)
