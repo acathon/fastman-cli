@@ -489,7 +489,7 @@ async def {snake}_endpoint(websocket: WebSocket):
 @register
 class MakeControllerCommand(Command):
     signature = "make:controller {name}"
-    description = "Create a controller class"
+    description = "Create a controller class (Layer pattern)"
 
     def handle(self):
         name = self.validate_name(self.argument(0), "Controller name is required")
@@ -497,9 +497,17 @@ class MakeControllerCommand(Command):
         snake = NameValidator.to_snake_case(name)
         pascal = NameValidator.to_pascal_case(name)
 
+        # Verify project pattern - controllers are for Layer pattern
+        controllers_dir = Path("app/controllers")
+        if not controllers_dir.exists():
+            Output.error("Directory 'app/controllers' not found.")
+            Output.info("The 'make:controller' command is only available for projects using the Layer pattern.")
+            Output.info("For Feature pattern, use 'make:feature' instead.")
+            Output.info("For API pattern, use 'make:api' instead.")
+            return
+
         # Determine path
-        path = self.context.project_root / "app" / "http" / "controllers" / f"{snake}.py"
-        PathManager.ensure_dir(path.parent)
+        path = self.context.project_root / "app" / "controllers" / f"{snake}.py"
 
         content = f'''"""
 {pascal} Controller

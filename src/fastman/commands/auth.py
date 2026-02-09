@@ -360,6 +360,14 @@ async def get_me(current_user: schemas.UserRead = Depends(get_current_active_use
         """Install Keycloak authentication"""
         Output.info("Installing Keycloak authentication...")
 
+        # Verify project structure exists
+        core_dir = Path("app/core")
+        if not core_dir.exists():
+            Output.error("Directory 'app/core' not found.")
+            Output.info("Make sure you are in a Fastman project directory.")
+            Output.info("Run 'fastman new <project-name>' to create a new project first.")
+            return
+
         packages = ["fastapi-keycloak-middleware"]
         if not PackageManager.install(packages):
             Output.error("Failed to install dependencies")
@@ -395,7 +403,9 @@ def init_keycloak(app: FastAPI):
 
         # Write keycloak.py
         keycloak_path = Path("app/core/keycloak.py")
-        PathManager.write_file(keycloak_path, keycloak_config)
+        if not PathManager.write_file(keycloak_path, keycloak_config):
+            Output.error(f"Failed to create {keycloak_path}")
+            return
 
         # Update config.py to include Keycloak settings
         config_path = Path("app/core/config.py")
