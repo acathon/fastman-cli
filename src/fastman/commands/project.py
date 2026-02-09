@@ -15,7 +15,7 @@ from ..templates import Template, Templates
 
 @register
 class NewCommand(Command):
-    signature = "new {name} {--minimal} {--pattern=feature} {--package=uv} {--database=sqlite}"
+    signature = "new {name} {--minimal} {--pattern=feature} {--package=uv} {--database=sqlite} {--graphql}"
     description = "Create a new FastAPI project"
 
     def handle(self):
@@ -28,6 +28,7 @@ class NewCommand(Command):
         pattern = self.option("pattern", "feature").lower()
         package_manager = self.option("package", "uv").lower()
         database = self.option("database", "sqlite").lower()
+        graphql = self.flag("graphql")
 
         # Validate pattern
         valid_patterns = ["feature", "api", "layer"]
@@ -54,7 +55,7 @@ class NewCommand(Command):
             return
 
         Output.banner(__version__)
-        Output.section("Creating Project", f"{name} ({pattern} pattern with {database})")
+        Output.section("Creating Project", f"{name} ({pattern} pattern with {database}{' + GraphQL' if graphql else ''})")
         
         Output.task("Setting up project structure", status="in progress", status_style="yellow")
         if pattern == "feature":
@@ -66,20 +67,9 @@ class NewCommand(Command):
                 "tests",
                 "logs"
             ]
-
             # Add alembic only for SQL databases
             if database != "firebase":
                 dirs.append("alembic/versions")
-
-            if not minimal:
-                dirs.extend([
-                    "app/services",
-                    "app/repositories",
-                    "app/middleware",
-                    "app/dependencies",
-                    "database/seeders",
-                    "database/factories"
-                ])
 
         elif pattern == "api":
             dirs = [
@@ -137,10 +127,13 @@ class NewCommand(Command):
             f"app/core/{database_filename}": database_template,
             "app/core/logging.py": Templates.LOGGING,
             "app/core/discovery.py": Templates.DISCOVERY,
-            "app/core/graphql.py": Templates.GRAPHQL,
             ".env": self._get_database_env_template(database, name, secret_key),
             ".gitignore": Templates.GITIGNORE,
         }
+
+        # Add GraphQL file only if requested
+        if graphql:
+            files["app/core/graphql.py"] = Templates.GRAPHQL
 
         # Add alembic files only for SQL databases
         if database != "firebase":
@@ -226,7 +219,7 @@ fastman list
 ## Documentation
 
 - API Documentation: http://localhost:8000/docs
-- GraphQL Playground: http://localhost:8000/graphql
+{"- GraphQL Playground: http://localhost:8000/graphql" if graphql else ""}
 
 Generated with ❤️ by Fastman
 """
@@ -238,7 +231,7 @@ Generated with ❤️ by Fastman
 
         try:
             # Get database-specific dependencies
-            dependencies = self._get_database_dependencies(database, minimal)
+            dependencies = self._get_database_dependencies(database, graphql, minimal)
 
             # Initialize based on package manager
             self._initialize_package_manager(package_manager, dependencies, name)
@@ -483,7 +476,7 @@ FIREBASE_CREDENTIALS_PATH=./firebase-credentials.json
 
         return base_env + database_configs.get(database, database_configs["sqlite"])
 
-    def _get_database_dependencies(self, database: str, minimal: bool) -> list:
+    def _get_database_dependencies(self, database: str, graphql: bool = False, minimal: bool = False) -> list:
         """Get database-specific dependencies"""
 
         # Base dependencies (always included)
@@ -495,26 +488,30 @@ FIREBASE_CREDENTIALS_PATH=./firebase-credentials.json
             "pydantic[email]"
         ]
 
-        # Database-specific dependencies
-        if database == "sqlite":
-            base_deps.extend(["sqlalchemy", "alembic"])
-        elif database == "postgresql":
-            base_deps.extend(["sqlalchemy", "alembic", "psycopg2-binary"])
-        elif database == "mysql":
-            base_deps.extend(["sqlalchemy", "alembic", "pymysql"])
-        elif database == "oracle":
-            base_deps.extend(["sqlalchemy", "alembic", "cx_Oracle"])
-        elif database == "firebase":
-            base_deps.append("firebase-admin")
+        # Database-specific dependencies (unless minimal)
+        if not minimal:
+            if database == "sqlite":
+                base_deps.extend(["sqlalchemy", "alembic"])
+            elif database == "postgresql":
+                base_deps.extend(["sqlalchemy", "alembic", "psycopg2-binary"])
+            elif database == "mysql":
+                base_deps.extend(["sqlalchemy", "alembic", "pymysql"])
+            elif database == "oracle":
+                base_deps.extend(["sqlalchemy", "alembic", "cx_Oracle"])
+            elif database == "firebase":
+                base_deps.append("firebase-admin")
 
-        # Optional dependencies (if not minimal)
+        # Dev dependencies (unless minimal)
         if not minimal:
             base_deps.extend([
-                "strawberry-graphql[fastapi]",
                 "faker",
                 "pytest",
                 "httpx"
             ])
+
+        # Add GraphQL dependency only if requested
+        if graphql:
+            base_deps.append("strawberry-graphql[fastapi]")
 
         return base_deps
 
