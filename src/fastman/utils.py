@@ -38,6 +38,9 @@ class NameValidator:
         if '..' in name or '/' in name or '\\' in name:
             raise ValueError(f"Invalid name '{name}'. Cannot contain path separators")
 
+        if name.startswith('-'):
+            raise ValueError(f"Invalid name '{name}'. Cannot start with a hyphen.")
+
         return name
 
     @staticmethod
