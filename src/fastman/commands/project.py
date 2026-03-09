@@ -17,6 +17,12 @@ from ..templates import Template, Templates
 class NewCommand(Command):
     signature = "new {name} {--minimal} {--pattern=feature} {--package=uv} {--database=sqlite} {--graphql}"
     description = "Create a new FastAPI project"
+    help = """
+Examples:
+  fastman new my_api --pattern=api
+  fastman new my_proj --database=postgresql --graphql
+  fastman new my_feature --pattern=feature
+"""
 
     def handle(self):
         name = self.argument(0)
@@ -62,7 +68,6 @@ class NewCommand(Command):
             dirs = [
                 "app/core",
                 "app/features",
-                "app/api",
                 "app/models",
                 "tests",
                 "logs"
@@ -176,7 +181,7 @@ class NewCommand(Command):
         uv_note = "# uv handles venv automatically"
 
         activation_linux = linux_activate if package_manager != "uv" else uv_note
-        activation_windows = windows_activate if package_manager != "uv" else ""
+        activation_windows = windows_activate if package_manager != "uv" else uv_note
 
         readme = f"""# {name}
 
@@ -225,19 +230,8 @@ Generated with ❤️ by Fastman
 """
         PathManager.write_file(project_path / "README.md", readme)
 
-        # Change to project directory for initialization
-        original_dir = os.getcwd()
-        os.chdir(project_path)
-
-        try:
-            # Get database-specific dependencies
-            dependencies = self._get_database_dependencies(database, graphql, minimal)
-
-            # Initialize based on package manager
-            self._initialize_package_manager(package_manager, dependencies, name)
-
-        finally:
-            os.chdir(original_dir)
+        dependencies = self._get_database_dependencies(database, graphql, minimal)
+        self._initialize_package_manager(package_manager, dependencies, name, project_path)
 
         Output.line()
         Output.success(f"Project '{name}' created successfully!", icon=True)
@@ -271,8 +265,7 @@ Generated with ❤️ by Fastman
         """Get structure documentation based on pattern"""
         structures = {
             "feature": """│   ├── features/      # Feature modules (vertical slices)
-│   ├── api/           # Lightweight API endpoints
-│   └── models/        # Database models""",
+│   └── models/        # Shared database models""",
             "api": """│   ├── api/           # API endpoints
 │   ├── schemas/       # Pydantic schemas
 │   └── models/        # Database models""",
@@ -290,13 +283,12 @@ Generated with ❤️ by Fastman
             return ""
         return "├── alembic/           # Database migrations"
 
-    def _initialize_package_manager(self, package_manager: str, dependencies: list, project_name: str):
+    def _initialize_package_manager(self, package_manager: str, dependencies: list, project_name: str, cwd: Path = None):
         """Initialize project with specified package manager"""
-
+        
         Output.section("Initializing Package Manager", f"Using {package_manager}")
         
         if package_manager == "uv":
-            # Check if uv is available
             if not shutil.which("uv"):
                 Output.warn("uv not found. Falling back to requirements.txt")
                 self._create_requirements_txt(dependencies)
@@ -304,19 +296,16 @@ Generated with ❤️ by Fastman
 
             Output.task("Initializing uv project", status="in progress", status_style="yellow")
             try:
-                # Initialize uv project
                 subprocess.run(["uv", "init", "--no-readme", "--no-pin-python"],
-                             check=True, capture_output=True, timeout=60)
+                             check=True, capture_output=True, timeout=60, cwd=cwd)
 
-                # Create virtual environment in .venv
                 Output.task("Creating virtual environment", status="in progress", status_style="yellow")
                 subprocess.run(["uv", "venv", ".venv"],
-                             check=True, capture_output=True, timeout=120)
+                             check=True, capture_output=True, timeout=120, cwd=cwd)
 
-                # Add dependencies
                 Output.task("Installing dependencies", status="in progress", status_style="yellow")
                 subprocess.run(["uv", "add"] + dependencies,
-                             check=True, capture_output=True, timeout=300)
+                             check=True, capture_output=True, timeout=300, cwd=cwd)
 
                 Output.task("Virtual environment created", status="done", status_style="green")
             except subprocess.TimeoutExpired:
@@ -327,7 +316,6 @@ Generated with ❤️ by Fastman
                 self._create_requirements_txt(dependencies)
 
         elif package_manager == "pipenv":
-            # Check if pipenv is available
             if not shutil.which("pipenv"):
                 Output.task("Installing pipenv", status="in progress", status_style="yellow")
                 try:
@@ -342,13 +330,11 @@ Generated with ❤️ by Fastman
 
             Output.task("Initializing pipenv project", status="in progress", status_style="yellow")
             try:
-                # Set environment variable to create venv in project
                 env = os.environ.copy()
                 env["PIPENV_VENV_IN_PROJECT"] = "1"
 
-                # Install dependencies (creates .venv in project)
                 subprocess.run(["pipenv", "install"] + dependencies,
-                             env=env, check=True, capture_output=True, timeout=300)
+                             env=env, check=True, capture_output=True, timeout=300, cwd=cwd)
 
                 Output.task("Virtual environment created", status="done", status_style="green")
             except subprocess.TimeoutExpired:
@@ -359,7 +345,6 @@ Generated with ❤️ by Fastman
                 self._create_requirements_txt(dependencies)
 
         elif package_manager == "poetry":
-            # Check if poetry is available
             if not shutil.which("poetry"):
                 Output.warn("poetry not found. Falling back to requirements.txt")
                 self._create_requirements_txt(dependencies)
@@ -367,23 +352,20 @@ Generated with ❤️ by Fastman
 
             Output.task("Initializing poetry project", status="in progress", status_style="yellow")
             try:
-                # Configure poetry to create venv in project
                 try:
                     subprocess.run(["poetry", "config", "virtualenvs.in-project", "true"],
-                                 capture_output=True, check=True, timeout=30)
+                                 capture_output=True, check=True, timeout=30, cwd=cwd)
                 except subprocess.CalledProcessError as e:
                     Output.warn(f"Could not configure virtualenvs.in-project: {e}")
 
-                # Initialize poetry project
                 subprocess.run(["poetry", "init", "--no-interaction",
                               f"--name={project_name}",
                               "--python=^3.9"],
-                             check=True, capture_output=True, timeout=60)
+                             check=True, capture_output=True, timeout=60, cwd=cwd)
 
-                # Add dependencies
                 Output.task("Installing dependencies", status="in progress", status_style="yellow")
                 subprocess.run(["poetry", "add"] + dependencies,
-                             check=True, capture_output=True, timeout=300)
+                             check=True, capture_output=True, timeout=300, cwd=cwd)
 
                 Output.task("Virtual environment created", status="done", status_style="green")
             except subprocess.TimeoutExpired:
@@ -396,16 +378,13 @@ Generated with ❤️ by Fastman
         elif package_manager == "pip":
             Output.task("Creating virtual environment", status="in progress", status_style="yellow")
             try:
-                # Create virtual environment
-                subprocess.run([sys.executable, "-m", "venv", ".venv"], check=True, timeout=120)
+                subprocess.run([sys.executable, "-m", "venv", ".venv"], check=True, timeout=120, cwd=cwd)
 
-                # Create requirements.txt
                 self._create_requirements_txt(dependencies)
 
-                # Install dependencies
                 Output.task("Installing dependencies", status="in progress", status_style="yellow")
                 pip_path = ".venv/bin/pip" if os.name != "nt" else ".venv\\Scripts\\pip"
-                subprocess.run([pip_path, "install", "-r", "requirements.txt"], check=True, timeout=300)
+                subprocess.run([pip_path, "install", "-r", "requirements.txt"], check=True, timeout=300, cwd=cwd)
 
                 Output.task("Virtual environment created", status="done", status_style="green")
             except subprocess.TimeoutExpired:
@@ -515,10 +494,10 @@ FIREBASE_CREDENTIALS_PATH=./firebase-credentials.json
 
         return base_deps
 
-    def _create_requirements_txt(self, dependencies: list):
+    def _create_requirements_txt(self, dependencies: list, cwd: Path = None):
         """Fallback: create requirements.txt"""
-        req_file = Path("requirements.txt")
-        req_file.write_text("\n".join(dependencies))
+        req_file = (cwd or Path.cwd()) / "requirements.txt"
+        req_file.write_text("\n".join(dependencies) + "\n")
         Output.info("Created requirements.txt")
         Output.info("Run: python -m venv .venv && pip install -r requirements.txt")
 
@@ -534,12 +513,11 @@ class InitCommand(Command):
 
         Output.info("Initializing Fastman...")
 
-        # Create necessary directories
+        # Create necessary directories (feature pattern by default)
         dirs = [
             "app/console/commands",
             "app/core",
             "app/features",
-            "app/api"
         ]
 
         for dir_path in dirs:

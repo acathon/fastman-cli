@@ -55,7 +55,7 @@ logging.basicConfig(
 logger = logging.getLogger('fastman')
 
 # Get terminal width
-TERMINAL_WIDTH = shutil.get_terminal_size().columns or 80
+TERMINAL_WIDTH = max(shutil.get_terminal_size().columns, 80) or 80
 
 
 class Style:
@@ -509,12 +509,13 @@ class Output:
             print(f"{Style.GREEN}Done{Style.RESET}")
     
     @staticmethod
-    def spinner(text: str = "Processing") -> Iterator:
+    @contextmanager
+    def spinner(text: str = "Processing"):
         """
-        Create a spinner animation.
+        Create a spinner animation as a context manager.
         
         Usage:
-            for _ in Output.spinner("Loading"):
+            with Output.spinner("Loading"):
                 do_work()
         """
         if HAS_RICH:

@@ -32,7 +32,9 @@ class RouteListCommand(Command):
         method_filter = self.option("method", "").upper()
 
         cwd_path = str(Path.cwd())
-        sys.path.insert(0, cwd_path)
+        path_added = cwd_path not in sys.path
+        if path_added:
+            sys.path.insert(0, cwd_path)
 
         routes = []
 
@@ -53,7 +55,7 @@ class RouteListCommand(Command):
                 return
         finally:
             # Clean up sys.path to avoid pollution
-            if cwd_path in sys.path:
+            if path_added and cwd_path in sys.path:
                 sys.path.remove(cwd_path)
 
         # Filter and display routes
@@ -642,8 +644,8 @@ class InspectCommand(Command):
                 Output.echo(f"\n  Endpoints:", Style.BOLD)
                 for route in router.routes:
                     methods = ",".join(getattr(route, "methods", []))
-                    path = getattr(route, "path", "")
-                    Output.echo(f"    {methods.ljust(10)} {path}", Style.CYAN)
+                    route_path = getattr(route, "path", "")
+                    Output.echo(f"    {methods.ljust(10)} {route_path}", Style.CYAN)
         except (ImportError, AttributeError):
             logger.debug(f"Could not inspect router for feature: {name}")
 
@@ -957,7 +959,6 @@ class ActivateCommand(Command):
         venv_paths = [
             cwd / ".venv",
             cwd / "venv",
-            cwd / ".env",
             cwd / "env",
         ]
         
@@ -970,7 +971,7 @@ class ActivateCommand(Command):
         
         if not venv_path:
             Output.error("No virtual environment found")
-            Output.info("Expected one of: .venv, venv, .env, env")
+            Output.info("Expected one of: .venv, venv, env")
             Output.info("Run 'fastman new' to create a new project with venv")
             return
         

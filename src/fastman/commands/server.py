@@ -8,22 +8,20 @@ from ..utils import PackageManager
 
 @register
 class ServeCommand(Command):
-    signature = "serve {--host=127.0.0.1} {--port=8000} {--reload} {--no-reload}"
+    signature = "serve {--host=127.0.0.1} {--port=8000} {--no-reload}"
     description = "Start development server"
+    help = """
+Examples:
+  fastman serve
+  fastman serve --port=8080
+  fastman serve --host=0.0.0.0 --no-reload
+"""
 
     def handle(self):
         host = self.option("host", "127.0.0.1")
         port = self.option("port", "8000")
 
-        # Reload is enabled by default unless --no-reload is specified
-        reload_flag = self.flag("reload")
-        no_reload_flag = self.flag("no-reload")
-
-        reload = True
-        if no_reload_flag:
-            reload = False
-        elif reload_flag:
-            reload = True
+        reload = not self.flag("no-reload")
 
         cmd = PackageManager.get_run_prefix() + [
             "uvicorn",

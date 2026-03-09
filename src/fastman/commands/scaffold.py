@@ -11,6 +11,11 @@ from ..utils import NameValidator, PathManager
 class MakeFeatureCommand(Command):
     signature = "make:feature {name} {--crud}"
     description = "Create a vertical slice feature with router, service, model, and schema"
+    help = """
+Examples:
+  fastman make:feature users
+  fastman make:feature orders --crud
+"""
 
     def handle(self):
         name = self.validate_name(self.argument(0), "Feature name is required")
@@ -266,10 +271,6 @@ def list_{snake}s(db: Session = Depends(get_db)):
                 (f"DELETE /{snake}s/{{id}}", "Delete item"),
             ]
             Output.listing(endpoints)
-            Output.echo(f"  GET    /{snake}s/{{id}}  - Get by ID", Style.GREEN)
-            Output.echo(f"  POST   /{snake}s       - Create", Style.GREEN)
-            Output.echo(f"  PUT    /{snake}s/{{id}}  - Update", Style.GREEN)
-            Output.echo(f"  DELETE /{snake}s/{{id}}  - Delete", Style.GREEN)
 
 
 @register
@@ -401,6 +402,7 @@ class MakeWebSocketCommand(Command):
 
         # Manager
         manager_content = f'''"""WebSocket connection manager for {pascal}"""
+import asyncio
 from fastapi import WebSocket
 from typing import List
 import logging
@@ -413,16 +415,20 @@ class {pascal}ConnectionManager:
 
     def __init__(self):
         self.active_connections: List[WebSocket] = []
+        self._lock = asyncio.Lock()
 
     async def connect(self, websocket: WebSocket):
         """Accept and register new connection"""
         await websocket.accept()
-        self.active_connections.append(websocket)
+        async with self._lock:
+            self.active_connections.append(websocket)
         logger.info(f"New connection. Total: {{len(self.active_connections)}}")
 
-    def disconnect(self, websocket: WebSocket):
+    async def disconnect(self, websocket: WebSocket):
         """Remove connection"""
-        self.active_connections.remove(websocket)
+        async with self._lock:
+            if websocket in self.active_connections:
+                self.active_connections.remove(websocket)
         logger.info(f"Connection closed. Total: {{len(self.active_connections)}}")
 
     async def send_personal(self, message: str, websocket: WebSocket):
@@ -431,7 +437,9 @@ class {pascal}ConnectionManager:
 
     async def broadcast(self, message: str):
         """Broadcast message to all connections"""
-        for connection in self.active_connections:
+        async with self._lock:
+            connections = list(self.active_connections)
+        for connection in connections:
             try:
                 await connection.send_text(message)
             except Exception as e:
@@ -463,20 +471,20 @@ async def {snake}_endpoint(websocket: WebSocket):
             # Receive message from client
             data = await websocket.receive_text()
 
-            logger.info(f"Received: {{data}}")
+            logger.info(f"Received: {data}")
 
             # Echo back to sender
-            await manager.send_personal(f"Echo: {{data}}", websocket)
+            await manager.send_personal(f"Echo: {data}", websocket)
 
             # Broadcast to all
-            await manager.broadcast(f"Broadcast: {{data}}")
+            await manager.broadcast(f"Broadcast: {data}")
 
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        await manager.disconnect(websocket)
         await manager.broadcast(f"Client disconnected")
     except Exception as e:
-        logger.error(f"WebSocket error: {{e}}")
-        manager.disconnect(websocket)
+        logger.error(f"WebSocket error: {e}")
+        await manager.disconnect(websocket)
 '''
 
         PathManager.write_file(base / "manager.py", manager_content)
@@ -520,7 +528,7 @@ class {pascal}Controller:
     """
 
     def index(self, request: Request):
-        return {{"message": "Hello from {pascal}Controller"}}
+        return f'{{"message": "Hello from {pascal}Controller"}}'
 '''
 
         if PathManager.write_file(path, content):
@@ -696,7 +704,7 @@ class {pascal}Middleware(BaseHTTPMiddleware):
         """
         # Before request
         start_time = time.time()
-        logger.info(f"{{request.method}} {{request.url.path}}")
+        logger.info(f"{request.method} {request.url.path}")
 
         # Process request
         response = await call_next(request)
@@ -704,7 +712,7 @@ class {pascal}Middleware(BaseHTTPMiddleware):
         # After request
         process_time = time.time() - start_time
         response.headers["X-Process-Time"] = str(process_time)
-        logger.info(f"Completed in {{process_time:.4f}}s")
+        logger.info(f"Completed in {process_time:.4f}s")
 
         return response
 '''
@@ -753,8 +761,8 @@ async def get_{snake}() -> str:
     """
     try:
         # TODO: Implement dependency logic
-        logger.info("Resolving {snake} dependency")
-        return "{snake}_value"
+        logger.info(f"Resolving {snake} dependency")
+        return f"{snake}_value"
     except Exception as e:
         logger.error(f"Failed to resolve {snake}: {{e}}")
         raise HTTPException(
@@ -771,7 +779,7 @@ class {pascal}Dependency:
 
     async def __call__(self) -> str:
         """Execute dependency"""
-        logger.info(f"{pascal}Dependency called with param={{self.param}}")
+        logger.info(f"{pascal}Dependency called with param={self.param}")
         # TODO: Implement logic
         return "result"
 '''
@@ -885,7 +893,7 @@ class {pascal}Seeder:
         Args:
             db: Database session
         """
-        logger.info("Running {pascal}Seeder...")
+        logger.info(f"Running {pascal}Seeder...")
 
         # TODO: Implement seeding logic
         # Example:
@@ -900,7 +908,7 @@ class {pascal}Seeder:
         #
         # db.commit()
 
-        logger.info("{pascal}Seeder completed")
+        logger.info(f"{pascal}Seeder completed")
 '''
 
         PathManager.write_file(path, content)
@@ -1161,11 +1169,11 @@ class {pascal}Command(Command):
         """Execute the command"""
         option = self.option("option", "default")
 
-        Output.info(f"Running {snake} command with option={{option}}")
+        Output.info(f"Running {snake} command with option={option}")
 
         # TODO: Implement command logic
 
-        Output.success("{pascal} command completed!")
+        Output.success(f"{pascal} command completed!")
 '''
 
         PathManager.write_file(path, content)

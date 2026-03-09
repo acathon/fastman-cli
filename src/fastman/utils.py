@@ -181,34 +181,29 @@ class PackageManager:
                 req_file = Path("requirements.txt")
 
                 existing_bases = set()
-                existing_lines = []
+                existing_content = ""
 
                 if req_file.exists():
-                    existing_lines = req_file.read_text().splitlines()
-                    for line in existing_lines:
+                    existing_content = req_file.read_text()
+                    for line in existing_content.splitlines():
                         line = line.strip()
                         if not line or line.startswith("#"):
                             continue
-                        # Parse base name (very basic parsing)
                         base_name = re.split(r'[=<>\[]', line)[0].strip().lower()
                         existing_bases.add(base_name)
 
-                # If file doesn't exist, we'll create it.
-                # If it exists, we append.
-                mode = "a" if req_file.exists() else "w"
-
-                with req_file.open(mode) as f:
-                    # If creating new file, add header comments if desired, or nothing.
+                with req_file.open("a") as f:
                     for pkg in packages:
-                        # Normalize input package
                         pkg_base = re.split(r'[=<>\[]', pkg)[0].strip().lower()
 
                         if pkg_base not in existing_bases:
-                            prefix = "\n" if existing_lines or mode == "a" else ""
-                            f.write(f"{prefix}{pkg}\n")
+                            # Ensure the file ends with a newline before appending
+                            if existing_content and not existing_content.endswith("\n"):
+                                f.write("\n")
+                                existing_content += "\n"
+                            f.write(f"{pkg}\n")
                             existing_bases.add(pkg_base)
-                            # Ensure subsequent writes have newlines
-                            existing_lines.append(pkg)
+                            existing_content += pkg + "\n"
 
             return True
         except subprocess.CalledProcessError as e:

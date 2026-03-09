@@ -33,7 +33,9 @@ class CLI:
         if not commands_path.exists():
             return
 
-        sys.path.insert(0, str(Path.cwd()))
+        cwd = str(Path.cwd())
+        if cwd not in sys.path:
+            sys.path.insert(0, cwd)
 
         for file_path in commands_path.glob("*.py"):
             if file_path.name.startswith("_"):
@@ -66,7 +68,9 @@ class CLI:
 
             try:
                 command = command_class(command_args, self.context)
-                command.handle()
+                # Skip handle() if --help/-h was shown
+                if not getattr(command, '_help_shown', False):
+                    command.handle()
             except ValueError as e:
                 Output.error(str(e))
                 sys.exit(1)

@@ -10,6 +10,11 @@ from ..utils import PackageManager, PathManager
 class InstallAuthCommand(Command):
     signature = "install:auth {--type=jwt} {--provider=}"
     description = "Install authentication scaffolding (jwt, oauth, keycloak)"
+    help = """
+Examples:
+  fastman install:auth
+  fastman install:auth --type=jwt
+"""
 
     def handle(self):
         auth_type = self.option("type", "jwt").lower()

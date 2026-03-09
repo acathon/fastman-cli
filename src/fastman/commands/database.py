@@ -68,6 +68,11 @@ class DatabaseMigrateCommand(Command):
 class MigrateRollbackCommand(Command):
     signature = "migrate:rollback {--steps=1}"
     description = "Rollback database migrations"
+    help = """
+Examples:
+  fastman migrate:rollback
+  fastman migrate:rollback --steps=3
+"""
 
     def handle(self):
         steps = self.option("steps", "1")
@@ -136,12 +141,19 @@ class MigrateStatusCommand(Command):
 class DatabaseSeedCommand(Command):
     signature = "database:seed {--class=}"
     description = "Run database seeders"
+    help = """
+Examples:
+  fastman database:seed
+  fastman database:seed --class=UserSeeder
+"""
 
     def handle(self):
         seeder_class = self.option("class")
 
         cwd_path = str(Path.cwd())
-        sys.path.insert(0, cwd_path)
+        path_added = cwd_path not in sys.path
+        if path_added:
+            sys.path.insert(0, cwd_path)
 
         try:
             from app.core.database import SessionLocal
@@ -200,6 +212,5 @@ class DatabaseSeedCommand(Command):
             Output.error(f"An unexpected error occurred during seeding: {e}")
             logger.exception(e)
         finally:
-            # Clean up sys.path to avoid pollution
-            if cwd_path in sys.path:
+            if path_added and cwd_path in sys.path:
                 sys.path.remove(cwd_path)
