@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fastman"
-version = "0.2.6"
+version = "0.3.0"
 description = "Fastman CLI for FastAPI that makes building APIs a breeze"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -42,7 +42,11 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
-dependencies = []
+dependencies = [
+    "rich>=13.0.0",
+    "pyfiglet>=0.8.0",
+    "ipython>=8.0.0",
+]
 
 [project.optional-dependencies]
 dev = [
@@ -51,16 +55,6 @@ dev = [
     "isort>=5.12.0",
     "mypy>=1.0.0",
     "flake8>=6.0.0",
-]
-rich = [
-    "rich>=13.0.0",
-]
-banner = [
-    "pyfiglet>=0.8.0",
-]
-all = [
-    "rich>=13.0.0",
-    "pyfiglet>=0.8.0",
 ]
 
 [project.urls]

@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-10
+
+### ✨ Added
+
+- **Passkey (WebAuthn) authentication**: `fastman install:auth --type=passkey` scaffolds passwordless auth using biometrics, hardware keys, or device PINs — no passwords or MFA needed
+- **Full OAuth scaffolding**: `fastman install:auth --type=oauth --provider=google` now generates complete OAuth flow (config, models, schemas, service, router) instead of only installing packages. Supports Google, GitHub, and Discord out of the box
+- **IPython is now a required dependency**: `fastman tinker` works immediately after install without needing `pip install ipython` separately
+
+### 🔧 Fixed
+
+- **OAuth was a stub**: Previously only installed `authlib` and `httpx` with no generated code. Now scaffolds a full OAuth feature module with login, callback, user creation, and logout endpoints
+- **Cross-browser CSS compatibility**: Added `-webkit-backdrop-filter` prefixes for Safari, `mask` fallback for Firefox, fixed `min-height: auto` for Firefox in docs site
+- **`install:auth jwt` syntax in docs**: Corrected to `install:auth --type=jwt` across all documentation
+- **whats-new.md**: Updated "Zero-dependency core" highlight (rich/pyfiglet are now required deps)
+
+### 📚 Documentation
+
+- Rewrote authentication concepts page with full coverage of all four auth types (JWT, OAuth, Keycloak, Passkey)
+- Added comparison table of auth types at the top of the auth docs
+- Added passkey frontend integration example (JavaScript WebAuthn API)
+
+---
+
 ## [0.2.6] - 2026-03-10
 
 ### ✨ Added

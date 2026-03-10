@@ -3,7 +3,7 @@
   position: relative;
   padding: 6rem 0;
   overflow: hidden;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  background: linear-gradient(160deg, #020617 0%, #0b1121 40%, #0f172a 100%);
   min-height: 90vh;
   display: flex;
   align-items: center;
@@ -22,21 +22,24 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.375rem 1rem;
-  background: rgba(14, 165, 233, 0.15);
-  border: 1px solid rgba(14, 165, 233, 0.3);
+  background: rgba(37, 99, 235, 0.12);
+  border: 1px solid rgba(37, 99, 235, 0.25);
   border-radius: 9999px;
-  color: #38bdf8;
+  color: #93c5fd;
   font-size: 0.875rem;
   font-weight: 500;
   margin-bottom: 1.5rem;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
 }
 
 .badge span {
-  background: linear-gradient(135deg, #0ea5e9, #06b6d4);
+  background: linear-gradient(135deg, #2563eb, #06b6d4);
   color: white;
   padding: 0.125rem 0.5rem;
   border-radius: 9999px;
   font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .heroTitle {
@@ -49,7 +52,7 @@
 }
 
 .gradient {
-  background: linear-gradient(135deg, #0ea5e9 0%, #22d3ee 50%, #a78bfa 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #22d3ee 50%, #a78bfa 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -77,19 +80,19 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.875rem 2rem;
-  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   color: white;
   font-weight: 600;
   font-size: 1rem;
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
   text-decoration: none;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 14px rgba(14, 165, 233, 0.4);
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .primaryButton:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(14, 165, 233, 0.5);
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.5);
   color: white;
   text-decoration: none;
 }
@@ -104,21 +107,24 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.875rem 2rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: #f8fafc;
   font-weight: 600;
   font-size: 1rem;
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
   text-decoration: none;
-  transition: all 0.2s ease;
+  transition: all 0.25s ease;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
 }
 
 .secondaryButton:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.25);
   color: white;
   text-decoration: none;
+  transform: translateY(-1px);
 }
 
 .githubIcon {
@@ -140,9 +146,9 @@
   right: -10%;
   width: 600px;
   height: 600px;
-  background: radial-gradient(circle, rgba(14, 165, 233, 0.3) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.25) 0%, transparent 70%);
   border-radius: 50%;
-  filter: blur(60px);
+  filter: blur(80px);
   animation: float 8s ease-in-out infinite;
 }
 
@@ -152,9 +158,9 @@
   left: -10%;
   width: 500px;
   height: 500px;
-  background: radial-gradient(circle, rgba(168, 85, 247, 0.25) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, transparent 70%);
   border-radius: 50%;
-  filter: blur(60px);
+  filter: blur(80px);
   animation: float 10s ease-in-out infinite reverse;
 }
 
@@ -165,9 +171,9 @@
   transform: translate(-50%, -50%);
   width: 400px;
   height: 400px;
-  background: radial-gradient(circle, rgba(6, 182, 212, 0.2) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.15) 0%, transparent 70%);
   border-radius: 50%;
-  filter: blur(80px);
+  filter: blur(100px);
   animation: pulse 6s ease-in-out infinite;
 }
 
@@ -233,13 +239,32 @@
   border: 1px solid var(--ifm-color-emphasis-200);
   border-radius: 1rem;
   padding: 2rem;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.featureCard::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 1rem;
+  padding: 1px;
+  background: linear-gradient(135deg, transparent 40%, rgba(37, 99, 235, 0.3) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 .featureCard:hover {
   transform: translateY(-4px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-  border-color: var(--ifm-color-primary);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+}
+
+.featureCard:hover::before {
+  opacity: 1;
 }
 
 .featureIconWrapper {
@@ -315,10 +340,10 @@
 }
 
 .terminal {
-  background: #0f172a;
-  border-radius: 0.75rem;
+  background: #0b1121;
+  border-radius: 1rem;
   overflow: hidden;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
 .terminalHeader {
@@ -326,8 +351,8 @@
   align-items: center;
   gap: 2rem;
   padding: 0.75rem 1rem;
-  background: #1e293b;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: #131b2e;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .terminalDots {
@@ -396,8 +421,17 @@
 /* CTA Section */
 .cta {
   padding: 6rem 0;
-  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 50%, #7c3aed 100%);
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 40%, #7c3aed 100%);
   position: relative;
+  overflow: hidden;
+}
+
+.cta::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.08) 0%, transparent 60%);
+  pointer-events: none;
 }
 
 .ctaContent {
@@ -429,31 +463,34 @@
 .ctaPrimary {
   padding: 0.875rem 2rem;
   background: white;
-  color: #0f172a;
+  color: #1e3a8a;
   font-weight: 600;
   font-size: 1rem;
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
   text-decoration: none;
-  transition: all 0.2s ease;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
 }
 
 .ctaPrimary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-  color: #0f172a;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+  color: #1e3a8a;
   text-decoration: none;
 }
 
 .ctaSecondary {
   padding: 0.875rem 2rem;
-  background: transparent;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
   font-weight: 600;
   font-size: 1rem;
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
   text-decoration: none;
-  transition: all 0.2s ease;
+  transition: all 0.25s ease;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
 }
 
 .ctaSecondary:hover {
@@ -487,7 +524,7 @@
 @media (max-width: 768px) {
   .hero {
     padding: 4rem 0;
-    min-height: auto;
+    min-height: 0;
   }
 
   .heroTitle {

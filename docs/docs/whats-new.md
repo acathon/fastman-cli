@@ -8,6 +8,53 @@ Stay up to date with the latest Fastman releases and features.
 
 ---
 
+## v0.3.0 — March 2026
+
+**Passkey authentication, full OAuth scaffolding, and IPython out of the box**
+
+### Passkey (WebAuthn) Authentication
+
+No passwords, no MFA. Users authenticate with their fingerprint, Face ID, hardware security key, or device PIN.
+
+```bash
+fastman install:auth --type=passkey
+```
+
+Generates a complete authentication module with registration and login flows using the [WebAuthn standard](https://webauthn.io/). After authentication, users receive a JWT session token — same as other auth types.
+
+**Endpoints created:**
+- `POST /auth/passkey/register/options` — Get registration challenge
+- `POST /auth/passkey/register/verify` — Store new passkey
+- `POST /auth/passkey/authenticate/options` — Get login challenge
+- `POST /auth/passkey/authenticate/verify` — Verify & get session token
+- `GET /auth/passkey/me` — Current user info
+- `GET /auth/passkey/credentials` — List registered passkeys
+- `DELETE /auth/passkey/credentials/{id}` — Remove a passkey
+
+### Full OAuth Scaffolding
+
+OAuth is no longer a stub. It now generates a complete feature module with provider-specific configuration:
+
+```bash
+fastman install:auth --type=oauth --provider=google
+fastman install:auth --type=oauth --provider=github
+fastman install:auth --type=oauth --provider=discord
+```
+
+Each provider comes pre-configured with the correct authorize URL, token URL, userinfo endpoint, and scopes. The generated code includes user creation/update on callback, session management, and logout.
+
+### IPython Included by Default
+
+`ipython` is now a required dependency. `fastman tinker` launches an IPython shell immediately — no extra install step needed.
+
+### Other Changes
+
+- Fixed cross-browser CSS issues in docs site (Safari backdrop-filter, Firefox mask)
+- Fixed `install:auth` syntax in all documentation (positional → `--type=` option)
+- Updated authentication docs with comparison table and passkey guide
+
+---
+
 ## v0.2.6 — March 2026
 
 **Virtualenv compatibility, Oracle driver update, and progress bar**
@@ -248,7 +295,7 @@ fastman new my-api --pattern=feature --database=postgresql
 fastman make:feature users --crud
 fastman make:model post
 fastman make:service payment
-fastman install:auth jwt
+fastman install:auth --type=jwt
 ```
 
 ### Database & migrations
@@ -272,7 +319,7 @@ fastman optimize           # Run black + isort + autoflake
 
 ### Highlights
 
-- **Zero-dependency core** — Rich and Pyfiglet are optional
+- **Rich & Pyfiglet included** — Styled output and banners out of the box
 - **Smart package detection** — Auto-detects uv, poetry, pipenv, or pip
 - **5 databases** — SQLite, PostgreSQL, MySQL, Oracle, Firebase
 - **3 architecture patterns** — Feature (vertical slices), API, Layer (MVC-style)

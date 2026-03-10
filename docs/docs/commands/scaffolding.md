@@ -4,13 +4,15 @@ sidebar_position: 2
 
 # Scaffolding Commands
 
-Generate application components quickly with make commands.
+Fastman's `make:*` commands generate boilerplate code for every component type in your application. Each command creates properly structured files with correct imports, type hints, and naming conventions — so you can start writing business logic immediately.
+
+All generated code follows the architecture pattern you chose when creating the project (feature, api, or layer).
 
 ## Features
 
-### make:feature
+### `make:feature`
 
-Create a complete feature module with all components.
+The most powerful scaffolding command. Creates a complete **vertical slice** — a self-contained feature module with a model, Pydantic schemas, service layer, and router. This is the recommended way to add new functionality to a feature-pattern project.
 
 ```bash
 fastman make:feature <name> [--crud]
@@ -43,154 +45,159 @@ app/features/product/
 
 ## Models & Schemas
 
-### make:model
+### `make:model`
+
+Creates a SQLAlchemy model file with standard columns (`id`, `created_at`, `updated_at`) and a configurable table name.
 
 ```bash
 fastman make:model <name> [--table=<table_name>]
 ```
 
-Creates a SQLAlchemy model file.
-
 | Option | Description |
 | --- | --- |
-| `--table` | Override the generated table name (defaults to `<name>s`) |
+| `--table` | Override the auto-generated table name (defaults to the pluralized snake_case name) |
 
-### make:schema
+### `make:schema`
+
+Creates Pydantic schema classes for request validation and response serialization. Generates `Base`, `Create`, `Update`, and `Response` variants.
 
 ```bash
 fastman make:schema <name>
 ```
 
-Creates Pydantic request/response schemas.
-
 ---
 
 ## Services & Logic
 
-### make:service
+### `make:service`
+
+Creates a service class for encapsulating business logic. Services are the recommended layer for operations that involve validation, data transformation, or coordination between multiple models.
 
 ```bash
 fastman make:service <name>
 ```
 
-Creates a service class for business logic.
+### `make:repository`
 
-### make:repository
+Creates a repository class that abstracts database access behind a clean interface. Useful in the layer pattern for separating query logic from business logic.
 
 ```bash
 fastman make:repository <name>
 ```
 
-Creates a repository pattern class for data access.
-
 ---
 
 ## HTTP Components
 
-### make:controller
+### `make:controller`
+
+Creates a controller class for the **layer pattern** only. If you're using the feature pattern, use `make:feature` instead.
 
 ```bash
 fastman make:controller <name>
 ```
 
-Creates a controller class (for layer pattern).
+### `make:middleware`
 
-### make:middleware
+Creates an HTTP middleware class that can intercept requests and responses. Common uses include logging, rate limiting, CORS, and request validation.
 
 ```bash
 fastman make:middleware <name>
 ```
 
-Creates HTTP middleware.
+### `make:dependency`
 
-### make:dependency
+Creates a FastAPI dependency — a reusable injectable function or class. Dependencies are FastAPI's built-in mechanism for shared logic like authentication, database sessions, and pagination.
 
 ```bash
 fastman make:dependency <name>
 ```
 
-Creates a FastAPI dependency.
-
 ---
 
 ## API & WebSocket
 
-### make:api
+### `make:api`
+
+Creates REST or GraphQL API endpoints in the `app/api/` directory. For REST, generates a router with standard CRUD endpoints. For GraphQL, generates a Strawberry schema with queries and mutations.
 
 ```bash
 fastman make:api <name> [--style=rest|graphql]
 ```
 
-Creates REST or GraphQL API endpoints.
-
 | Option | Description | Default |
 | --- | --- | --- |
-| `--style` | API style: `rest` or `graphql` | `rest` |
+| `--style` | API style: `rest` for RESTful endpoints, `graphql` for Strawberry GraphQL | `rest` |
 
-### make:websocket
+### `make:websocket`
+
+Creates a WebSocket feature with a connection manager class and WebSocket router. The generated manager handles connection tracking, personal messages, and broadcasting.
 
 ```bash
 fastman make:websocket <name>
 ```
 
-Creates WebSocket feature with connection manager.
-
 ---
 
 ## Testing
 
-### make:test
+### `make:test`
+
+Creates a test file with pytest fixtures and a basic test structure. The generated file includes an async client fixture and example test cases.
 
 ```bash
 fastman make:test <name>
 ```
 
-Creates a test file with pytest fixtures.
+### `make:factory`
 
-### make:factory
+Creates a model factory that uses [Faker](https://faker.readthedocs.io/) to generate realistic test data. Factories provide `make()` (returns a dict) and `create()` (persists to database) methods.
 
 ```bash
 fastman make:factory <name>
 ```
 
-Creates a model factory for generating test data.
-
 ---
 
 ## Database
 
-### make:migration
+### `make:migration`
+
+Creates an Alembic migration file. The message becomes the migration filename and revision description.
 
 ```bash
 fastman make:migration "<message>"
 ```
 
-Creates an Alembic migration file.
+```bash
+fastman make:migration "create users table"
+fastman make:migration "add email index to posts"
+```
 
-### make:seeder
+### `make:seeder`
+
+Creates a database seeder class for populating your database with initial or test data. Seeders are stored in `database/seeders/`.
 
 ```bash
 fastman make:seeder <name>
 ```
 
-Creates a database seeder for initial/test data.
-
 ---
 
 ## Exceptions & Commands
 
-### make:exception
+### `make:exception`
+
+Creates a custom exception class with a FastAPI exception handler. The handler automatically returns a properly formatted JSON error response.
 
 ```bash
 fastman make:exception <name>
 ```
 
-Creates a custom exception class with handler.
+### `make:command`
 
-### make:command
+Creates a custom CLI command that extends Fastman. Your command is automatically discovered and available via `fastman <your-command>`. See the [Custom Commands](../advanced/custom-commands) guide for details.
 
 ```bash
 fastman make:command <name>
 ```
-
-Creates a custom CLI command.

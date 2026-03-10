@@ -6,47 +6,47 @@ sidebar_position: 1
 
 **The elegant CLI for FastAPI artisans.**
 
-Fastman is a Laravel-inspired command-line tool that streamlines FastAPI development. Generate projects, scaffold features, manage databases, and deploy — all from the terminal.
+Fastman is a Laravel-inspired command-line tool that brings structure, speed, and best practices to FastAPI development. Instead of manually wiring up project scaffolding, database configurations, migrations, and authentication — Fastman handles it all from the terminal so you can focus on building your application logic.
 
 ## 30 seconds to your first API
 
 ```bash
 # 1. Install
-pip install fastman          # or: uv tool install fastman
+pip install fastman
 
-# 2. Create a project
+# 2. Create a project with PostgreSQL
 fastman new my-api --database=postgresql
 
-# 3. Scaffold a feature
+# 3. Navigate into the project and scaffold a feature
 cd my-api
 fastman make:feature users --crud
 
-# 4. Run migrations & start
+# 4. Create a migration, apply it, and start the server
 fastman make:migration "create users table"
 fastman database:migrate
 fastman serve
 ```
 
-Open **http://localhost:8000/docs** — you have a fully documented REST API with CRUD endpoints.
+Open **http://localhost:8000/docs** — you now have a fully documented REST API with CRUD endpoints, Swagger UI, database migrations, and a clean project structure.
 
 ## Why Fastman?
 
-FastAPI gives you incredible performance and flexibility — but every new project means setting up the same boilerplate: architecture decisions, database connections, migration tooling, authentication, and test scaffolding.
+FastAPI gives you incredible performance and flexibility — but every new project means repeating the same setup: choosing an architecture, configuring a database connection, setting up Alembic for migrations, adding authentication, and writing boilerplate for every new feature.
 
-**Fastman handles all of that with one command.** You get opinionated defaults that follow best practices, while everything stays fully customizable.
+**Fastman eliminates that repetitive work.** With a single command you get opinionated defaults that follow production-tested best practices, while every generated file remains fully customizable. There's no lock-in — it's your code from the start.
 
 ## What you get
 
-| | |
+| Command | What it does |
 |---|---|
-| **`fastman new`** | Production-ready project with config, database, migrations, and tests |
-| **`make:feature`** | Full vertical slice — model, schema, service, router — in one command |
-| **`make:model`, `make:service`, ...** | 15+ generators for every component type |
-| **`database:migrate`** | Alembic migrations without touching INI files |
-| **`install:auth jwt`** | Complete JWT auth with register/login/me endpoints |
-| **`serve`** | Dev server with hot reload |
-| **`tinker`** | Interactive shell with database session pre-loaded |
-| **`route:list`** | See all API routes in a formatted table |
+| **`fastman new`** | Production-ready project with configuration, database, migrations, and tests |
+| **`make:feature`** | Complete vertical slice — model, schema, service, and router — in one command |
+| **`make:model`, `make:service`, ...** | 15+ generators for every component type (controllers, middleware, repos, etc.) |
+| **`database:migrate`** | Alembic migrations without touching INI files or configuration |
+| **`install:auth --type=jwt`** | Full JWT auth with `/register`, `/login`, `/me` endpoints and password hashing |
+| **`serve`** | Development server with automatic hot reload |
+| **`tinker`** | Interactive Python shell with your database session pre-loaded |
+| **`route:list`** | View all registered API routes in a formatted table |
 
 ### Supported databases
 
@@ -54,18 +54,21 @@ SQLite · PostgreSQL · MySQL · Oracle · Firebase
 
 ### Supported package managers
 
-uv · poetry · pipenv · pip (auto-detected)
+uv · poetry · pipenv · pip — auto-detected from your project
 
 ### Architecture patterns
 
-**Feature** (vertical slices, recommended) · **API** (resource-grouped) · **Layer** (MVC-style)
+- **Feature** — vertical slices, each feature is self-contained (recommended)
+- **API** — resource-grouped with built-in API versioning
+- **Layer** — traditional MVC-style separation of concerns
 
 ## What's New in v0.2.6
 
 - All commands now work correctly inside virtual environments (`python -m` instead of bare tool calls)
-- Oracle projects use the modern `oracledb` driver
+- Oracle projects use the modern `oracledb` driver instead of deprecated `cx_Oracle`
 - Extra `.env` variables no longer crash the server on startup
-- Project creation shows a real-time progress bar
+- Project creation now shows a real-time progress bar
+- Rich and pyfiglet are now installed automatically as core dependencies
 
 See the full [changelog](./whats-new).
 
@@ -74,12 +77,12 @@ See the full [changelog](./whats-new).
 <div className="row">
   <div className="col col--6">
     <h3>📖 Getting Started</h3>
-    <p>New to Fastman? Start here — install and create your first project in 5 minutes.</p>
+    <p>New to Fastman? Start here — install the CLI and create your first project in under 5 minutes.</p>
     <a href="/fastman-cli/docs/installation">Installation →</a>
   </div>
   <div className="col col--6">
     <h3>🎯 Commands Reference</h3>
-    <p>All 30+ commands with options and examples.</p>
+    <p>Browse all 30+ commands with options, flags, and real-world examples.</p>
     <a href="/fastman-cli/docs/commands/project">View Commands →</a>
   </div>
 </div>

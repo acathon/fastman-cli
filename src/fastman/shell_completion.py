@@ -315,7 +315,7 @@ complete -c fastman -n "__fish_seen_subcommand_from completion" -l install -d "I
 
 $fastmanCommands = @('{commands_list}')
 
-$fastmanCompletions = {{
+$fastmanCompletions = @{{
     'new' = @('--minimal', '--pattern=', '--package=', '--database=', '--graphql', '--help')
     'make:feature' = @('--crud', '--help')
     'make:api' = @('--style=', '--help')
@@ -331,7 +331,7 @@ $fastmanCompletions = {{
     'completion' = @('--install', '--help')
 }}
 
-$fastmanOptionValues = {{
+$fastmanOptionValues = @{{
     '--pattern=' = @('feature', 'api', 'layer')
     '--package=' = @('uv', 'poetry', 'pipenv', 'pip')
     '--database=' = @('sqlite', 'postgresql', 'mysql', 'oracle', 'firebase')

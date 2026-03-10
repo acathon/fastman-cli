@@ -4,45 +4,45 @@ sidebar_position: 1
 
 # Project Commands
 
-Commands for creating and managing FastAPI projects.
+Commands for creating, initializing, serving, and building FastAPI projects.
 
-## new
+## `new`
 
-Create a new FastAPI project with a complete scaffold.
+Creates a brand-new FastAPI project with a complete directory structure, configuration files, database setup, migration tooling, and dependency management — all ready to run.
 
 ```bash
 fastman new <project-name> [options]
 ```
 
-### New Options
+### Options
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `--minimal` | Create a minimal project (skips optional dev dependencies) | — |
-| `--pattern` | Architecture pattern: `feature`, `api`, `layer` | `feature` |
-| `--database` | Database: `sqlite`, `postgresql`, `mysql`, `oracle`, `firebase` | `sqlite` |
-| `--package` | Package manager: `uv`, `poetry`, `pipenv`, `pip` | `uv` |
-| `--graphql` | Include GraphQL support (adds `app/core/graphql.py`) | — |
+| `--pattern` | Architecture pattern: `feature`, `api`, or `layer` | `feature` |
+| `--database` | Database engine: `sqlite`, `postgresql`, `mysql`, `oracle`, `firebase` | `sqlite` |
+| `--package` | Package manager: `uv`, `poetry`, `pipenv`, `pip` | auto-detected |
+| `--minimal` | Skip optional dev dependencies (`faker`, `pytest`, `httpx`) | — |
+| `--graphql` | Include GraphQL support with Strawberry (`app/core/graphql.py`) | — |
 
-### New Examples
+### Examples
 
 ```bash
-# Simple project with defaults
+# Simple project with defaults (feature pattern, SQLite, auto package manager)
 fastman new my-api
 
-# Production-ready with PostgreSQL
+# Production-ready with PostgreSQL and feature architecture
 fastman new my-api --pattern=feature --database=postgresql
 
-# Quick prototype with API pattern
+# Quick prototype with API versioning pattern
 fastman new prototype --pattern=api --database=sqlite
 
-# Firebase project (no Alembic)
+# Firebase project (no SQL, no Alembic migrations)
 fastman new mobile-backend --database=firebase
 
-# Minimal project (smaller dependency set)
+# Minimal project — smaller dependency footprint
 fastman new tiny-api --minimal
 
-# Include GraphQL support
+# Include GraphQL support alongside REST
 fastman new gql-api --graphql
 ```
 
@@ -70,9 +70,9 @@ my-api/
 
 ---
 
-## serve
+## `serve`
 
-Start the development server.
+Starts the FastAPI development server using Uvicorn with hot-reload enabled by default. The server watches for file changes and automatically restarts.
 
 ```bash
 fastman serve [options]
@@ -82,41 +82,48 @@ fastman serve [options]
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `--host` | Host to bind | `127.0.0.1` |
-| `--port` | Port number | `8000` |
-| `--reload` | Enable hot reload (default behavior) | `true` |
-| `--no-reload` | Disable hot reload | — |
+| `--host` | Network interface to bind to | `127.0.0.1` |
+| `--port` | Port number to listen on | `8000` |
+| `--reload` | Explicitly enable hot reload (this is the default behavior) | `true` |
+| `--no-reload` | Disable hot reload (for production-like testing) | — |
 
 ### Serve Examples
 
 ```bash
-# Default (localhost:8000 with reload)
+# Default — localhost:8000 with hot reload
 fastman serve
 
 # Custom port
 fastman serve --port=3000
 
-# Production-like (no reload)
+# Bind to all interfaces (accessible from other machines on the network)
+fastman serve --host=0.0.0.0
+
+# Production-like mode without reload
 fastman serve --host=0.0.0.0 --no-reload
 ```
 
+:::tip
+Under the hood, Fastman runs `python -m uvicorn app.main:app` with the appropriate flags. This ensures it always works inside virtual environments, even when `uvicorn` isn't on your system PATH.
+:::
+
 ---
 
-## init
+## `init`
 
-Initialize Fastman in an existing project.
+Initializes Fastman configuration in an existing FastAPI project. Use this when you have a project that wasn't created with `fastman new` but you want to use Fastman's commands.
 
 ```bash
 fastman init
 ```
 
-Creates configuration files if missing.
+Creates the necessary directory structure (`app/core/`, `app/features/`, `app/console/commands/`) if they don't already exist.
 
 ---
 
-## build
+## `build`
 
-Build the project for production.
+Prepares your project for production deployment. Can run tests, type checking, and optionally build a Docker image.
 
 ```bash
 fastman build [--docker]
@@ -126,14 +133,14 @@ fastman build [--docker]
 
 | Option | Description |
 | --- | --- |
-| `--docker` | Build Docker image |
+| `--docker` | Build a Docker image using the project's Dockerfile |
 
 ### Build Examples
 
 ```bash
-# Standard build
+# Standard build — runs pytest and mypy
 fastman build
 
-# Docker build
+# Build and create a Docker image
 fastman build --docker
 ```

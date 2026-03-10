@@ -471,19 +471,19 @@ async def {snake}_endpoint(websocket: WebSocket):
             # Receive message from client
             data = await websocket.receive_text()
 
-            logger.info(f"Received: {data}")
+            logger.info(f"Received: {{data}}")
 
             # Echo back to sender
-            await manager.send_personal(f"Echo: {data}", websocket)
+            await manager.send_personal(f"Echo: {{data}}", websocket)
 
             # Broadcast to all
-            await manager.broadcast(f"Broadcast: {data}")
+            await manager.broadcast(f"Broadcast: {{data}}")
 
     except WebSocketDisconnect:
         await manager.disconnect(websocket)
         await manager.broadcast(f"Client disconnected")
     except Exception as e:
-        logger.error(f"WebSocket error: {e}")
+        logger.error(f"WebSocket error: {{e}}")
         await manager.disconnect(websocket)
 '''
 

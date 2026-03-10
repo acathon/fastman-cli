@@ -540,7 +540,7 @@ class VersionCommand(Command):
         Output.echo(f"Fastman v{__version__}", Style.BOLD)
         Output.info("The Complete FastAPI CLI Framework")
         Output.echo("License: MIT", Style.CYAN)
-        Output.echo("Repository: https://github.com/fastman/fastman", Style.CYAN)
+        Output.echo("Repository: https://github.com/acathon/fastman-cli", Style.CYAN)
 
         # Show Python version
         py_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
@@ -561,7 +561,7 @@ class DocsCommand(Command):
 
         if should_open:
             import webbrowser
-            url = "https://fastman.dev/docs"
+            url = "https://acathon.github.io/fastman-cli/"
             Output.info(f"Opening {url}...")
             webbrowser.open(url)
         else:

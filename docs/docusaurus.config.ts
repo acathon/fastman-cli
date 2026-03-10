@@ -56,9 +56,9 @@ const config: Config = {
     },
 
     announcementBar: {
-      id: 'v0.2.6',
-      content: '🎉 <strong>Fastman v0.2.6</strong> is out! Better Oracle/PostgreSQL/MySQL config support. <a href="/docs/whats-new">Learn more</a>',
-      backgroundColor: '#0ea5e9',
+      id: 'v0.3.0',
+      content: '🎉 <strong>Fastman v0.3.0</strong> is out! Passkey auth, full OAuth scaffolding, and IPython included. <a href="/fastman-cli/docs/whats-new">Learn more</a>',
+      backgroundColor: '#2563eb',
       textColor: '#ffffff',
       isCloseable: true,
     },

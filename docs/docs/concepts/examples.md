@@ -25,7 +25,7 @@ cd ecommerce-api
 fastman make:feature product --crud
 fastman make:feature order --crud
 fastman make:feature user --crud
-fastman install:auth jwt
+fastman install:auth --type=jwt
 ```
 
 ### Project Structure
