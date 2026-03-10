@@ -13,7 +13,7 @@ Fastman uses SQLAlchemy for the ORM and Alembic for migrations.
 | SQLite | `sqlite:///./app.db` |
 | PostgreSQL | `postgresql://user:pass@host:5432/db` |
 | MySQL | `mysql+pymysql://user:pass@host:3306/db` |
-| Oracle | `oracle+cx_oracle://user:pass@host:1521/db` |
+| Oracle | `oracle+oracledb://user:pass@host:1521/db` |
 | Firebase | Custom integration (no Alembic) |
 
 ## Configuration

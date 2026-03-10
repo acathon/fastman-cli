@@ -155,9 +155,12 @@ class PackageManager:
         if (cwd / "Pipfile").exists():
             return ("pipenv", ["pipenv", "run"])
 
-        # Check for uv binary and pyproject.toml but ONLY if no other lockfiles exist
-        # This prevents false positives where uv is installed but not used for this project
-        if (shutil.which("uv") and (cwd / "pyproject.toml").exists()):
+        # Look for legacy pip projects
+        if (cwd / "requirements.txt").exists() and not (cwd / "pyproject.toml").exists():
+            return ("pip", [])
+
+        # Default to uv if it's installed on the system
+        if shutil.which("uv"):
             return ("uv", ["uv", "run"])
 
         return ("pip", [])

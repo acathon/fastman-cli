@@ -9,7 +9,7 @@
 [![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Code style](https://img.shields.io/badge/code%20style-black-black)](https://github.com/psf/black)
-[![Version](https://img.shields.io/badge/version-0.2.0-orange.svg)](https://github.com/acathon/fastman-cli)
+[![Version](https://img.shields.io/badge/version-0.2.6-orange.svg)](https://github.com/acathon/fastman-cli)
 
 **Laravel-inspired CLI for FastAPI. Eliminate boilerplate. Ship faster.**
 

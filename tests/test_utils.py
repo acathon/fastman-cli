@@ -117,7 +117,9 @@ class TestPackageManager:
         assert manager == "uv"
 
     @patch("pathlib.Path.cwd")
-    def test_detect_pip(self, mock_cwd):
+    @patch("shutil.which")
+    def test_detect_pip(self, mock_which, mock_cwd):
+        mock_which.return_value = None  # uv not installed on the system
         mock_path = MagicMock()
         mock_cwd.return_value = mock_path
 

@@ -24,6 +24,8 @@ Examples:
         reload = not self.flag("no-reload")
 
         cmd = PackageManager.get_run_prefix() + [
+            "python",
+            "-m",
             "uvicorn",
             "app.main:app",
             "--host", host,

@@ -751,18 +751,18 @@ class OptimizeCommand(Command):
             # Format with black
             if shutil.which("black"):
                 Output.info("Formatting code with black...")
-                subprocess.run(["black", "app/", "tests/"], capture_output=True, timeout=120)
+                subprocess.run(["python", "-m", "black", "app/", "tests/"], capture_output=True, timeout=120)
 
             # Sort imports
             if shutil.which("isort"):
                 Output.info("Sorting imports with isort...")
-                subprocess.run(["isort", "app/", "tests/"], capture_output=True, timeout=120)
+                subprocess.run(["python", "-m", "isort", "app/", "tests/"], capture_output=True, timeout=120)
 
             # Remove unused imports
             if shutil.which("autoflake"):
                 Output.info("Removing unused imports...")
                 subprocess.run([
-                    "autoflake",
+                    "python", "-m", "autoflake",
                     "--remove-all-unused-imports",
                     "--recursive",
                     "--in-place",
@@ -807,7 +807,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Run migrations and start server
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "python -m alembic upgrade head && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"]
 '''
             PathManager.write_file(dockerfile, content)
             Output.success("Dockerfile created")
@@ -831,7 +831,7 @@ CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --
         # Run tests
         if Path("tests").exists():
             Output.info("Running tests...")
-            result = subprocess.run(["pytest", "tests/"], capture_output=True)
+            result = subprocess.run(["python", "-m", "pytest", "tests/"], capture_output=True)
             if result.returncode != 0:
                 Output.error("Tests failed")
                 return
@@ -839,7 +839,7 @@ CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --
         # Check types (if mypy available)
         if shutil.which("mypy"):
             Output.info("Checking types...")
-            subprocess.run(["mypy", "app/"], capture_output=True)
+            subprocess.run(["python", "-m", "mypy", "app/"], capture_output=True)
 
         Output.success("Build complete!")
 

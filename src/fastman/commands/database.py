@@ -31,7 +31,7 @@ class MakeMigrationCommand(Command):
             sanitized_message = "update"
 
         cmd = PackageManager.get_run_prefix() + [
-            "alembic", "revision", "--autogenerate", "-m", sanitized_message
+            "python", "-m", "alembic", "revision", "--autogenerate", "-m", sanitized_message
         ]
 
         try:
@@ -51,7 +51,7 @@ class DatabaseMigrateCommand(Command):
     description = "Run database migrations"
 
     def handle(self):
-        cmd = PackageManager.get_run_prefix() + ["alembic", "upgrade", "head"]
+        cmd = PackageManager.get_run_prefix() + ["python", "-m", "alembic", "upgrade", "head"]
 
         Output.info("Running migrations...")
         try:
@@ -89,7 +89,7 @@ Examples:
             Output.info("Cancelled")
             return
 
-        cmd = PackageManager.get_run_prefix() + ["alembic", "downgrade", f"-{steps_int}"]
+        cmd = PackageManager.get_run_prefix() + ["python", "-m", "alembic", "downgrade", f"-{steps_int}"]
 
         try:
             result = subprocess.run(cmd)
@@ -111,7 +111,7 @@ class MigrateResetCommand(Command):
             Output.info("Cancelled")
             return
 
-        cmd = PackageManager.get_run_prefix() + ["alembic", "downgrade", "base"]
+        cmd = PackageManager.get_run_prefix() + ["python", "-m", "alembic", "downgrade", "base"]
 
         try:
             result = subprocess.run(cmd)
@@ -129,7 +129,7 @@ class MigrateStatusCommand(Command):
     description = "Show migration status"
 
     def handle(self):
-        cmd = PackageManager.get_run_prefix() + ["alembic", "current"]
+        cmd = PackageManager.get_run_prefix() + ["python", "-m", "alembic", "current"]
 
         try:
             subprocess.run(cmd)

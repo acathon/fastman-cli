@@ -255,6 +255,38 @@ class Output:
             print(f"  → {title} ... [{status}]")
     
     @staticmethod
+    def start_progress(description: str) -> Tuple[Optional["Progress"], Optional[int]]:
+        """
+        Starts and returns a rich progress bar.
+        
+        Returns:
+            Tuple of (Progress instance, task ID) or (None, None) if rich is unavailable
+        """
+        if HAS_RICH and console:
+            from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+            
+            progress = Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(complete_style="green", finished_style="green"),
+                TaskProgressColumn(),
+                console=console,
+                transient=False  # Keep it on screen when done
+            )
+            progress.start()
+            task_id = progress.add_task(f"[cyan]{description}[/cyan]", total=100)
+            return progress, task_id
+        else:
+            print(f"  → {description} ... [started]")
+            return None, None
+            
+    @staticmethod
+    def stop_progress(progress: Optional["Progress"]):
+        """Stop the progress bar explicitly."""
+        if progress:
+            progress.stop()
+    
+    @staticmethod
     def section(title: str, description: str = ""):
         """
         Display a section header.
@@ -348,7 +380,11 @@ class Output:
                     continue
             
             if banner_text is None:
-                banner_text = pyfiglet.figlet_format("Fastman")
+                try:
+                    banner_text = pyfiglet.figlet_format("Fastman")
+                except Exception:
+                    # Fallback if font is missing or corrupt
+                    banner_text = "Fastman"
         else:
             # Clean ASCII banner (Laravel-style)
             banner_text = "Fastman"

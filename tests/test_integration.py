@@ -135,7 +135,7 @@ class TestProjectCreation:
             elif db == "mysql":
                 assert "mysql+pymysql://" in env_content, f"MySQL should have mysql URL"
             elif db == "oracle":
-                assert "oracle+cx_oracle://" in env_content, f"Oracle should have oracle URL"
+                assert "oracle+oracledb://" in env_content, f"Oracle should have oracle URL"
     
     def test_new_project_with_firebase_no_alembic(self, temp_dir: Path, cli: CLI):
         """Test that Firebase projects don't have alembic."""

@@ -58,12 +58,14 @@ Examples:
 
         if project_path.exists():
             Output.error(f"Directory '{name}' already exists")
-            return
+            sys.exit(1)
 
         Output.banner(__version__)
         Output.section("Creating Project", f"{name} ({pattern} pattern with {database}{' + GraphQL' if graphql else ''})")
         
-        Output.task("Setting up project structure", status="in progress", status_style="yellow")
+        progress, task_id = Output.start_progress(f"Scaffolding {name}...")
+        if progress: progress.update(task_id, description="Setting up project directories...", advance=10)
+        
         if pattern == "feature":
             dirs = [
                 "app/core",
@@ -109,7 +111,7 @@ Examples:
 
         for dir_path in dirs:
             PathManager.ensure_dir(project_path / dir_path)
-            Output.directory_created(dir_path)
+
 
         # Generate secret key
         secret_key = secrets.token_urlsafe(32)
@@ -161,12 +163,12 @@ Examples:
 }'''
             files["firebase-credentials.json.example"] = firebase_creds_example
 
-        Output.line()
+        if progress: progress.update(task_id, description="Generating core templates...", advance=20)
         for file_path, template in files.items():
             full_path = project_path / file_path
             content = Template.render(template, ctx)
             PathManager.write_file(full_path, content)
-            Output.file_created(file_path)
+
 
         # Create README
         pattern_desc = {
@@ -231,7 +233,9 @@ Generated with ❤️ by Fastman
         PathManager.write_file(project_path / "README.md", readme)
 
         dependencies = self._get_database_dependencies(database, graphql, minimal)
-        self._initialize_package_manager(package_manager, dependencies, name, project_path)
+        self._initialize_package_manager(package_manager, dependencies, name, project_path, progress, task_id)
+
+        Output.stop_progress(progress)
 
         Output.line()
         Output.success(f"Project '{name}' created successfully!", icon=True)
@@ -283,41 +287,37 @@ Generated with ❤️ by Fastman
             return ""
         return "├── alembic/           # Database migrations"
 
-    def _initialize_package_manager(self, package_manager: str, dependencies: list, project_name: str, cwd: Path = None):
+    def _initialize_package_manager(self, package_manager: str, dependencies: list, project_name: str, cwd: Path = None, progress=None, task_id=None):
         """Initialize project with specified package manager"""
         
-        Output.section("Initializing Package Manager", f"Using {package_manager}")
+        if progress: progress.update(task_id, description=f"Initializing {package_manager}...", advance=10)
         
         if package_manager == "uv":
             if not shutil.which("uv"):
                 Output.warn("uv not found. Falling back to requirements.txt")
-                self._create_requirements_txt(dependencies)
+                self._create_requirements_txt(dependencies, cwd=cwd)
                 return
 
-            Output.task("Initializing uv project", status="in progress", status_style="yellow")
             try:
                 subprocess.run(["uv", "init", "--no-readme", "--no-pin-python"],
                              check=True, capture_output=True, timeout=60, cwd=cwd)
 
-                Output.task("Creating virtual environment", status="in progress", status_style="yellow")
                 subprocess.run(["uv", "venv", ".venv"],
                              check=True, capture_output=True, timeout=120, cwd=cwd)
 
-                Output.task("Installing dependencies", status="in progress", status_style="yellow")
                 subprocess.run(["uv", "add"] + dependencies,
                              check=True, capture_output=True, timeout=300, cwd=cwd)
 
-                Output.task("Virtual environment created", status="done", status_style="green")
+                if progress: progress.update(task_id, description="Virtual environment created", advance=50)
             except subprocess.TimeoutExpired:
                 Output.error("uv initialization timed out. Try again with a faster connection.")
-                self._create_requirements_txt(dependencies)
+                self._create_requirements_txt(dependencies, cwd=cwd)
             except subprocess.CalledProcessError as e:
                 Output.error(f"uv initialization failed: {e}")
-                self._create_requirements_txt(dependencies)
+                self._create_requirements_txt(dependencies, cwd=cwd)
 
         elif package_manager == "pipenv":
             if not shutil.which("pipenv"):
-                Output.task("Installing pipenv", status="in progress", status_style="yellow")
                 try:
                     subprocess.run([sys.executable, "-m", "pip", "install", "pipenv"],
                                  capture_output=True, check=True, timeout=60)
@@ -328,7 +328,6 @@ Generated with ❤️ by Fastman
                     Output.error(f"Failed to install pipenv: {e}")
                     return
 
-            Output.task("Initializing pipenv project", status="in progress", status_style="yellow")
             try:
                 env = os.environ.copy()
                 env["PIPENV_VENV_IN_PROJECT"] = "1"
@@ -336,21 +335,20 @@ Generated with ❤️ by Fastman
                 subprocess.run(["pipenv", "install"] + dependencies,
                              env=env, check=True, capture_output=True, timeout=300, cwd=cwd)
 
-                Output.task("Virtual environment created", status="done", status_style="green")
+                if progress: progress.update(task_id, description="Virtual environment created", advance=50)
             except subprocess.TimeoutExpired:
                 Output.error("pipenv initialization timed out. Try again with a faster connection.")
-                self._create_requirements_txt(dependencies)
+                self._create_requirements_txt(dependencies, cwd=cwd)
             except subprocess.CalledProcessError as e:
                 Output.error(f"pipenv initialization failed: {e}")
-                self._create_requirements_txt(dependencies)
+                self._create_requirements_txt(dependencies, cwd=cwd)
 
         elif package_manager == "poetry":
             if not shutil.which("poetry"):
                 Output.warn("poetry not found. Falling back to requirements.txt")
-                self._create_requirements_txt(dependencies)
+                self._create_requirements_txt(dependencies, cwd=cwd)
                 return
 
-            Output.task("Initializing poetry project", status="in progress", status_style="yellow")
             try:
                 try:
                     subprocess.run(["poetry", "config", "virtualenvs.in-project", "true"],
@@ -363,30 +361,27 @@ Generated with ❤️ by Fastman
                               "--python=^3.9"],
                              check=True, capture_output=True, timeout=60, cwd=cwd)
 
-                Output.task("Installing dependencies", status="in progress", status_style="yellow")
                 subprocess.run(["poetry", "add"] + dependencies,
                              check=True, capture_output=True, timeout=300, cwd=cwd)
 
-                Output.task("Virtual environment created", status="done", status_style="green")
+                if progress: progress.update(task_id, description="Virtual environment created", advance=50)
             except subprocess.TimeoutExpired:
                 Output.error("poetry initialization timed out. Try again with a faster connection.")
-                self._create_requirements_txt(dependencies)
+                self._create_requirements_txt(dependencies, cwd=cwd)
             except subprocess.CalledProcessError as e:
                 Output.error(f"poetry initialization failed: {e}")
-                self._create_requirements_txt(dependencies)
+                self._create_requirements_txt(dependencies, cwd=cwd)
 
         elif package_manager == "pip":
-            Output.task("Creating virtual environment", status="in progress", status_style="yellow")
             try:
                 subprocess.run([sys.executable, "-m", "venv", ".venv"], check=True, timeout=120, cwd=cwd)
 
-                self._create_requirements_txt(dependencies)
+                self._create_requirements_txt(dependencies, cwd=cwd)
 
-                Output.task("Installing dependencies", status="in progress", status_style="yellow")
-                pip_path = ".venv/bin/pip" if os.name != "nt" else ".venv\\Scripts\\pip"
+                pip_path = str(cwd / ".venv" / "bin" / "pip") if os.name != "nt" else str(cwd / ".venv" / "Scripts" / "pip.exe")
                 subprocess.run([pip_path, "install", "-r", "requirements.txt"], check=True, timeout=300, cwd=cwd)
 
-                Output.task("Virtual environment created", status="done", status_style="green")
+                if progress: progress.update(task_id, description="Virtual environment created", advance=50)
             except subprocess.TimeoutExpired:
                 Output.error("pip initialization timed out. Try again with a faster connection.")
             except subprocess.CalledProcessError as e:
@@ -441,7 +436,7 @@ MYSQL_DATABASE={project_name}
             "oracle": """
 # Database (Oracle)
 # IMPORTANT: Replace placeholders with your actual database credentials
-DATABASE_URL=oracle+cx_oracle://<YOUR_USER>:<YOUR_PASSWORD>@localhost:1521/XE
+DATABASE_URL=oracle+oracledb://<YOUR_USER>:<YOUR_PASSWORD>@localhost:1521/XE
 ORACLE_USER=<YOUR_USER>
 ORACLE_PASSWORD=<YOUR_PASSWORD>
 ORACLE_SID=XE
@@ -476,7 +471,7 @@ FIREBASE_CREDENTIALS_PATH=./firebase-credentials.json
             elif database == "mysql":
                 base_deps.extend(["sqlalchemy", "alembic", "pymysql"])
             elif database == "oracle":
-                base_deps.extend(["sqlalchemy", "alembic", "cx_Oracle"])
+                base_deps.extend(["sqlalchemy", "alembic", "oracledb"])
             elif database == "firebase":
                 base_deps.append("firebase-admin")
 
