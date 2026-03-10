@@ -378,7 +378,7 @@ Generated with ❤️ by Fastman
 
                 self._create_requirements_txt(dependencies, cwd=cwd)
 
-                pip_path = str(cwd / ".venv" / "bin" / "pip") if os.name != "nt" else str(cwd / ".venv" / "Scripts" / "pip.exe")
+                pip_path = str(cwd.resolve() / ".venv" / "bin" / "pip") if os.name != "nt" else str(cwd.resolve() / ".venv" / "Scripts" / "pip.exe")
                 subprocess.run([pip_path, "install", "-r", "requirements.txt"], check=True, timeout=300, cwd=cwd)
 
                 if progress: progress.update(task_id, description="Virtual environment created", advance=50)
