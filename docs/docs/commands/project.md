@@ -61,7 +61,10 @@ my-api/
 │   ├── migrations/           # Alembic migrations
 │   └── seeders/              # Database seeders
 ├── tests/                    # Test directory
-├── .env                      # Environment variables
+├── .env                      # Fallback environment variables
+├── .env.development          # Development settings
+├── .env.staging              # Staging settings
+├── .env.production           # Production settings
 ├── .gitignore
 ├── alembic.ini              # Migration config
 ├── pyproject.toml           # Dependencies

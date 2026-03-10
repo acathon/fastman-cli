@@ -29,21 +29,48 @@ Before deploying, make sure you've completed these steps:
 
 ## Environment Setup
 
-### Production `.env`
+### Multi-Environment Files
 
-Your production environment should have these variables configured (via environment variables, not a `.env` file):
+Fastman generates environment files for each stage:
+
+| File | Purpose |
+|------|---------|
+| `.env` | Fallback (used if no environment-specific file found) |
+| `.env.development` | Local development settings |
+| `.env.staging` | Staging environment settings |
+| `.env.production` | Production environment settings |
+
+The active file is selected based on the `ENVIRONMENT` variable:
+
+```bash
+# Use staging settings
+ENVIRONMENT=staging fastman serve
+
+# Use production settings
+ENVIRONMENT=production fastman serve
+```
+
+### Production Configuration
+
+Your `.env.production` (or deployment platform env vars) should include:
 
 ```env
-# Core — required
+ENVIRONMENT=production
 DEBUG=false
 SECRET_KEY=<your-production-secret-key>
 
-# Database — use a production-grade database
-DATABASE_URL=postgresql://user:password@db-host:5432/myapp
+# Database
+DB_HOST=production-db-host
+DB_PORT=5432
+DB_USER=prod_user
+DB_PASSWORD=<strong-password>
+DB_NAME=myapp
 
-# Optional — restrict CORS origins to your frontend domain(s)
+# Optional CORS
 CORS_ORIGINS=https://myapp.com,https://www.myapp.com
 ```
+
+For cloud deployments, prefer your platform's environment variable management over `.env` files.
 
 ### Generate a Secure Secret Key
 

@@ -18,11 +18,44 @@ Fastman uses SQLAlchemy for the ORM and Alembic for migrations.
 
 ## Configuration
 
-Set your database URL in `.env`:
+When you create a project with `fastman new`, individual database settings are generated in `app/core/config.py`:
+
+```python
+# config.py (PostgreSQL example)
+class Settings(BaseSettings):
+    DB_HOST: str = "localhost"
+    DB_PORT: int = 5432
+    DB_USER: str = "postgres"
+    DB_PASSWORD: str = ""
+    DB_NAME: str = "myapp"
+    DATABASE_URL: Optional[str] = None  # Optional override
+
+    @computed_field
+    @property
+    def database_url(self) -> str:
+        if self.DATABASE_URL:
+            return self.DATABASE_URL
+        return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+```
+
+Set database credentials in your environment files (`.env.development`, `.env.staging`, `.env.production`):
 
 ```env
-DATABASE_URL=postgresql://postgres:password@localhost:5432/myapp
+# .env.development
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=secret
+DB_NAME=myapp
 ```
+
+You can also set `DATABASE_URL` directly to override the computed URL:
+
+```env
+DATABASE_URL=postgresql://postgres:secret@localhost:5432/myapp
+```
+
+The active environment file is selected based on the `ENVIRONMENT` variable (defaults to `development`).
 
 ## Models
 

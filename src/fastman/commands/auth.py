@@ -4,7 +4,7 @@ Authentication installation commands.
 from pathlib import Path
 from .base import Command, register
 from ..console import Output, Style
-from ..utils import PackageManager, PathManager
+from ..utils import PackageManager, PathManager, EnvManager
 
 @register
 class InstallAuthCommand(Command):
@@ -584,19 +584,14 @@ async def logout(request: Request):
         PathManager.write_file(base / "service.py", oauth_service_content)
         PathManager.write_file(base / "router.py", oauth_router_content)
 
-        # Update .env
-        env_path = Path(".env")
-        if env_path.exists():
-            env_content = env_path.read_text(encoding='utf-8')
-            if "OAUTH_CLIENT_ID" not in env_content:
-                oauth_env = f"""
+        # Update all env files
+        oauth_env = f"""
 # OAuth ({provider})
 OAUTH_CLIENT_ID=your-{provider}-client-id
 OAUTH_CLIENT_SECRET=your-{provider}-client-secret
 """
-                env_content += oauth_env
-                env_path.write_text(env_content, encoding='utf-8')
-                Output.info("Updated .env with OAuth credentials")
+        EnvManager.append_to_all(oauth_env, "OAUTH_CLIENT_ID")
+        Output.info("Updated env files with OAuth credentials")
 
         Output.success(f"OAuth authentication installed ({provider})!")
         Output.info("\nFiles created:")
@@ -718,29 +713,23 @@ def init_keycloak(app: FastAPI):
                 main_path.write_text(main_content, encoding='utf-8')
                 Output.info("Updated main.py with Keycloak initialization")
 
-        # Update .env file
-        env_path = Path(".env")
-        if env_path.exists():
-            env_content = env_path.read_text(encoding='utf-8')
-
-            if "KEYCLOAK_URL" not in env_content:
-                keycloak_env = '''
+        # Update all env files
+        keycloak_env = '''
 # Keycloak Authentication
 KEYCLOAK_URL=http://localhost:8080
 KEYCLOAK_REALM=master
 KEYCLOAK_CLIENT_ID=your-client-id
 KEYCLOAK_CLIENT_SECRET=your-client-secret
 '''
-                env_content += keycloak_env
-                env_path.write_text(env_content, encoding='utf-8')
-                Output.info("Updated .env with Keycloak configuration")
+        EnvManager.append_to_all(keycloak_env, "KEYCLOAK_URL")
+        Output.info("Updated env files with Keycloak configuration")
 
         Output.success("Keycloak authentication installed!")
         Output.info("\nFiles created/updated:")
         Output.echo("  app/core/keycloak.py - Keycloak configuration", Style.GREEN)
         Output.echo("  app/core/config.py - Added Keycloak settings", Style.GREEN)
         Output.echo("  app/main.py - Added Keycloak initialization", Style.GREEN)
-        Output.echo("  .env - Added Keycloak environment variables", Style.GREEN)
+        Output.echo("  .env.* - Added Keycloak environment variables", Style.GREEN)
         Output.info("\nNext steps:")
         Output.echo("  1. Update .env with your Keycloak credentials", Style.CYAN)
         Output.echo("  2. Restart your server", Style.CYAN)
@@ -1227,20 +1216,15 @@ async def delete_credential(
         PathManager.write_file(base / "dependencies.py", dependencies_content)
         PathManager.write_file(base / "router.py", router_content)
 
-        # Update .env
-        env_path = Path(".env")
-        if env_path.exists():
-            env_content = env_path.read_text(encoding='utf-8')
-            if "PASSKEY_RP_ID" not in env_content:
-                passkey_env = """
+        # Update all env files
+        passkey_env = """
 # Passkey / WebAuthn
 PASSKEY_RP_ID=localhost
 PASSKEY_RP_NAME=Fastman App
 PASSKEY_ORIGIN=http://localhost:8000
 """
-                env_content += passkey_env
-                env_path.write_text(env_content, encoding='utf-8')
-                Output.info("Updated .env with Passkey settings")
+        EnvManager.append_to_all(passkey_env, "PASSKEY_RP_ID")
+        Output.info("Updated env files with Passkey settings")
 
         Output.success("Passkey (WebAuthn) authentication installed!")
         Output.info("\nNo passwords needed! Users authenticate with:")

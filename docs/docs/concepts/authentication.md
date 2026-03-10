@@ -57,14 +57,14 @@ def protected_route(user: User = Depends(get_current_user)):
 
 ### Configuration
 
-Add to your `.env`:
+Auth variables are automatically added to all environment files (`.env.*`):
 
 ```env
 SECRET_KEY=your-secret-key-here
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
 
-Generate a secure secret key:
+Generate a secure secret key (updates all env files):
 
 ```bash
 fastman generate:key
@@ -144,7 +144,7 @@ This:
 1. Installs `fastapi-keycloak-middleware`
 2. Creates `app/core/keycloak.py`
 3. Updates `app/core/config.py` with Keycloak settings
-4. Adds environment variables to `.env`
+4. Adds environment variables to all `.env.*` files
 
 ### Configuration
 

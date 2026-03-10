@@ -95,6 +95,12 @@ python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
 
+[tool.uv.workspace]
+members = [
+    "test_output/test_pg",
+    "test_output/test_oracle",
+]
+
 [dependency-groups]
 dev = [
     "pytest>=8.4.2",

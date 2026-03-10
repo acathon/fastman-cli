@@ -44,7 +44,10 @@ my-api/
 │   ├── factories/               # Model factories
 │   └── test_*.py                # Test files
 │
-├── .env                         # Environment variables
+├── .env                         # Default environment variables
+├── .env.development             # Development settings
+├── .env.staging                 # Staging settings
+├── .env.production              # Production settings
 ├── alembic.ini                  # Migration config
 └── pyproject.toml               # Dependencies
 ```
@@ -83,7 +86,10 @@ app/
 | File | Purpose |
 |------|---------|
 | `app/main.py` | Application factory, router mounting |
-| `app/core/config.py` | Pydantic settings from `.env` |
+| `app/core/config.py` | Pydantic settings, loads env file by `ENVIRONMENT` |
 | `app/core/database.py` | SQLAlchemy engine and session |
 | `alembic.ini` | Database migration configuration |
-| `.env` | Environment variables (never commit!) |
+| `.env` | Fallback environment variables (never commit!) |
+| `.env.development` | Development environment settings |
+| `.env.staging` | Staging environment settings |
+| `.env.production` | Production environment settings |

@@ -128,7 +128,7 @@ The OAuth scaffolding installs `authlib` and `httpx` as dependencies but require
 
 ### `generate:key`
 
-Generates a cryptographically secure `SECRET_KEY` using `secrets.token_urlsafe()` and writes it to your `.env` file.
+Generates a cryptographically secure `SECRET_KEY` using `secrets.token_urlsafe()` and writes it to **all** environment files (`.env`, `.env.development`, `.env.staging`, `.env.production`).
 
 ```bash
 fastman generate:key [--show]
@@ -136,14 +136,17 @@ fastman generate:key [--show]
 
 | Option | Description |
 |--------|-------------|
-| `--show` | Print the generated key to the terminal instead of (or in addition to) writing it |
+| `--show` | Print the generated key to the terminal without writing to files |
 
 ### `config:cache`
 
-Caches your environment configuration to `config_cache.json` for faster startup in production. The cached config is loaded directly instead of parsing `.env` on every request.
+Caches your environment configuration to `config_cache.json` for faster startup in production. Reads from the environment-specific file based on the `ENVIRONMENT` variable (defaults to `.env.development`, falls back to `.env`).
 
 ```bash
 fastman config:cache
+
+# Cache staging config
+ENVIRONMENT=staging fastman config:cache
 ```
 
 ### `config:clear`

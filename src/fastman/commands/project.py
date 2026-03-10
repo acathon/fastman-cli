@@ -118,14 +118,18 @@ Examples:
 
         # Context for templates
         ctx = {
+            "config_db_fields": self._get_config_db_fields(database),
             "project_name": name,
             "version": __version__,
-            "secret_key": secret_key
+            "secret_key": secret_key,
         }
 
         # Select database template
         database_template = self._get_database_template(database)
         database_filename = "firebase.py" if database == "firebase" else "database.py"
+
+        # Generate env files for all environments
+        env_files = self._get_env_files(database, name, secret_key)
 
         # Write core files
         files = {
@@ -134,9 +138,11 @@ Examples:
             f"app/core/{database_filename}": database_template,
             "app/core/logging.py": Templates.LOGGING,
             "app/core/discovery.py": Templates.DISCOVERY,
-            ".env": self._get_database_env_template(database, name, secret_key),
             ".gitignore": Templates.GITIGNORE,
         }
+
+        # Add all env files
+        files.update(env_files)
 
         # Add GraphQL file only if requested
         if graphql:
@@ -399,17 +405,17 @@ Generated with ❤️ by Fastman
         return templates.get(database, Templates.DATABASE)
 
     def _get_database_env_template(self, database: str, project_name: str, secret_key: str) -> str:
-        """Get database-specific environment variables"""
+        """Get database-specific environment variables for a single env file"""
 
         base_env = f"""# Application
 PROJECT_NAME={project_name}
-ENVIRONMENT=development
-DEBUG=true
+ENVIRONMENT={{environment}}
+DEBUG={{debug}}
 SECRET_KEY={secret_key}
 
 # API
 API_V1_PREFIX=/api/v1
-ALLOWED_HOSTS=["*"]
+ALLOWED_HOSTS={{allowed_hosts}}
 """
 
         database_configs = {
@@ -419,27 +425,30 @@ DATABASE_URL=sqlite:///./app.db
 """,
             "postgresql": f"""
 # Database (PostgreSQL)
-# IMPORTANT: Replace placeholders with your actual database credentials
-DATABASE_URL=postgresql://<YOUR_USER>:<YOUR_PASSWORD>@localhost:5432/{project_name}
-POSTGRES_USER=<YOUR_USER>
-POSTGRES_PASSWORD=<YOUR_PASSWORD>
-POSTGRES_DB={project_name}
+DB_HOST={{db_host}}
+DB_PORT=5432
+DB_USER={{db_user}}
+DB_PASSWORD={{db_password}}
+DB_NAME={project_name}
+DATABASE_URL=postgresql://{{db_user}}:{{db_password}}@{{db_host}}:5432/{project_name}
 """,
             "mysql": f"""
 # Database (MySQL)
-# IMPORTANT: Replace placeholders with your actual database credentials
-DATABASE_URL=mysql+pymysql://<YOUR_USER>:<YOUR_PASSWORD>@localhost:3306/{project_name}
-MYSQL_USER=<YOUR_USER>
-MYSQL_PASSWORD=<YOUR_PASSWORD>
-MYSQL_DATABASE={project_name}
+DB_HOST={{db_host}}
+DB_PORT=3306
+DB_USER={{db_user}}
+DB_PASSWORD={{db_password}}
+DB_NAME={project_name}
+DATABASE_URL=mysql+pymysql://{{db_user}}:{{db_password}}@{{db_host}}:3306/{project_name}
 """,
             "oracle": """
 # Database (Oracle)
-# IMPORTANT: Replace placeholders with your actual database credentials
-DATABASE_URL=oracle+oracledb://<YOUR_USER>:<YOUR_PASSWORD>@localhost:1521/XE
-ORACLE_USER=<YOUR_USER>
-ORACLE_PASSWORD=<YOUR_PASSWORD>
-ORACLE_SID=XE
+DB_HOST={db_host}
+DB_PORT=1521
+DB_USER={db_user}
+DB_PASSWORD={db_password}
+DB_NAME=XE
+DATABASE_URL=oracle+oracledb://{db_user}:{db_password}@{db_host}:1521/XE
 """,
             "firebase": """
 # Firebase
@@ -449,6 +458,111 @@ FIREBASE_CREDENTIALS_PATH=./firebase-credentials.json
         }
 
         return base_env + database_configs.get(database, database_configs["sqlite"])
+
+    def _get_env_files(self, database: str, project_name: str, secret_key: str) -> dict:
+        """Generate all environment files (dev, staging, production)"""
+        environments = {
+            ".env": {
+                "environment": "development",
+                "debug": "true",
+                "allowed_hosts": '["*"]',
+                "db_host": "localhost",
+                "db_user": "<YOUR_USER>",
+                "db_password": "<YOUR_PASSWORD>",
+            },
+            ".env.development": {
+                "environment": "development",
+                "debug": "true",
+                "allowed_hosts": '["*"]',
+                "db_host": "localhost",
+                "db_user": "<YOUR_USER>",
+                "db_password": "<YOUR_PASSWORD>",
+            },
+            ".env.staging": {
+                "environment": "staging",
+                "debug": "true",
+                "allowed_hosts": '["*"]',
+                "db_host": "staging-db-host",
+                "db_user": "<STAGING_USER>",
+                "db_password": "<STAGING_PASSWORD>",
+            },
+            ".env.production": {
+                "environment": "production",
+                "debug": "false",
+                "allowed_hosts": '["https://yourdomain.com"]',
+                "db_host": "production-db-host",
+                "db_user": "<PROD_USER>",
+                "db_password": "<PROD_PASSWORD>",
+            },
+        }
+
+        env_files = {}
+        template = self._get_database_env_template(database, project_name, secret_key)
+        for filename, values in environments.items():
+            content = template
+            for key, value in values.items():
+                content = content.replace("{" + key + "}", value)
+            env_files[filename] = content
+
+        return env_files
+
+    def _get_config_db_fields(self, database: str) -> str:
+        """Get database-specific config fields for the Settings class"""
+        fields = {
+            "sqlite": """# Database
+    DATABASE_URL: Optional[str] = "sqlite:///./app.db"
+""",
+            "postgresql": """# Database (PostgreSQL)
+    DB_HOST: str = "localhost"
+    DB_PORT: int = 5432
+    DB_USER: str = "postgres"
+    DB_PASSWORD: str = ""
+    DB_NAME: str = "{project_name}"
+    DATABASE_URL: Optional[str] = None
+
+    @computed_field
+    @property
+    def database_url(self) -> str:
+        if self.DATABASE_URL:
+            return self.DATABASE_URL
+        return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+""",
+            "mysql": """# Database (MySQL)
+    DB_HOST: str = "localhost"
+    DB_PORT: int = 3306
+    DB_USER: str = "root"
+    DB_PASSWORD: str = ""
+    DB_NAME: str = "{project_name}"
+    DATABASE_URL: Optional[str] = None
+
+    @computed_field
+    @property
+    def database_url(self) -> str:
+        if self.DATABASE_URL:
+            return self.DATABASE_URL
+        return f"mysql+pymysql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+""",
+            "oracle": """# Database (Oracle)
+    DB_HOST: str = "localhost"
+    DB_PORT: int = 1521
+    DB_USER: str = "system"
+    DB_PASSWORD: str = ""
+    DB_NAME: str = "XE"
+    DATABASE_URL: Optional[str] = None
+
+    @computed_field
+    @property
+    def database_url(self) -> str:
+        if self.DATABASE_URL:
+            return self.DATABASE_URL
+        return f"oracle+oracledb://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+""",
+            "firebase": """# Firebase (NoSQL)
+    FIREBASE_PROJECT_ID: Optional[str] = None
+    FIREBASE_CREDENTIALS_PATH: Optional[str] = None
+""",
+        }
+        return fields.get(database, fields["sqlite"])
 
     def _get_database_dependencies(self, database: str, graphql: bool = False, minimal: bool = False) -> list:
         """Get database-specific dependencies"""

@@ -15,7 +15,7 @@ from pathlib import Path
 from .. import __version__
 from .base import Command, register, COMMAND_REGISTRY
 from ..console import Output, Style, HAS_PYFIGLET, HAS_RICH, console
-from ..utils import PackageManager, NameValidator, PathManager
+from ..utils import PackageManager, NameValidator, PathManager, EnvManager
 
 if HAS_PYFIGLET:
     import pyfiglet
@@ -241,27 +241,30 @@ class GenerateKeyCommand(Command):
             Output.echo(f"Generated key: {key}")
             return
 
-        env_file = Path(".env")
+        env_files = [Path(f) for f in EnvManager.ENV_FILES]
+        updated = False
 
-        if env_file.exists():
-            content = env_file.read_text()
+        for env_file in env_files:
+            if env_file.exists():
+                content = env_file.read_text(encoding='utf-8')
 
-            if "SECRET_KEY=" in content:
-                # Update existing key
-                content = re.sub(
-                    r'SECRET_KEY=.*',
-                    f'SECRET_KEY={key}',
-                    content
-                )
-            else:
-                # Add new key
-                content += f"\nSECRET_KEY={key}\n"
+                if "SECRET_KEY=" in content:
+                    content = re.sub(
+                        r'SECRET_KEY=.*',
+                        f'SECRET_KEY={key}',
+                        content
+                    )
+                else:
+                    content += f"\nSECRET_KEY={key}\n"
 
-            env_file.write_text(content)
-            Output.success("Secret key updated in .env")
+                env_file.write_text(content, encoding='utf-8')
+                updated = True
+
+        if updated:
+            Output.success("Secret key updated in all env files")
         else:
-            # Create new .env
-            env_file.write_text(f"SECRET_KEY={key}\n")
+            env_file = Path(".env")
+            env_file.write_text(f"SECRET_KEY={key}\n", encoding='utf-8')
             Output.success("Secret key created in .env")
 
         Output.echo(f"Key: {key}")
@@ -273,14 +276,17 @@ class ConfigCacheCommand(Command):
     description = "Cache environment configuration"
 
     def handle(self):
-        env_file = Path(".env")
+        environment = os.environ.get("ENVIRONMENT", "development")
+        env_file = Path(f".env.{environment}")
+        if not env_file.exists():
+            env_file = Path(".env")
 
         if not env_file.exists():
-            Output.error(".env file not found")
+            Output.error(f"No env file found (.env.{environment} or .env)")
             return
 
         config = {}
-        for line in env_file.read_text().splitlines():
+        for line in env_file.read_text(encoding='utf-8').splitlines():
             line = line.strip()
             if line and not line.startswith("#") and "=" in line:
                 key, value = line.split("=", 1)

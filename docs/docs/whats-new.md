@@ -132,14 +132,53 @@ ORACLE_USER
   Extra inputs are not permitted
 ```
 
-**Fix:** The generated config now includes:
+**Fix:** The generated config now uses environment-aware loading with `extra = "ignore"`:
 
 ```python
+def _get_env_file() -> str:
+    env = os.getenv("ENVIRONMENT", "development")
+    env_file = f".env.{env}"
+    if Path(env_file).exists():
+        return env_file
+    return ".env"
+
 class Config:
-    env_file = ".env"
+    env_file = _get_env_file()
     case_sensitive = True
-    extra = "ignore"  # ← ignores undeclared env vars
+    extra = "ignore"
 ```
+
+---
+
+### Multi-environment support
+
+Projects now generate four environment files:
+
+- `.env` — Fallback defaults
+- `.env.development` — Local dev settings (DEBUG=true, localhost)
+- `.env.staging` — Staging settings (staging DB host)
+- `.env.production` — Production settings (DEBUG=false, restricted hosts)
+
+The `ENVIRONMENT` variable controls which file is loaded. All `fastman` commands that modify env vars (auth, key:generate, etc.) update **all** env files automatically.
+
+### Per-provider database settings
+
+Database configuration now uses individual fields instead of a single `DATABASE_URL`:
+
+```python
+DB_HOST: str = "localhost"
+DB_PORT: int = 5432
+DB_USER: str = "postgres"
+DB_PASSWORD: str = ""
+DB_NAME: str = "myapp"
+
+@computed_field
+@property
+def database_url(self) -> str:
+    return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+```
+
+You can still set `DATABASE_URL` directly to override the computed value.
 
 ---
 

@@ -271,3 +271,30 @@ class PackageManager:
         except subprocess.CalledProcessError as e:
             Output.error(f"Package removal failed: {e}")
             return False
+
+
+class EnvManager:
+    """Manages environment files across all environments (dev/staging/prod)"""
+
+    ENV_FILES = [".env", ".env.development", ".env.staging", ".env.production"]
+
+    @staticmethod
+    def append_to_all(block: str, check_key: str, cwd: Path = None):
+        """Append a block of env vars to all env files if check_key is not already present"""
+        base = cwd or Path.cwd()
+        for env_file in EnvManager.ENV_FILES:
+            env_path = base / env_file
+            if env_path.exists():
+                content = env_path.read_text(encoding='utf-8')
+                if check_key not in content:
+                    content += block
+                    env_path.write_text(content, encoding='utf-8')
+
+    @staticmethod
+    def append_to_env(env_path: Path, block: str, check_key: str):
+        """Append a block to a single env file if check_key is not already present"""
+        if env_path.exists():
+            content = env_path.read_text(encoding='utf-8')
+            if check_key not in content:
+                content += block
+                env_path.write_text(content, encoding='utf-8')

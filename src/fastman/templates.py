@@ -70,7 +70,20 @@ except ImportError:
 
     CONFIG = '''"""Application configuration"""
 from pydantic_settings import BaseSettings
+from pydantic import computed_field
 from typing import List, Optional
+from pathlib import Path
+import os
+
+
+def _get_env_file() -> str:
+    """Resolve the environment file based on ENVIRONMENT variable"""
+    env = os.getenv("ENVIRONMENT", "development")
+    env_file = f".env.{env}"
+    if Path(env_file).exists():
+        return env_file
+    return ".env"
+
 
 class Settings(BaseSettings):
     """Application settings"""
@@ -85,18 +98,13 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "{secret_key}"
     ALLOWED_HOSTS: List[str] = ["*"]
 
-    # Database (SQL)
-    DATABASE_URL: Optional[str] = "sqlite:///./app.db"
-
-    # Firebase (NoSQL)
-    FIREBASE_PROJECT_ID: Optional[str] = None
-    FIREBASE_CREDENTIALS_PATH: Optional[str] = None
+    {config_db_fields}
 
     # API
     API_V1_PREFIX: str = "/api/v1"
 
     class Config:
-        env_file = ".env"
+        env_file = _get_env_file()
         case_sensitive = True
         extra = "ignore"
 
@@ -148,7 +156,7 @@ from app.core.config import settings
 
 # Create engine with PostgreSQL-specific settings
 engine = create_engine(
-    settings.DATABASE_URL,
+    settings.database_url,
     pool_pre_ping=True,
     pool_size=10,
     max_overflow=20,
@@ -187,7 +195,7 @@ from app.core.config import settings
 
 # Create engine with MySQL-specific settings
 engine = create_engine(
-    settings.DATABASE_URL,
+    settings.database_url,
     pool_pre_ping=True,
     pool_size=10,
     max_overflow=20,
@@ -226,7 +234,7 @@ from app.core.config import settings
 
 # Create engine with Oracle-specific settings
 engine = create_engine(
-    settings.DATABASE_URL,
+    settings.database_url,
     pool_pre_ping=True,
     pool_size=10,
     max_overflow=20,
@@ -595,6 +603,9 @@ env/
 
 # Environment
 .env
+.env.development
+.env.staging
+.env.production
 .env.local
 .env.*.local
 
