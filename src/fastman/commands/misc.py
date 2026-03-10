@@ -188,7 +188,24 @@ class TinkerCommand(Command):
     description = "Interactive Python shell with app context"
 
     def handle(self):
-        sys.path.insert(0, str(Path.cwd()))
+        cwd = Path.cwd()
+        sys.path.insert(0, str(cwd))
+
+        # Activate the project's .venv site-packages if present
+        venv_path = cwd / ".venv"
+        if venv_path.exists():
+            if sys.platform == "win32":
+                site_packages = venv_path / "Lib" / "site-packages"
+            else:
+                # Find the python version directory under lib
+                lib_path = venv_path / "lib"
+                py_dirs = sorted(lib_path.glob("python*")) if lib_path.exists() else []
+                site_packages = py_dirs[0] / "site-packages" if py_dirs else lib_path / "site-packages"
+
+            if site_packages.exists():
+                site_str = str(site_packages)
+                if site_str not in sys.path:
+                    sys.path.insert(1, site_str)
 
         # Import commonly used items
         namespace = {}
