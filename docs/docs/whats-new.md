@@ -106,10 +106,72 @@ Project creation now shows a single real-time progress bar instead of printing i
 
 ---
 
+### New and updated flags
+
+Several flags that were already implemented in the CLI are now fully documented, exposed in `--help` output, and included in shell completions.
+
+#### `fastman new` — `--graphql` and `--minimal` flags
+
+```bash
+# Scaffold a project that includes GraphQL support out of the box
+fastman new gql-api --graphql
+
+# Skip optional dev dependencies (faker, pytest, httpx)
+fastman new tiny-api --minimal
+```
+
+- `--graphql` generates `app/core/graphql.py` and adds `strawberry-graphql[fastapi]` to dependencies.
+- `--minimal` omits `faker`, `pytest`, and `httpx` from dependencies.
+
+#### `fastman serve` — explicit `--reload` flag
+
+`--reload` is now an explicit flag alongside the existing `--no-reload`. The default behaviour (reload enabled) is unchanged.
+
+```bash
+fastman serve --reload      # explicit; same as default
+fastman serve --no-reload   # disable reload for production-like runs
+```
+
+#### `fastman activate` — `--create-script` flag now visible
+
+`--create-script` was already implemented but not shown in `--help`. It now appears in the usage line:
+
+```bash
+fastman activate --create-script
+```
+
+Creates a small helper script (`activate.sh` / `activate.bat`) in the project directory alongside printing the activation command.
+
+#### `fastman make:api` — correct flag is `--style`
+
+The flag to choose between REST and GraphQL output has always been `--style` (not `--type`). The docs now reflect this correctly:
+
+```bash
+fastman make:api orders --style=rest      # default
+fastman make:api orders --style=graphql
+```
+
+#### `fastman install:auth` — `--provider` option
+
+An optional `--provider` value can be passed for OAuth flows:
+
+```bash
+fastman install:auth --type=oauth --provider=google
+```
+
+#### `fastman docs` and `fastman completion` — flags now in help
+
+```bash
+fastman docs --open            # open the docs site in your browser
+fastman completion bash --install  # install completion, not just print it
+```
+
+---
+
 ### Other fixes
 
 | Area | What changed |
-|------|--------------|
+| --- | --- |
 | **pip on Windows** | Venv pip path now resolves correctly (`.venv\Scripts\pip.exe`) |
 | **Package manager detection** | Falls back to `pip` when `uv` isn't installed; detects `requirements.txt`-only projects |
 | **`fastman new` on existing dir** | Now exits with code 1 instead of silently returning |

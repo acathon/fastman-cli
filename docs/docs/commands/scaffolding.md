@@ -17,7 +17,7 @@ fastman make:feature <name> [--crud]
 ```
 
 | Option | Description |
-|--------|-------------|
+| --- | --- |
 | `--crud` | Generate CRUD endpoints automatically |
 
 ```bash
@@ -29,7 +29,8 @@ fastman make:feature product --crud
 ```
 
 **Creates:**
-```
+
+```text
 app/features/product/
 ├── __init__.py
 ├── models.py      # SQLAlchemy model
@@ -45,10 +46,14 @@ app/features/product/
 ### make:model
 
 ```bash
-fastman make:model <name>
+fastman make:model <name> [--table=<table_name>]
 ```
 
 Creates a SQLAlchemy model file.
+
+| Option | Description |
+| --- | --- |
+| `--table` | Override the generated table name (defaults to `<name>s`) |
 
 ### make:schema
 
@@ -113,10 +118,14 @@ Creates a FastAPI dependency.
 ### make:api
 
 ```bash
-fastman make:api <name> [--type=rest|graphql]
+fastman make:api <name> [--style=rest|graphql]
 ```
 
 Creates REST or GraphQL API endpoints.
+
+| Option | Description | Default |
+| --- | --- | --- |
+| `--style` | API style: `rest` or `graphql` | `rest` |
 
 ### make:websocket
 

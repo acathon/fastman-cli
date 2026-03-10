@@ -14,15 +14,17 @@ Create a new FastAPI project with a complete scaffold.
 fastman new <project-name> [options]
 ```
 
-### Options
+### New Options
 
 | Option | Description | Default |
-|--------|-------------|---------|
+| --- | --- | --- |
+| `--minimal` | Create a minimal project (skips optional dev dependencies) | — |
 | `--pattern` | Architecture pattern: `feature`, `api`, `layer` | `feature` |
 | `--database` | Database: `sqlite`, `postgresql`, `mysql`, `oracle`, `firebase` | `sqlite` |
-| `--package` | Package manager: `uv`, `poetry`, `pipenv`, `pip` | auto-detect |
+| `--package` | Package manager: `uv`, `poetry`, `pipenv`, `pip` | `uv` |
+| `--graphql` | Include GraphQL support (adds `app/core/graphql.py`) | — |
 
-### Examples
+### New Examples
 
 ```bash
 # Simple project with defaults
@@ -36,11 +38,17 @@ fastman new prototype --pattern=api --database=sqlite
 
 # Firebase project (no Alembic)
 fastman new mobile-backend --database=firebase
+
+# Minimal project (smaller dependency set)
+fastman new tiny-api --minimal
+
+# Include GraphQL support
+fastman new gql-api --graphql
 ```
 
 ### What Gets Created
 
-```
+```text
 my-api/
 ├── app/
 │   ├── core/
@@ -70,16 +78,16 @@ Start the development server.
 fastman serve [options]
 ```
 
-### Options
+### Serve Options
 
 | Option | Description | Default |
-|--------|-------------|---------|
+| --- | --- | --- |
 | `--host` | Host to bind | `127.0.0.1` |
 | `--port` | Port number | `8000` |
-| `--reload` | Enable hot reload | `true` |
+| `--reload` | Enable hot reload (default behavior) | `true` |
 | `--no-reload` | Disable hot reload | — |
 
-### Examples
+### Serve Examples
 
 ```bash
 # Default (localhost:8000 with reload)
@@ -114,13 +122,13 @@ Build the project for production.
 fastman build [--docker]
 ```
 
-### Options
+### Build Options
 
 | Option | Description |
-|--------|-------------|
+| --- | --- |
 | `--docker` | Build Docker image |
 
-### Examples
+### Build Examples
 
 ```bash
 # Standard build

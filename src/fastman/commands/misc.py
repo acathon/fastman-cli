@@ -948,7 +948,7 @@ class CompletionCommand(Command):
 @register
 class ActivateCommand(Command):
     """Detect and display virtual environment activation command"""
-    signature = "activate"
+    signature = "activate {--create-script}"
     description = "Show virtual environment activation command"
 
     def handle(self):

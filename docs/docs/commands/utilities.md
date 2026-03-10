@@ -17,6 +17,7 @@ fastman tinker
 ```
 
 **Features**:
+
 - Pre-loaded `db` session.
 - Access to `settings` and `Base` models.
 - Uses `IPython` if available.
@@ -29,9 +30,35 @@ Displays a table of all registered API routes. Supports filtering by path or HTT
 fastman route:list [--path=/api] [--method=GET]
 ```
 
-- **Options**:
-    - `--path`: Filter routes containing this path.
-    - `--method`: Filter by HTTP method (GET, POST, PUT, DELETE).
+**Options:**
+
+- `--path`: Filter routes containing this path.
+- `--method`: Filter by HTTP method (GET, POST, PUT, PATCH, DELETE).
+
+---
+
+## Authentication
+
+### `install:auth`
+
+Installs authentication scaffolding into your project.
+
+```bash
+fastman install:auth [--type=jwt|oauth|keycloak] [--provider=<provider>]
+```
+
+**Options:**
+
+- `--type`: Auth type (default: `jwt`).
+- `--provider`: Optional provider identifier for OAuth flows.
+
+```bash
+# JWT auth (default)
+fastman install:auth
+
+# Explicit type
+fastman install:auth --type=keycloak
+```
 
 ### `inspect`
 
@@ -52,8 +79,9 @@ fastman optimize [--check]
 ```
 
 - Uses `black`, `isort`, and `autoflake`.
-- **Options**:
-    - `--check`: Only check for issues without modifying files.
+**Options:**
+
+- `--check`: Only check for issues without modifying files.
 
 ## Configuration
 
@@ -113,4 +141,50 @@ Removes a Python package.
 
 ```bash
 fastman package:remove {package_name}
+```
+
+---
+
+## CLI Helpers
+
+### `list`
+
+Lists all available Fastman commands.
+
+```bash
+fastman list
+```
+
+### `version`
+
+Shows the installed Fastman version and environment info.
+
+```bash
+fastman version
+```
+
+### `docs`
+
+Prints quick documentation links, or opens the docs site.
+
+```bash
+fastman docs [--open]
+```
+
+### `completion`
+
+Generates shell completion scripts.
+
+```bash
+fastman completion <shell> [--install]
+```
+
+- **Shells**: `bash`, `zsh`, `fish`, `powershell`
+
+### `activate`
+
+Shows the activation command for an existing virtual environment in the current directory.
+
+```bash
+fastman activate [--create-script]
 ```

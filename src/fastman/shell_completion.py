@@ -36,20 +36,22 @@ class ShellCompletion:
     
     # Options for each command
     COMMAND_OPTIONS: Dict[str, List[str]] = {
-        'new': ['--minimal', '--pattern=', '--package=', '--database='],
+        'new': ['--minimal', '--pattern=', '--package=', '--database=', '--graphql'],
         'make:feature': ['--crud'],
         'make:api': ['--style='],
         'make:model': ['--table='],
         'make:migration': [],
         'migrate:rollback': ['--steps='],
         'database:seed': ['--class='],
-        'install:auth': ['--type='],
+        'install:auth': ['--type=', '--provider='],
         'route:list': ['--path=', '--method='],
         'serve': ['--host=', '--port=', '--reload', '--no-reload'],
         'build': ['--docker'],
         'activate': ['--create-script'],
         'package:import': [],
         'package:remove': [],
+        'docs': ['--open'],
+        'completion': ['--install'],
     }
     
     # Global options available for all commands
@@ -76,7 +78,7 @@ _fastman_completions() {{
     # Options for specific commands
     case "${{COMP_WORDS[1]}}" in
         new)
-            opts="--minimal --pattern= --package= --database= --help"
+            opts="--minimal --pattern= --package= --database= --graphql --help"
             ;;
         make:feature)
             opts="--crud --help"
@@ -94,7 +96,13 @@ _fastman_completions() {{
             opts="--class= --help"
             ;;
         install:auth)
-            opts="--type= --help"
+            opts="--type= --provider= --help"
+            ;;
+        docs)
+            opts="--open --help"
+            ;;
+        completion)
+            opts="--install --help"
             ;;
         route:list)
             opts="--path= --method= --help"
@@ -183,6 +191,7 @@ _fastman() {{
         new)
             _arguments \\
                 '--minimal[Create minimal project]' \\
+                '--graphql[Include GraphQL support]' \\
                 '--pattern=[Architecture pattern]:pattern:(feature api layer)' \\
                 '--package=[Package manager]:package:(uv poetry pipenv pip)' \\
                 '--database=[Database type]:database:(sqlite postgresql mysql oracle firebase)'
@@ -203,7 +212,15 @@ _fastman() {{
             _arguments '--class=[Seeder class name]'
             ;;
         install:auth)
-            _arguments '--type=[Auth type]:type:(jwt oauth keycloak)'
+            _arguments \\
+                '--type=[Auth type]:type:(jwt oauth keycloak)' \\
+                '--provider=[OAuth provider identifier]'
+            ;;
+        docs)
+            _arguments '--open[Open docs in browser]'
+            ;;
+        completion)
+            _arguments '--install[Install completion script]'
             ;;
         route:list)
             _arguments \\
@@ -250,6 +267,7 @@ complete -c fastman -s v -l version -d "Show version"
 
 # Command-specific completions
 complete -c fastman -n "__fish_seen_subcommand_from new" -l minimal -d "Create minimal project"
+complete -c fastman -n "__fish_seen_subcommand_from new" -l graphql -d "Include GraphQL support"
 complete -c fastman -n "__fish_seen_subcommand_from new" -l pattern -d "Architecture pattern" -a "feature api layer"
 complete -c fastman -n "__fish_seen_subcommand_from new" -l package -d "Package manager" -a "uv poetry pipenv pip"
 complete -c fastman -n "__fish_seen_subcommand_from new" -l database -d "Database type" -a "sqlite postgresql mysql oracle firebase"
@@ -265,6 +283,7 @@ complete -c fastman -n "__fish_seen_subcommand_from migrate:rollback" -l steps -
 complete -c fastman -n "__fish_seen_subcommand_from database:seed" -l class -d "Seeder class name"
 
 complete -c fastman -n "__fish_seen_subcommand_from install:auth" -l type -d "Auth type" -a "jwt oauth keycloak"
+complete -c fastman -n "__fish_seen_subcommand_from install:auth" -l provider -d "OAuth provider identifier"
 
 complete -c fastman -n "__fish_seen_subcommand_from route:list" -l path -d "Filter by path"
 complete -c fastman -n "__fish_seen_subcommand_from route:list" -l method -d "Filter by method" -a "GET POST PUT PATCH DELETE"
@@ -277,6 +296,10 @@ complete -c fastman -n "__fish_seen_subcommand_from serve" -l no-reload -d "Disa
 complete -c fastman -n "__fish_seen_subcommand_from build" -l docker -d "Build Docker image"
 
 complete -c fastman -n "__fish_seen_subcommand_from activate" -l create-script -d "Create activation script"
+
+complete -c fastman -n "__fish_seen_subcommand_from docs" -l open -d "Open docs in browser"
+
+complete -c fastman -n "__fish_seen_subcommand_from completion" -l install -d "Install completion script"
 '''
         return script
     
@@ -293,17 +316,19 @@ complete -c fastman -n "__fish_seen_subcommand_from activate" -l create-script -
 $fastmanCommands = @('{commands_list}')
 
 $fastmanCompletions = {{
-    'new' = @('--minimal', '--pattern=', '--package=', '--database=', '--help')
+    'new' = @('--minimal', '--pattern=', '--package=', '--database=', '--graphql', '--help')
     'make:feature' = @('--crud', '--help')
     'make:api' = @('--style=', '--help')
     'make:model' = @('--table=', '--help')
     'migrate:rollback' = @('--steps=', '--help')
     'database:seed' = @('--class=', '--help')
-    'install:auth' = @('--type=', '--help')
+    'install:auth' = @('--type=', '--provider=', '--help')
     'route:list' = @('--path=', '--method=', '--help')
     'serve' = @('--host=', '--port=', '--reload', '--no-reload', '--help')
     'build' = @('--docker', '--help')
     'activate' = @('--create-script', '--help')
+    'docs' = @('--open', '--help')
+    'completion' = @('--install', '--help')
 }}
 
 $fastmanOptionValues = {{
