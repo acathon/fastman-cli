@@ -30,7 +30,7 @@ function HomepageHeader() {
       <div className="container">
         <div className={styles.heroContent}>
           <div className={styles.badge}>
-            <span>v0.3.0</span> Latest Release
+            <span>v0.3.1</span> Latest Release
           </div>
           <Heading as="h1" className={styles.heroTitle}>
             The Elegant CLI for
@@ -90,7 +90,7 @@ const features: FeatureItem[] = [
   {
     icon: ShieldCheckIcon,
     title: 'Auth Scaffolding',
-    description: 'JWT, OAuth, or Keycloak authentication. One command setup with best practices.',
+    description: 'JWT, OAuth, Keycloak, and Passkey setup, with certificate support for private services.',
     gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
   },
   {
