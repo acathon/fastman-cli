@@ -57,7 +57,7 @@ const config: Config = {
 
     announcementBar: {
       id: 'v0.3.1',
-      content: '🎉 <strong>Fastman v0.3.1</strong> is out! Keycloak certificate support, <code>install:certificate</code>, and refreshed docs. <a href="/fastman-cli/docs/whats-new">Learn more</a>',
+        content: '🎉 <strong>Fastman v0.3.1 (Cheetah)</strong> is out! Keycloak certificate support, <code>install:certificate</code>, and refreshed docs. <a href="/fastman-cli/docs/whats-new">Learn more</a>',
       backgroundColor: '#2563eb',
       textColor: '#ffffff',
       isCloseable: true,

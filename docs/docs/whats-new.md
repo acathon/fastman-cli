@@ -8,7 +8,7 @@ Stay up to date with the latest Fastman releases and features.
 
 ---
 
-## v0.3.1 — March 2026
+## v0.3.1 (Cheetah) — March 2026
 
 **Keycloak certificate support and documentation refresh**
 
@@ -29,7 +29,7 @@ Add your `.pem` or `.crt` files to the project's `certs/` directory and Fastman 
 
 - Updated the command reference to include `install:certificate` and `--append-certificate`
 - Renamed the relevant command grouping to third-party integrations
-- Refreshed README, intro, installation, and auth concept docs for `v0.3.1`
+- Refreshed README, intro, installation, and auth concept docs for `v0.3.1 (Cheetah)`
 
 ---
 

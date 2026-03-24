@@ -648,6 +648,7 @@ OAUTH_CLIENT_SECRET=your-{provider}-client-secret
 
         # Create keycloak configuration file
         keycloak_config = '''"""Keycloak authentication configuration"""
+import certifi
 from fastapi import FastAPI
 from fastapi_keycloak_middleware import KeycloakConfiguration, setup_keycloak_middleware
 from app.core.config import settings
@@ -655,14 +656,36 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+def _resolve_verify():
+    """
+    Resolve the SSL verification setting for Keycloak.
+
+    - "certifi"  → use the certifi CA bundle (includes any appended project certs)
+    - "false"    → disable SSL verification (NOT recommended for production)
+    - file path  → use that specific certificate file
+    """
+    value = getattr(settings, "KEYCLOAK_VERIFY_SSL", "certifi")
+    if isinstance(value, str):
+        lower = value.strip().lower()
+        if lower == "false":
+            return False
+        if lower in ("true", "certifi", ""):
+            return certifi.where()
+        return value  # treat as a file path
+    return certifi.where()
+
+
 # Keycloak configuration
 keycloak_config = KeycloakConfiguration(
     url=settings.KEYCLOAK_URL,
     realm=settings.KEYCLOAK_REALM,
     client_id=settings.KEYCLOAK_CLIENT_ID,
     client_secret=settings.KEYCLOAK_CLIENT_SECRET,
-    admin_client_secret=settings.KEYCLOAK_ADMIN_SECRET if hasattr(settings, 'KEYCLOAK_ADMIN_SECRET') else None
+    admin_client_secret=settings.KEYCLOAK_ADMIN_SECRET if hasattr(settings, 'KEYCLOAK_ADMIN_SECRET') else None,
+    verify=_resolve_verify(),
 )
+
 
 def init_keycloak(app: FastAPI):
     """Initialize Keycloak middleware"""
@@ -695,6 +718,7 @@ def init_keycloak(app: FastAPI):
     KEYCLOAK_CLIENT_ID: str = ""
     KEYCLOAK_CLIENT_SECRET: str = ""
     KEYCLOAK_ADMIN_SECRET: Optional[str] = None
+    KEYCLOAK_VERIFY_SSL: str = "certifi"
     '''
 
                 # Insert before "class Config:"
@@ -735,6 +759,7 @@ KEYCLOAK_URL=http://localhost:8080
 KEYCLOAK_REALM=master
 KEYCLOAK_CLIENT_ID=your-client-id
 KEYCLOAK_CLIENT_SECRET=your-client-secret
+KEYCLOAK_VERIFY_SSL=certifi
 '''
         EnvManager.append_to_all(keycloak_env, "KEYCLOAK_URL")
         Output.info("Updated env files with Keycloak configuration")

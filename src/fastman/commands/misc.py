@@ -12,7 +12,7 @@ import logging
 import importlib
 from pathlib import Path
 
-from .. import __version__
+from .. import __version__, __codename__
 from .base import Command, register, COMMAND_REGISTRY
 from ..console import Output, Style, HAS_PYFIGLET, HAS_RICH, console
 from ..utils import PackageManager, NameValidator, PathManager, EnvManager
@@ -448,19 +448,19 @@ class ListCommand(Command):
                 print(f"{Style.CYAN}{banner}{Style.RESET}", end="")
         else:
             if HAS_RICH:
-                console.print(f"[bold cyan]Fastman[/bold cyan] [yellow]v{__version__}[/yellow]")
+                console.print(f"[bold cyan]Fastman[/bold cyan] [yellow]v{__version__}[/yellow] [dim]({__codename__})[/dim]")
             else:
-                print(f"{Style.BOLD}{Style.CYAN}Fastman{Style.RESET} {Style.YELLOW}v{__version__}{Style.RESET}")
+                print(f"{Style.BOLD}{Style.CYAN}Fastman{Style.RESET} {Style.YELLOW}v{__version__}{Style.RESET} {Style.DIM}({__codename__}){Style.RESET}")
 
         # If we used pyfiglet, we haven't printed the version number yet (except in rich title),
         # so we print it below the banner.
         # If we didn't use pyfiglet, we already printed "Fastman vX.Y.Z" in the fallback header.
         if HAS_PYFIGLET:
             if HAS_RICH:
-                console.print(f"[yellow]v{__version__}[/yellow]")
+                console.print(f"[yellow]v{__version__}[/yellow] [dim]({__codename__})[/dim]")
                 console.print()
             else:
-                print(f"{Style.YELLOW}v{__version__}{Style.RESET}\n")
+                print(f"{Style.YELLOW}v{__version__}{Style.RESET} {Style.DIM}({__codename__}){Style.RESET}\n")
 
         # Usage section
         if HAS_RICH:
@@ -560,7 +560,7 @@ class VersionCommand(Command):
     description = "Show Fastman version"
 
     def handle(self):
-        Output.echo(f"Fastman v{__version__}", Style.BOLD)
+        Output.echo(f"Fastman v{__version__} ({__codename__})", Style.BOLD)
         Output.info("The Complete FastAPI CLI Framework")
         Output.echo("License: MIT", Style.CYAN)
         Output.echo("Repository: https://github.com/acathon/fastman-cli", Style.CYAN)

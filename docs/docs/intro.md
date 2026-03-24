@@ -63,7 +63,7 @@ uv · poetry · pipenv · pip — auto-detected from your project
 - **API** — resource-grouped with built-in API versioning
 - **Layer** — traditional MVC-style separation of concerns
 
-## What's New in v0.3.1
+## What's New in v0.3.1 (Cheetah)
 
 - Keycloak setup now supports `--append-certificate` for project-local certificate chains
 - Added `install:certificate` for standalone certificate bundle updates

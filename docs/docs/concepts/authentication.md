@@ -160,7 +160,14 @@ KEYCLOAK_URL=https://keycloak.example.com
 KEYCLOAK_REALM=my-realm
 KEYCLOAK_CLIENT_ID=my-client
 KEYCLOAK_CLIENT_SECRET=your-secret
+KEYCLOAK_VERIFY_SSL=certifi
 ```
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `KEYCLOAK_VERIFY_SSL` | `certifi` — use certifi CA bundle (includes appended certs) | `certifi` |
+| | `false` — disable SSL verification (not recommended for production) | |
+| | `/path/to/cert.pem` — use a specific certificate file | |
 
 ### Private CA / Certificate Support
 
