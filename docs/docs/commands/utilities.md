@@ -21,12 +21,7 @@ When you enter tinker, the following are automatically available:
 - `settings` — your `app/core/config.py` settings object
 - `Base` — the SQLAlchemy declarative base
 
-If [IPython](https://ipython.org/) is installed, tinker uses it automatically for syntax highlighting, tab completion, and magic commands. Otherwise, it falls back to Python's built-in REPL.
-
-```bash
-# Install IPython for the best tinker experience
-pip install ipython
-```
+Fastman includes [IPython](https://ipython.org/) by default, so tinker opens with syntax highlighting, tab completion, and magic commands out of the box. If IPython cannot be imported for any reason, it falls back to Python's built-in REPL.
 
 See the full [Tinker guide](../advanced/tinker) for tips and tricks.
 
@@ -89,20 +84,21 @@ fastman optimize [--check]
 
 ---
 
-## Authentication
+## Third-Party Integrations
 
 ### `install:auth`
 
 Scaffolds a complete authentication system into your project. Creates models, schemas, security utilities, service layer, dependencies, and router endpoints.
 
 ```bash
-fastman install:auth [--type=jwt|oauth|keycloak] [--provider=<provider>]
+fastman install:auth [--type=jwt|oauth|keycloak|passkey] [--provider=<provider>] [--append-certificate]
 ```
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--type` | Authentication strategy: `jwt`, `oauth`, or `keycloak` | `jwt` |
+| `--type` | Authentication strategy: `jwt`, `oauth`, `keycloak`, or `passkey` | `jwt` |
 | `--provider` | OAuth provider identifier (only used with `--type=oauth`) | — |
+| `--append-certificate` | Append project certificates from `certs/` after Keycloak installation | disabled |
 
 ```bash
 # JWT authentication (default) — creates /register, /login, /me endpoints
@@ -114,13 +110,39 @@ fastman install:auth --type=jwt
 # Keycloak enterprise SSO
 fastman install:auth --type=keycloak
 
+# Keycloak with project certificates appended to certifi
+fastman install:auth --type=keycloak --append-certificate
+
 # OAuth with Google
 fastman install:auth --type=oauth --provider=google
+
+# Passkey / WebAuthn
+fastman install:auth --type=passkey
 ```
 
 :::info OAuth note
 The OAuth scaffolding installs `authlib` and `httpx` as dependencies but requires manual configuration for your specific OAuth provider (client ID, client secret, callback URL). See the [Authentication concepts](../concepts/authentication) page for details.
 :::
+
+:::tip Keycloak certificates
+Place `.pem` or `.crt` files in your project's `certs/` directory before using `--append-certificate`. Fastman appends them to the Python `certifi` CA bundle so HTTP clients can trust internal or private certificate chains.
+:::
+
+### `install:certificate`
+
+Appends all `.pem` and `.crt` files from your project's `certs/` directory to the local `certifi` CA bundle. This is useful for Keycloak, internal gateways, and any third-party service that uses a private CA.
+
+```bash
+fastman install:certificate
+```
+
+```bash
+# Create certs/ if it does not exist, then add your certificate files
+fastman install:certificate
+
+# After copying certificates into certs/, run again to append them
+fastman install:certificate
+```
 
 ---
 

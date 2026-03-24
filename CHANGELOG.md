@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-03-24
+
+### ✨ Added
+
+- **Project certificate management**: Added `fastman install:certificate` to append `.pem` and `.crt` files from the project `certs/` directory into the local `certifi` CA bundle
+- **Keycloak certificate flow**: `fastman install:auth --type=keycloak --append-certificate` now appends project certificates immediately after Keycloak setup
+
+### 🎨 Changed
+
+- **Command grouping**: Auth and certificate installation commands are now documented under third-party integrations instead of authentication alone
+
+### 📚 Documentation
+
+- Updated README, intro page, installation guide, utility command reference, and authentication concepts for the new certificate workflow
+- Updated release docs and version examples to `v0.3.1`
+
 ## [0.3.0] - 2026-03-10
 
 ### ✨ Added
@@ -109,7 +125,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/acathon/fastman-cli/compare/v0.2.6...HEAD
+[Unreleased]: https://github.com/acathon/fastman-cli/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/acathon/fastman-cli/compare/v0.3.0...v0.3.1
+[0.3.0]: https://github.com/acathon/fastman-cli/compare/v0.2.6...v0.3.0
 [0.2.6]: https://github.com/acathon/fastman-cli/compare/v0.2.0...v0.2.6
 [0.2.0]: https://github.com/acathon/fastman-cli/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/acathon/fastman-cli/releases/tag/v0.1.0

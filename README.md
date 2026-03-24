@@ -9,7 +9,7 @@
 [![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Code style](https://img.shields.io/badge/code%20style-black-black)](https://github.com/psf/black)
-[![Version](https://img.shields.io/badge/version-0.2.6-orange.svg)](https://github.com/acathon/fastman-cli)
+[![Version](https://img.shields.io/badge/version-0.3.1-orange.svg)](https://github.com/acathon/fastman-cli)
 
 **Laravel-inspired CLI for FastAPI. Eliminate boilerplate. Ship faster.**
 
@@ -25,7 +25,7 @@ Building FastAPI applications shouldn't be tedious. Fastman brings the **develop
 
 ### 🚀 What Makes Fastman Different?
 
-- **🏗️ Zero-Dependency Core** - Runs with Python standard library (Rich/Pyfiglet optional)
+- **🏗️ Batteries Included** - Rich, Pyfiglet, IPython, and certifi are available out of the box
 - **📦 Smart Package Detection** - Auto-detects `uv`, `poetry`, `pipenv`, or `pip`
 - **🎨 Multiple Architectures** - Feature-based, API-focused, or Layered patterns
 - **⚡ Lightning Fast** - Professional console UI with progress indicators
@@ -212,11 +212,12 @@ fastman completion powershell --install
 | `fastman migrate:rollback` | Rollback migrations | `fastman migrate:rollback --steps=1` |
 | `fastman db:seed` | Run database seeders | `fastman db:seed --class=UserSeeder` |
 
-### Authentication
+### Third-Party Integrations
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `fastman install:auth` | Install auth system | `fastman install:auth --type=jwt` |
+| `fastman install:auth` | Install JWT, OAuth, Keycloak, or Passkey auth | `fastman install:auth --type=keycloak --append-certificate` |
+| `fastman install:certificate` | Append project certificates to the certifi CA bundle | `fastman install:certificate` |
 
 ### Utilities
 

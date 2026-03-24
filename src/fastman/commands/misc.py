@@ -486,7 +486,7 @@ class ListCommand(Command):
             "Routes": [],
             "Database": [],
             "Testing": [],
-            "Authentication": [],
+            "Third Party": [],
             "Package Management": [],
             "Configuration": [],
             "Cache": [],
@@ -507,8 +507,8 @@ class ListCommand(Command):
                 categories["Database"].append((name, cls.description))
             elif name in ["make:test", "make:factory"]:
                 categories["Testing"].append((name, cls.description))
-            elif name.startswith("install:auth"):
-                categories["Authentication"].append((name, cls.description))
+            elif name.startswith("install:auth") or name.startswith("install:certificate"):
+                categories["Third Party"].append((name, cls.description))
             elif name.startswith("package:"):
                 categories["Package Management"].append((name, cls.description))
             elif name.startswith("config:") or name.startswith("generate:"):

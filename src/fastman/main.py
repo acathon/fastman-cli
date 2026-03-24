@@ -16,6 +16,7 @@ from .commands import (
     scaffold,
     database,
     auth,
+    certificate,
     misc
 )
 

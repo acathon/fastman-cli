@@ -8,6 +8,31 @@ Stay up to date with the latest Fastman releases and features.
 
 ---
 
+## v0.3.1 — March 2026
+
+**Keycloak certificate support and documentation refresh**
+
+### Certificate Management for Keycloak and Private Services
+
+Fastman can now trust project-local certificates for Keycloak and other third-party services that use private CAs.
+
+```bash
+fastman install:auth --type=keycloak --append-certificate
+
+# or run certificate setup independently
+fastman install:certificate
+```
+
+Add your `.pem` or `.crt` files to the project's `certs/` directory and Fastman appends them to the Python `certifi` CA bundle.
+
+### Documentation Refresh
+
+- Updated the command reference to include `install:certificate` and `--append-certificate`
+- Renamed the relevant command grouping to third-party integrations
+- Refreshed README, intro, installation, and auth concept docs for `v0.3.1`
+
+---
+
 ## v0.3.0 — March 2026
 
 **Passkey authentication, full OAuth scaffolding, and IPython out of the box**

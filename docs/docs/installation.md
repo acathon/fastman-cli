@@ -50,7 +50,7 @@ fastman --version
 You should see output like:
 
 ```
-Fastman v0.2.6
+Fastman v0.3.1
 Python 3.12.0
 Package Manager: uv
 ```
@@ -59,16 +59,12 @@ Package Manager: uv
 If `fastman` is not recognized, make sure your Python scripts directory is on your system PATH. For pip installs, this is typically `~/.local/bin` (Linux/macOS) or `%APPDATA%\Python\Scripts` (Windows).
 :::
 
-## Optional Dependencies
+## Included Tooling
 
-Fastman's core dependencies (Rich and pyfiglet) are installed automatically. For an even better experience, you can optionally install:
+Fastman installs its CLI dependencies automatically, including Rich, Pyfiglet, IPython, and certifi.
 
-```bash
-# Enhanced interactive shell for the `tinker` command
-pip install ipython
-```
-
-When IPython is installed, `fastman tinker` gives you syntax highlighting, tab completion, and magic commands.
+- `ipython` powers `fastman tinker` out of the box
+- `certifi` provides the CA bundle used by `fastman install:certificate`
 
 ## Updating Fastman
 

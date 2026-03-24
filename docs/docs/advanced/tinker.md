@@ -31,14 +31,13 @@ This starts an interactive Python shell with:
 
 ### IPython Support
 
-If IPython is installed, tinker uses it automatically for:
+Fastman ships with IPython, so tinker uses it automatically for:
 - Syntax highlighting
 - Tab completion
 - Better tracebacks
 - Magic commands (`%history`, `%timeit`, etc.)
 
 ```bash
-pip install ipython
 fastman tinker
 ```
 

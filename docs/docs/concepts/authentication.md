@@ -140,11 +140,18 @@ Enterprise-grade identity and access management with single sign-on (SSO).
 fastman install:auth --type=keycloak
 ```
 
+If your Keycloak instance or upstream gateway uses a private CA, append your project certificates during setup:
+
+```bash
+fastman install:auth --type=keycloak --append-certificate
+```
+
 This:
 1. Installs `fastapi-keycloak-middleware`
 2. Creates `app/core/keycloak.py`
 3. Updates `app/core/config.py` with Keycloak settings
 4. Adds environment variables to all `.env.*` files
+5. Optionally appends certificates from `certs/` to the local `certifi` bundle
 
 ### Configuration
 
@@ -154,6 +161,40 @@ KEYCLOAK_REALM=my-realm
 KEYCLOAK_CLIENT_ID=my-client
 KEYCLOAK_CLIENT_SECRET=your-secret
 ```
+
+### Private CA / Certificate Support
+
+For environments that terminate TLS with an internal CA, store your certificate chain in the project-level `certs/` directory using `.pem` or `.crt` files.
+
+```text
+your-project/
+├── app/
+├── certs/
+│   └── company-root-chain.pem
+└── pyproject.toml
+```
+
+Example for a Keycloak deployment behind an internal gateway:
+
+```text
+certs/
+├── keycloak-root-ca.pem
+└── company-intermediate-ca.crt
+```
+
+If `KEYCLOAK_URL=https://sso.internal.example.com`, place the CA chain that signs that endpoint in `certs/` before running the install command.
+
+You can append those certificates in two ways:
+
+```bash
+# During Keycloak installation
+fastman install:auth --type=keycloak --append-certificate
+
+# Or later as a standalone step
+fastman install:certificate
+```
+
+Fastman creates a backup of the original `certifi` CA bundle before appending new certificates and skips certificates that are already present.
 
 ---
 

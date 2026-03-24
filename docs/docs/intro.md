@@ -44,6 +44,7 @@ FastAPI gives you incredible performance and flexibility — but every new proje
 | **`make:model`, `make:service`, ...** | 15+ generators for every component type (controllers, middleware, repos, etc.) |
 | **`database:migrate`** | Alembic migrations without touching INI files or configuration |
 | **`install:auth --type=jwt`** | Full JWT auth with `/register`, `/login`, `/me` endpoints and password hashing |
+| **`install:certificate`** | Trust project-local `.pem` / `.crt` files from `certs/` for private services |
 | **`serve`** | Development server with automatic hot reload |
 | **`tinker`** | Interactive Python shell with your database session pre-loaded |
 | **`route:list`** | View all registered API routes in a formatted table |
@@ -62,13 +63,11 @@ uv · poetry · pipenv · pip — auto-detected from your project
 - **API** — resource-grouped with built-in API versioning
 - **Layer** — traditional MVC-style separation of concerns
 
-## What's New in v0.2.6
+## What's New in v0.3.1
 
-- All commands now work correctly inside virtual environments (`python -m` instead of bare tool calls)
-- Oracle projects use the modern `oracledb` driver instead of deprecated `cx_Oracle`
-- Extra `.env` variables no longer crash the server on startup
-- Project creation now shows a real-time progress bar
-- Rich and pyfiglet are now installed automatically as core dependencies
+- Keycloak setup now supports `--append-certificate` for project-local certificate chains
+- Added `install:certificate` for standalone certificate bundle updates
+- Docs and command listings now reflect the new third-party integration workflow
 
 See the full [changelog](./whats-new).
 

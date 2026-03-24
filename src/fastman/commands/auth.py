@@ -8,7 +8,7 @@ from ..utils import PackageManager, PathManager, EnvManager
 
 @register
 class InstallAuthCommand(Command):
-    signature = "install:auth {--type=jwt} {--provider=}"
+    signature = "install:auth {--type=jwt} {--provider=} {--append-certificate}"
     description = "Install authentication scaffolding (jwt, oauth, keycloak, passkey)"
     help = """
 Examples:
@@ -16,6 +16,7 @@ Examples:
   fastman install:auth --type=jwt
   fastman install:auth --type=oauth --provider=google
   fastman install:auth --type=keycloak
+  fastman install:auth --type=keycloak --append-certificate
   fastman install:auth --type=passkey
 """
 
@@ -29,6 +30,20 @@ Examples:
             self._install_oauth(provider)
         elif auth_type == "keycloak":
             self._install_keycloak()
+            if self.flag("append-certificate"):
+                from .certificate import append_certificates_to_certifi, CERTS_DIR
+                from ..utils import PathManager
+                Output.new_line()
+                Output.info("Certificate append requested...")
+                if not CERTS_DIR.exists():
+                    PathManager.ensure_dir(CERTS_DIR)
+                    init_file = CERTS_DIR / "__init__.py"
+                    if init_file.exists():
+                        init_file.unlink()
+                    Output.info(f"Created {CERTS_DIR}/ directory.")
+                    Output.echo("  Place your .pem or .crt files there, then run: fastman install:certificate", Style.CYAN)
+                else:
+                    append_certificates_to_certifi(CERTS_DIR)
         elif auth_type == "passkey":
             self._install_passkey()
         else:
