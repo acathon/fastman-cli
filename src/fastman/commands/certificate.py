@@ -5,7 +5,7 @@ import shutil
 from pathlib import Path
 from .base import Command, register
 from ..console import Output, Style
-from ..utils import PathManager
+from ..utils import PathManager, PackageManager
 
 
 CERTS_DIR = Path("certs")
@@ -21,17 +21,29 @@ def get_certificate_files(certs_dir: Path = CERTS_DIR) -> list:
     )
 
 
+def _ensure_certifi() -> bool:
+    """Ensure certifi is installed in the project's environment."""
+    try:
+        import certifi
+        return True
+    except ImportError:
+        Output.info("Installing certifi...")
+        if PackageManager.install(["certifi"]):
+            return True
+        Output.error("Failed to install certifi")
+        return False
+
+
 def append_certificates_to_certifi(certs_dir: Path = CERTS_DIR) -> bool:
     """
     Append all certificates from the certs/ directory to the certifi CA bundle.
 
     Returns True if at least one certificate was appended.
     """
-    try:
-        import certifi
-    except ImportError:
-        Output.error("certifi is not installed. Run: pip install certifi")
+    if not _ensure_certifi():
         return False
+
+    import certifi
 
     cert_files = get_certificate_files(certs_dir)
     if not cert_files:

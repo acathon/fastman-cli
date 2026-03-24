@@ -641,14 +641,15 @@ OAUTH_CLIENT_SECRET=your-{provider}-client-secret
             Output.info("Run 'fastman new <project-name>' to create a new project first.")
             return
 
-        packages = ["fastapi-keycloak-middleware"]
+        packages = ["fastapi-keycloak-middleware", "certifi"]
         if not PackageManager.install(packages):
             Output.error("Failed to install dependencies")
             return
 
         # Create keycloak configuration file
         keycloak_config = '''"""Keycloak authentication configuration"""
-import certifi
+import os
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi_keycloak_middleware import KeycloakConfiguration, setup_keycloak_middleware
 from app.core.config import settings
@@ -661,19 +662,38 @@ def _resolve_verify():
     """
     Resolve the SSL verification setting for Keycloak.
 
-    - "certifi"  → use the certifi CA bundle (includes any appended project certs)
-    - "false"    → disable SSL verification (NOT recommended for production)
-    - file path  → use that specific certificate file
+    - "certifi"  -> use the certifi CA bundle (includes any appended project certs)
+    - "false"    -> disable SSL verification (NOT recommended for production)
+    - file path  -> use that specific certificate file
+    - "true"     -> use default system SSL verification
     """
     value = getattr(settings, "KEYCLOAK_VERIFY_SSL", "certifi")
     if isinstance(value, str):
         lower = value.strip().lower()
         if lower == "false":
+            logger.warning("SSL verification is DISABLED for Keycloak. Not recommended for production.")
             return False
-        if lower in ("true", "certifi", ""):
-            return certifi.where()
-        return value  # treat as a file path
-    return certifi.where()
+        if lower == "true":
+            return True
+        if lower in ("certifi", ""):
+            try:
+                import certifi
+                ca_path = certifi.where()
+                if Path(ca_path).is_file():
+                    logger.info(f"Using certifi CA bundle: {ca_path}")
+                    return ca_path
+                logger.warning(f"certifi bundle not found at {ca_path}, falling back to system defaults")
+                return True
+            except ImportError:
+                logger.warning("certifi not installed, falling back to system SSL defaults")
+                return True
+        # Treat as a file path
+        if Path(value).is_file():
+            logger.info(f"Using custom certificate: {value}")
+            return value
+        logger.error(f"Certificate file not found: {value}. Falling back to system defaults.")
+        return True
+    return True
 
 
 # Keycloak configuration
