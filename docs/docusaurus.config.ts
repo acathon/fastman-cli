@@ -19,6 +19,141 @@ const config: Config = {
 
   onBrokenLinks: 'throw',
 
+  markdown: {
+    mermaid: true,
+  },
+
+  themes: [
+    '@docusaurus/theme-mermaid',
+    '@docusaurus/theme-live-codeblock',
+    [
+      '@easyops-cn/docusaurus-search-local',
+      {
+        hashed: true,
+        language: ['en'],
+        indexBlog: false,
+        docsRouteBasePath: '/docs',
+        highlightSearchTermsOnTargetPage: true,
+      },
+    ],
+  ],
+
+  headTags: [
+    {
+      tagName: 'meta',
+      attributes: {
+        name: 'author',
+        content: 'Fastman Contributors',
+      },
+    },
+    {
+      tagName: 'meta',
+      attributes: {
+        name: 'robots',
+        content: 'index, follow',
+      },
+    },
+    {
+      tagName: 'meta',
+      attributes: {
+        property: 'og:type',
+        content: 'website',
+      },
+    },
+    {
+      tagName: 'meta',
+      attributes: {
+        property: 'og:title',
+        content: 'Fastman — The Elegant CLI for FastAPI Artisans',
+      },
+    },
+    {
+      tagName: 'meta',
+      attributes: {
+        property: 'og:description',
+        content: 'Laravel-inspired CLI tool for FastAPI. Generate projects, scaffold features, manage databases, and deploy with confidence.',
+      },
+    },
+    {
+      tagName: 'meta',
+      attributes: {
+        property: 'og:url',
+        content: 'https://acathon.github.io/fastman-cli/',
+      },
+    },
+    {
+      tagName: 'meta',
+      attributes: {
+        property: 'og:image',
+        content: 'https://acathon.github.io/fastman-cli/img/fastman-social.png',
+      },
+    },
+    {
+      tagName: 'meta',
+      attributes: {
+        name: 'twitter:card',
+        content: 'summary_large_image',
+      },
+    },
+    {
+      tagName: 'meta',
+      attributes: {
+        name: 'twitter:title',
+        content: 'Fastman — The Elegant CLI for FastAPI Artisans',
+      },
+    },
+    {
+      tagName: 'meta',
+      attributes: {
+        name: 'twitter:description',
+        content: 'Laravel-inspired CLI tool for FastAPI. Generate projects, scaffold features, manage databases, and deploy with confidence.',
+      },
+    },
+    {
+      tagName: 'meta',
+      attributes: {
+        name: 'twitter:image',
+        content: 'https://acathon.github.io/fastman-cli/img/fastman-social.png',
+      },
+    },
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'canonical',
+        href: 'https://acathon.github.io/fastman-cli/',
+      },
+    },
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'preconnect',
+        href: 'https://fonts.googleapis.com',
+      },
+    },
+    {
+      tagName: 'script',
+      attributes: {
+        type: 'application/ld+json',
+      },
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: 'Fastman',
+        description: 'Laravel-inspired CLI tool for FastAPI. Generate projects, scaffold features, manage databases, and deploy with confidence.',
+        applicationCategory: 'DeveloperApplication',
+        operatingSystem: 'Windows, macOS, Linux',
+        url: 'https://acathon.github.io/fastman-cli/',
+        offers: {
+          '@type': 'Offer',
+          price: '0',
+          priceCurrency: 'USD',
+        },
+        softwareVersion: '0.3.3',
+        programmingLanguage: 'Python',
+      }),
+    },
+  ],
+
   i18n: {
     defaultLocale: 'en',
     locales: ['en'],
@@ -32,6 +167,7 @@ const config: Config = {
           sidebarPath: './sidebars.ts',
           editUrl: 'https://github.com/acathon/fastman-cli/tree/main/docs/',
           showLastUpdateTime: true,
+          showLastUpdateAuthor: true,
         },
         blog: false,
         theme: {
@@ -45,8 +181,9 @@ const config: Config = {
     image: 'img/fastman-social.png',
 
     metadata: [
-      { name: 'keywords', content: 'fastapi, cli, python, framework, scaffold, generator' },
-      { name: 'twitter:card', content: 'summary_large_image' },
+      { name: 'keywords', content: 'fastapi, cli, python, framework, scaffold, generator, fastman, authentication, keycloak, database, migrations, docker, deployment' },
+      { name: 'description', content: 'Laravel-inspired CLI tool for FastAPI. Generate projects, scaffold features, manage databases, and deploy with confidence.' },
+      { name: 'google-site-verification', content: 'YOUR_VERIFICATION_CODE' },
     ],
 
     colorMode: {
@@ -56,8 +193,8 @@ const config: Config = {
     },
 
     announcementBar: {
-      id: 'v0.3.1',
-        content: '🎉 <strong>Fastman v0.3.1 (Cheetah)</strong> is out! Keycloak certificate support, <code>install:certificate</code>, and refreshed docs. <a href="/fastman-cli/docs/whats-new">Learn more</a>',
+      id: 'v0.3.3',
+      content: '🎉 <strong>Fastman v0.3.3</strong> is out! Persistent env switching, certificate path fixes, and improved SSL resolution. <a href="/fastman-cli/docs/whats-new">Learn more</a>',
       backgroundColor: '#2563eb',
       textColor: '#ffffff',
       isCloseable: true,
@@ -80,6 +217,11 @@ const config: Config = {
           to: '/docs/commands/project',
           position: 'left',
           label: 'Commands',
+        },
+        {
+          to: '/docs/whats-new',
+          position: 'left',
+          label: "What's New",
         },
         {
           href: 'https://github.com/acathon/fastman-cli',

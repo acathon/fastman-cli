@@ -87,14 +87,23 @@ fastman serve [options]
 | --- | --- | --- |
 | `--host` | Network interface to bind to | `127.0.0.1` |
 | `--port` | Port number to listen on | `8000` |
+| `--env` | Environment file to use (loads `.env.<name>`) | auto-detect |
 | `--reload` | Explicitly enable hot reload (this is the default behavior) | `true` |
 | `--no-reload` | Disable hot reload (for production-like testing) | — |
+
+When `--env` is not specified, Fastman auto-detects: `.env.production` if it exists, otherwise `.env`.
 
 ### Serve Examples
 
 ```bash
-# Default — localhost:8000 with hot reload
+# Default — localhost:8000 with hot reload, auto-detects .env.production or .env
 fastman serve
+
+# Use development environment
+fastman serve --env=development
+
+# Use staging environment
+fastman serve --env=staging
 
 # Custom port
 fastman serve --port=3000

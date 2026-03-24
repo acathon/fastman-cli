@@ -101,7 +101,8 @@ at the root of your project, then run this command.
         Output.info("Certificate Manager")
         Output.new_line()
 
-        certs_dir = CERTS_DIR
+        certs_dir = CERTS_DIR.resolve()
+        Output.info(f"Certificates directory: {certs_dir}")
 
         # Check if certs directory exists
         if not certs_dir.exists():
@@ -128,6 +129,14 @@ at the root of your project, then run this command.
         Output.info(f"Found {len(cert_files)} certificate(s):")
         for f in cert_files:
             Output.echo(f"  {f.name}", Style.GREEN)
+        Output.new_line()
+
+        # Show target CA bundle path
+        try:
+            import certifi
+            Output.info(f"Target CA bundle: {certifi.where()}")
+        except ImportError:
+            Output.info("certifi not yet installed (will be installed automatically)")
         Output.new_line()
 
         # Append certificates

@@ -35,6 +35,7 @@ my-api/
 │   │
 │   └── main.py                  # App entry point
 │
+├── public/                      # Static files (HTML, images, CSS, JS)
 ├── database/
 │   ├── migrations/              # Alembic migrations
 │   │   └── versions/
@@ -57,15 +58,19 @@ my-api/
 The API pattern groups code by HTTP resource:
 
 ```
-app/
-├── api/
-│   ├── v1/
-│   │   ├── users.py
-│   │   └── posts.py
-│   └── v2/
-├── models/
-├── schemas/
-└── services/
+my-api/
+├── app/
+│   ├── api/
+│   │   ├── v1/
+│   │   │   ├── users.py
+│   │   │   └── posts.py
+│   │   └── v2/
+│   ├── models/
+│   ├── schemas/
+│   └── services/
+├── public/                      # Static files
+├── tests/
+└── ...
 ```
 
 ## Layer Pattern
@@ -73,21 +78,26 @@ app/
 The layer pattern separates by technical concern:
 
 ```
-app/
-├── controllers/
-├── models/
-├── repositories/
-├── schemas/
-└── services/
+my-api/
+├── app/
+│   ├── controllers/
+│   ├── models/
+│   ├── repositories/
+│   ├── schemas/
+│   └── services/
+├── public/                      # Static files
+├── tests/
+└── ...
 ```
 
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| `app/main.py` | Application factory, router mounting |
+| `app/main.py` | Application factory, router mounting, static files |
 | `app/core/config.py` | Pydantic settings, loads env file by `ENVIRONMENT` |
 | `app/core/database.py` | SQLAlchemy engine and session |
+| `public/` | Static files served at `/public` (HTML, images, CSS, JS) |
 | `alembic.ini` | Database migration configuration |
 | `.env` | Fallback environment variables (never commit!) |
 | `.env.development` | Development environment settings |

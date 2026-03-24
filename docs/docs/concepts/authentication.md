@@ -148,10 +148,11 @@ fastman install:auth --type=keycloak --append-certificate
 
 This:
 1. Installs `fastapi-keycloak-middleware`
-2. Creates `app/core/keycloak.py`
+2. Creates `app/core/keycloak.py` with `add_swagger_auth=True` (Authorize button in Swagger UI)
 3. Updates `app/core/config.py` with Keycloak settings
 4. Adds environment variables to all `.env.*` files
 5. Optionally appends certificates from `certs/` to the local `certifi` bundle
+6. Dynamically excludes docs, redoc, public, and health routes from authentication
 
 ### Configuration
 
@@ -165,10 +166,28 @@ KEYCLOAK_VERIFY_SSL=certifi
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `KEYCLOAK_VERIFY_SSL` | `certifi` — use certifi CA bundle (includes appended certs) | `certifi` |
+| `KEYCLOAK_VERIFY_SSL` | `certifi` — checks `certs/` dir first, then certifi CA bundle | `certifi` |
 | | `false` — disable SSL verification (not recommended for production) | |
-| | `/path/to/cert.pem` — use a specific certificate file | |
+| | `certs/my-cert.pem` or `/certs/my-cert.pem` — use a specific certificate file (leading `/` is stripped) | |
+### Route Exclusion
 
+The Keycloak middleware automatically excludes these routes from authentication:
+
+- `settings.DOCS_URL` (default `/docs`) and its sub-paths
+- `settings.REDOC_URL` (default `/redoc`) and its sub-paths
+- `/openapi.json`, `/favicon.ico`, `/health`
+- `/public` and `/public/*`
+
+Customize docs paths in your `.env`:
+
+```env
+DOCS_URL=/docs
+REDOC_URL=/redoc
+```
+
+### Swagger Authorize Button
+
+The generated middleware uses `add_swagger_auth=True`, which automatically adds an **Authorize** button to the Swagger UI. Click it to authenticate with Keycloak before testing protected endpoints.
 ### Private CA / Certificate Support
 
 For environments that terminate TLS with an internal CA, store your certificate chain in the project-level `certs/` directory using `.pem` or `.crt` files.

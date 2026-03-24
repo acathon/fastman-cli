@@ -40,15 +40,20 @@ Fastman generates environment files for each stage:
 | `.env.staging` | Staging environment settings |
 | `.env.production` | Production environment settings |
 
-The active file is selected based on the `ENVIRONMENT` variable:
+The active file is selected via the `--env` flag:
 
 ```bash
-# Use staging settings
-ENVIRONMENT=staging fastman serve
+# Use development settings
+fastman serve --env=development
 
-# Use production settings
-ENVIRONMENT=production fastman serve
+# Use staging settings
+fastman serve --env=staging
+
+# Use production settings (or just `fastman serve` — auto-detected)
+fastman serve --env=production
 ```
+
+When no `--env` flag is provided, Fastman auto-detects `.env.production` if it exists, otherwise falls back to `.env`.
 
 ### Production Configuration
 

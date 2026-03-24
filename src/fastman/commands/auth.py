@@ -665,7 +665,6 @@ def _resolve_verify():
     - "certifi"  -> use the certifi CA bundle (includes any appended project certs)
     - "false"    -> disable SSL verification (NOT recommended for production)
     - file path  -> use that specific certificate file
-    - "true"     -> use default system SSL verification
     """
     value = getattr(settings, "KEYCLOAK_VERIFY_SSL", "certifi")
     if isinstance(value, str):
@@ -673,27 +672,57 @@ def _resolve_verify():
         if lower == "false":
             logger.warning("SSL verification is DISABLED for Keycloak. Not recommended for production.")
             return False
-        if lower == "true":
-            return True
         if lower in ("certifi", ""):
+            # First check project's certs/ directory for a single .pem or .crt
+            certs_dir = Path("certs")
+            if certs_dir.is_dir():
+                cert_files = sorted(
+                    p for p in certs_dir.iterdir()
+                    if p.is_file() and p.suffix in (".pem", ".crt")
+                )
+                if len(cert_files) == 1:
+                    ca_path = str(cert_files[0].resolve())
+                    logger.info(f"Using project certificate: {ca_path}")
+                    return ca_path
+
+            # Fall back to certifi CA bundle
             try:
                 import certifi
                 ca_path = certifi.where()
                 if Path(ca_path).is_file():
                     logger.info(f"Using certifi CA bundle: {ca_path}")
                     return ca_path
-                logger.warning(f"certifi bundle not found at {ca_path}, falling back to system defaults")
-                return True
             except ImportError:
-                logger.warning("certifi not installed, falling back to system SSL defaults")
-                return True
-        # Treat as a file path
-        if Path(value).is_file():
-            logger.info(f"Using custom certificate: {value}")
-            return value
-        logger.error(f"Certificate file not found: {value}. Falling back to system defaults.")
-        return True
-    return True
+                pass
+
+            # Last resort: check certs/ for any cert file
+            if certs_dir.is_dir():
+                cert_files = sorted(
+                    p for p in certs_dir.iterdir()
+                    if p.is_file() and p.suffix in (".pem", ".crt")
+                )
+                if cert_files:
+                    ca_path = str(cert_files[0].resolve())
+                    logger.info(f"Using project certificate (certifi unavailable): {ca_path}")
+                    return ca_path
+
+            logger.warning("No certifi bundle or project certificates found")
+            return False
+        # Treat as a file path — normalize leading slash for relative paths
+        cert_path = value.strip()
+        if cert_path.startswith("/") or cert_path.startswith("\\\\"):
+            # Could be /certs/cert.pem — try as relative to project root
+            relative = cert_path.lstrip("/").lstrip("\\\\")
+            if Path(relative).is_file():
+                ca_path = str(Path(relative).resolve())
+                logger.info(f"Using custom certificate: {ca_path}")
+                return ca_path
+        if Path(cert_path).is_file():
+            logger.info(f"Using custom certificate: {Path(cert_path).resolve()}")
+            return str(Path(cert_path).resolve())
+        logger.error(f"Certificate file not found: {value}")
+        return False
+    return False
 
 
 # Keycloak configuration
@@ -707,11 +736,37 @@ keycloak_config = KeycloakConfiguration(
 )
 
 
+def _get_exclude_patterns() -> list:
+    """Build exclude patterns from settings."""
+    patterns = [
+        "/openapi.json",
+        "/favicon.ico",
+        "/health",
+        "/public",
+        "/public/*",
+    ]
+    docs_url = getattr(settings, "DOCS_URL", "/docs")
+    redoc_url = getattr(settings, "REDOC_URL", "/redoc")
+    if docs_url:
+        patterns.extend([docs_url, f"{docs_url}/*"])
+    if redoc_url:
+        patterns.extend([redoc_url, f"{redoc_url}/*"])
+    return patterns
+
+
 def init_keycloak(app: FastAPI):
-    """Initialize Keycloak middleware"""
+    """Initialize Keycloak middleware with Swagger auth."""
+    exclude_patterns = _get_exclude_patterns()
+
     try:
-        setup_keycloak_middleware(app, keycloak_config)
+        setup_keycloak_middleware(
+            app,
+            keycloak_config,
+            exclude_patterns=exclude_patterns,
+            add_swagger_auth=True,
+        )
         logger.info("Keycloak middleware initialized successfully")
+        logger.info(f"Excluded routes: {exclude_patterns}")
     except Exception as e:
         logger.error(f"Failed to initialize Keycloak: {e}")
         raise
@@ -763,10 +818,10 @@ def init_keycloak(app: FastAPI):
                     "from app.core.logging import setup_logging\nfrom app.core.keycloak import init_keycloak"
                 )
 
-                # Add initialization after CORS middleware
+                # Add initialization before health check
                 main_content = main_content.replace(
-                    "    allow_headers=[\"*\"],\n)",
-                    "    allow_headers=[\"*\"],\n)\n\n# Initialize Keycloak\ninit_keycloak(app)"
+                    "# Health check",
+                    "# Initialize Keycloak\ninit_keycloak(app)\n\n# Health check"
                 )
 
                 main_path.write_text(main_content, encoding='utf-8')

@@ -30,7 +30,7 @@ function HomepageHeader() {
       <div className="container">
         <div className={styles.heroContent}>
           <div className={styles.badge}>
-              <span>v0.3.1</span> Cheetah
+              <span>v0.3.3</span> Cheetah
           </div>
           <Heading as="h1" className={styles.heroTitle}>
             The Elegant CLI for

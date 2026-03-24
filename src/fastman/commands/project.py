@@ -71,6 +71,7 @@ Examples:
                 "app/core",
                 "app/features",
                 "app/models",
+                "public",
                 "tests",
                 "logs"
             ]
@@ -84,6 +85,7 @@ Examples:
                 "app/api",
                 "app/schemas",
                 "app/models",
+                "public",
                 "tests",
                 "logs"
             ]
@@ -101,6 +103,7 @@ Examples:
                 "app/models",
                 "app/schemas",
                 "app/middleware",
+                "public",
                 "tests",
                 "logs"
             ]
@@ -416,6 +419,13 @@ SECRET_KEY={secret_key}
 # API
 API_V1_PREFIX=/api/v1
 ALLOWED_HOSTS={{allowed_hosts}}
+
+# Documentation
+DOCS_URL=/docs
+REDOC_URL=/redoc
+
+# Static files
+PUBLIC_DIR=public
 """
 
         database_configs = {

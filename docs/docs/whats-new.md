@@ -8,6 +8,113 @@ Stay up to date with the latest Fastman releases and features.
 
 ---
 
+## v0.3.3 (Cheetah) — March 2026
+
+**Persistent env switching, configurable docs, public directory, and Keycloak Swagger auth**
+
+### Persistent Environment Switching
+
+Use `fastman env --source=` to lock an environment. All subsequent `fastman serve` calls will use it automatically — no `--env` flag needed.
+
+```bash
+# Lock to development
+fastman env --source=development
+
+# Now serve uses .env.development automatically
+fastman serve
+
+# Check what's active
+fastman env
+
+# Clear the lock, return to auto-detect
+fastman env --reset
+```
+
+The selection is stored in `.fastman-env` (add to `.gitignore`). You can always override temporarily with `fastman serve --env=staging`.
+
+### Configurable Documentation URLs
+
+Swagger and Redoc paths are now configurable via settings instead of hardcoded:
+
+```env
+# .env
+DOCS_URL=/docs
+REDOC_URL=/redoc
+```
+
+Set to empty to disable: `DOCS_URL=` disables Swagger UI. In production, docs are automatically disabled when `DEBUG=false`.
+
+### Public Directory
+
+All scaffold patterns now include a `public/` directory, mounted at `/public` for serving static files:
+
+```
+my-api/
+├── app/
+├── public/          # Static files (HTML, images, CSS, JS)
+│   └── index.html
+├── certs/
+└── .env
+```
+
+Configure the directory name in `.env`:
+
+```env
+PUBLIC_DIR=public
+```
+
+### Keycloak Swagger Authorize Button
+
+The generated Keycloak middleware now includes `add_swagger_auth=True`, which adds an **Authorize** button to the Swagger UI automatically. No manual OpenAPI schema customization needed.
+
+### Dynamic Route Exclusion
+
+Keycloak middleware now reads `settings.DOCS_URL` and `settings.REDOC_URL` to dynamically build its `exclude_patterns`, along with `/public/*`, `/health`, `/openapi.json`, and `/favicon.ico`.
+
+### Certificate Path Fixes
+
+- `KEYCLOAK_VERIFY_SSL=/certs/cert.pem` now works — leading `/` or `\` is stripped and resolved relative to the project root
+- `fastman install:certificate` now shows the resolved certificate directory and target CA bundle paths
+- `fastman env` displays certificate paths and certifi CA bundle location
+
+### Simplified SSL Resolution
+
+`_resolve_verify()` now only accepts three values for `KEYCLOAK_VERIFY_SSL`:
+
+| Value | Behavior |
+|---|---|
+| `certifi` | Checks `certs/` dir first, then certifi CA bundle |
+| `false` | Disables SSL verification |
+| `certs/my-cert.pem` | Uses that specific certificate file |
+
+---
+
+## v0.3.2 (Cheetah) — March 2026
+
+**Environment-aware serve, certifi auto-install, and Keycloak SSL resilience**
+
+### Environment-Aware Serve
+
+You can now choose which `.env` file to load when starting the development server:
+
+```bash
+fastman serve --env=development
+fastman serve --env=staging
+fastman serve --env=production
+```
+
+When `--env` is omitted, Fastman auto-detects `.env.production` if it exists, otherwise `.env`.
+
+### certifi Auto-Install
+
+`fastman install:certificate` now installs `certifi` in the project's venv automatically if it's not already present. No more manual `pip install certifi`.
+
+### Keycloak SSL Resilience
+
+The generated `keycloak.py` now validates all certificate paths before passing them to `verify=`. If a path is missing, it falls back gracefully to system defaults with a clear log message instead of crashing with `FileNotFoundError`.
+
+---
+
 ## v0.3.1 (Cheetah) — March 2026
 
 **Keycloak certificate support and documentation refresh**

@@ -49,6 +49,43 @@ fastman route:list --method=GET
 fastman route:list --path=/users
 ```
 
+### `env`
+
+Shows the active environment file, its variables, and certificate paths. When used with `--source`, it persistently switches the environment for all future `fastman serve` calls.
+
+```bash
+fastman env [--source=development|staging|production] [--reset]
+```
+
+| Option | Description |
+|--------|-------------|
+| `--source` | Set and lock the active environment file (e.g., `development`, `staging`, `production`) |
+| `--reset` | Clear the locked selection and return to auto-detect |
+
+```bash
+# Show current active environment, variables, and cert paths
+fastman env
+
+# Lock to .env.development — serve will use it automatically
+fastman env --source=development
+
+# Lock to .env.staging
+fastman env --source=staging
+
+# Clear the lock, return to auto-detect (.env.production > .env)
+fastman env --reset
+```
+
+Resolution priority for `fastman serve`:
+1. `--env=X` flag (always overrides)
+2. `.fastman-env` lock file (set by `fastman env --source=`)
+3. `.env.production` (auto-detect default)
+4. `.env` (fallback)
+
+:::tip
+Add `.fastman-env` to your `.gitignore` — this is a local developer preference, not a project setting.
+:::
+
 ### `inspect`
 
 Inspects a component of your application and displays its structure.

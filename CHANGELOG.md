@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-03-25
+
+### ✨ Added
+
+- **Persistent environment switching**: `fastman env --source=development` saves the selection to `.fastman-env`; subsequent `fastman serve` calls use it automatically without `--env`
+- **`fastman env` command**: Shows active environment file, variables (with sensitive values masked), certificate paths, and certifi CA bundle location
+- **`--reset` flag**: `fastman env --reset` clears the lock and returns to auto-detect behavior
+- **Configurable docs URLs**: `DOCS_URL` and `REDOC_URL` settings in config and `.env` files — change or disable Swagger/Redoc paths
+- **Public directory**: New `public/` directory in all scaffold patterns, mounted at `/public` for serving static files (HTML, images, etc.)
+- **Keycloak Swagger Authorize button**: Generated `keycloak.py` now uses `add_swagger_auth=True` for built-in OpenAPI auth support
+- **Dynamic route exclusion**: Keycloak middleware excludes docs/redoc/public routes dynamically from `settings.DOCS_URL` and `settings.REDOC_URL`
+
+### 🔧 Fixed
+
+- **Certificate path with leading slash**: `KEYCLOAK_VERIFY_SSL=/certs/cert.pem` now resolves correctly (leading `/` or `\` is stripped and treated as relative to project root)
+- **SSL verify resolution simplified**: `_resolve_verify()` now only supports `certifi`, `false`, or a file path — removed `true` option to avoid ambiguity
+- **`install:certificate` shows real paths**: Displays the resolved `certs/` directory path and the target certifi CA bundle path for easier debugging
+
+## [0.3.2] - 2026-03-24
+
+### ✨ Added
+
+- **Environment-aware serve**: `fastman serve --env=development` loads `.env.development` via uvicorn's `--env-file`. Auto-detects `.env.production` or `.env` when no flag is given
+- **certifi auto-install**: `fastman install:certificate` now installs `certifi` in the project venv automatically if missing
+- **Keycloak SSL resilience**: Generated `keycloak.py` validates certificate paths before passing to `verify=`, with graceful fallbacks and logging
+
+### 🔧 Fixed
+
+- **FileNotFoundError on Keycloak SSL**: `_resolve_verify()` now checks `Path.is_file()` before using any certificate path, preventing crashes when certifi bundle or custom cert is missing
+
 ## [0.3.1] - 2026-03-24
 
 ### ✨ Added
@@ -125,7 +155,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/acathon/fastman-cli/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/acathon/fastman-cli/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/acathon/fastman-cli/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/acathon/fastman-cli/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/acathon/fastman-cli/compare/v0.2.6...v0.3.0
 [0.2.6]: https://github.com/acathon/fastman-cli/compare/v0.2.0...v0.2.6
