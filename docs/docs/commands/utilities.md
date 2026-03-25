@@ -78,12 +78,12 @@ fastman env --reset
 
 Resolution priority for `fastman serve`:
 1. `--env=X` flag (always overrides)
-2. `.fastman-env` lock file (set by `fastman env --source=`)
+2. `.fastman` config file (set by `fastman env --source=`)
 3. `.env.production` (auto-detect default)
 4. `.env` (fallback)
 
 :::tip
-Add `.fastman-env` to your `.gitignore` — this is a local developer preference, not a project setting.
+Add `.fastman` to your `.gitignore` — this is a local developer preference, not a project setting.
 :::
 
 ### `inspect`

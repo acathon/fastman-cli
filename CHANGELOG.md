@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✨ Added
 
-- **Persistent environment switching**: `fastman env --source=development` saves the selection to `.fastman-env`; subsequent `fastman serve` calls use it automatically without `--env`
+- **Persistent environment switching**: `fastman env --source=development` saves the selection to `.fastman`; subsequent `fastman serve` calls use it automatically without `--env`
 - **`fastman env` command**: Shows active environment file, variables (with sensitive values masked), certificate paths, and certifi CA bundle location
 - **`--reset` flag**: `fastman env --reset` clears the lock and returns to auto-detect behavior
 - **Configurable docs URLs**: `DOCS_URL` and `REDOC_URL` settings in config and `.env` files — change or disable Swagger/Redoc paths

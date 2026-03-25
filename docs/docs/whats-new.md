@@ -30,7 +30,7 @@ fastman env
 fastman env --reset
 ```
 
-The selection is stored in `.fastman-env` (add to `.gitignore`). You can always override temporarily with `fastman serve --env=staging`.
+The selection is stored in `.fastman` (add to `.gitignore`). You can always override temporarily with `fastman serve --env=staging`.
 
 ### Configurable Documentation URLs
 

@@ -1,6 +1,5 @@
-"""
-Server commands.
-"""
+"""Server commands."""
+import json
 import os
 import subprocess
 from pathlib import Path
@@ -8,26 +7,42 @@ from .base import Command, register
 from ..console import Output, Style
 from ..utils import PackageManager
 
-ENV_LOCK_FILE = Path(".fastman-env")
+FASTMAN_CONFIG = Path(".fastman")
+
+
+def _read_config() -> dict:
+    """Read the .fastman config file."""
+    if FASTMAN_CONFIG.exists():
+        try:
+            return json.loads(FASTMAN_CONFIG.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, ValueError):
+            return {}
+    return {}
+
+
+def _write_config(config: dict):
+    """Write the .fastman config file."""
+    FASTMAN_CONFIG.write_text(
+        json.dumps(config, indent=2) + "\n", encoding="utf-8"
+    )
 
 
 def _read_locked_env() -> str | None:
-    """Read the persisted environment from .fastman-env."""
-    if ENV_LOCK_FILE.exists():
-        value = ENV_LOCK_FILE.read_text(encoding="utf-8").strip()
-        return value if value else None
-    return None
+    """Read the persisted environment from .fastman config."""
+    return _read_config().get("env")
 
 
 def _write_locked_env(env: str):
-    """Persist the selected environment to .fastman-env."""
-    ENV_LOCK_FILE.write_text(env + "\n", encoding="utf-8")
+    """Persist the selected environment to .fastman config."""
+    config = _read_config()
+    config["env"] = env
+    _write_config(config)
 
 
 def _resolve_env_file(env: str | None = None) -> Path | None:
     """
     Resolve the env file.
-    Priority: explicit env arg > .fastman-env lock > .env.production > .env
+    Priority: explicit env arg > .fastman config > .env.production > .env
     """
     if env:
         env_file = Path(f".env.{env}")
@@ -99,7 +114,7 @@ Examples:
             cmd.append("--reload")
 
         # Resolve env file
-        # Priority: --env flag > .fastman-env lock > .env.production > .env
+        # Priority: --env flag > .fastman config > .env.production > .env
         if env:
             env_file = Path(f".env.{env}")
             if not env_file.exists():
@@ -146,8 +161,10 @@ Examples:
 
         # Handle --reset
         if self.flag("reset"):
-            if ENV_LOCK_FILE.exists():
-                ENV_LOCK_FILE.unlink()
+            config = _read_config()
+            if "env" in config:
+                del config["env"]
+                _write_config(config)
                 Output.success("Environment selection cleared. 'fastman serve' will auto-detect.")
             else:
                 Output.info("No environment selection to clear.")
@@ -169,7 +186,7 @@ Examples:
             Output.echo("")
 
         # List all available env files
-        env_files = sorted(f for f in Path(".").glob(".env*") if f.is_file() and f.name != ".fastman-env")
+        env_files = sorted(f for f in Path(".").glob(".env*") if f.is_file() and f.name != ".fastman")
 
         if not env_files:
             Output.warn("No .env files found in the current directory.")
