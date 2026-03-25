@@ -63,15 +63,12 @@ uv · poetry · pipenv · pip — auto-detected from your project
 - **API** — resource-grouped with built-in API versioning
 - **Layer** — traditional MVC-style separation of concerns
 
-## What's New in v0.3.4 (Cheetah)
+## What's New in v0.3.5 (Cheetah)
 
-- `fastman env --source=development` persistently switches the active environment
-- `fastman serve` automatically uses the locked environment (no `--env` needed)
-- Configurable `DOCS_URL` and `REDOC_URL` in settings and `.env` files
-- New `public/` directory for serving static files at `/public`
-- Keycloak Swagger **Authorize** button via `add_swagger_auth=True`
-- Dynamic route exclusion from Keycloak auth (docs, redoc, public, health)
-- Certificate path fixes (leading `/` now supported)
+- Keycloak switched to [`fastapi-keycloak`](https://github.com/fastapi-keycloak/fastapi-keycloak) with dependency-based route protection
+- `GET /me` endpoint automatically registered for Keycloak auth
+- Swagger Authorize button via `idp.add_swagger_config(app)`
+- User, role, and group management through the `FastAPIKeycloak` instance
 
 See the full [changelog](./whats-new).
 

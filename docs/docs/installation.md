@@ -50,7 +50,7 @@ fastman --version
 You should see output like:
 
 ```
-Fastman v0.3.4 (Cheetah)
+Fastman v0.3.5 (Cheetah)
 Python 3.12.0
 Package Manager: uv
 ```

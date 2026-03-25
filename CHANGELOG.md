@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-03-25
+
+### ⚠️ Breaking
+
+- **Keycloak: switched from `fastapi-keycloak-middleware` to `fastapi-keycloak`**: The generated `app/core/keycloak.py` now uses a `FastAPIKeycloak` instance with dependency-based route protection instead of global middleware. Routes are no longer protected by default — add `Depends(get_current_user)` to each protected endpoint. New env variables: `KEYCLOAK_ADMIN_SECRET` (required), `KEYCLOAK_CALLBACK_URI`. Removed: `KEYCLOAK_VERIFY_SSL=certifi` file-path mode (use `fastman install:certificate` to append custom CAs instead).
+
+### ✨ Added
+
+- **Keycloak `/me` endpoint**: `init_keycloak(app)` now registers a `GET /me` route that returns the current `OIDCUser` via `Depends(get_current_user)`
+
 ## [0.3.4] - 2026-03-25
 
 ### ✨ Added

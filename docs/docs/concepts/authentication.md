@@ -134,7 +134,7 @@ app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
 
 ## Keycloak Authentication
 
-Enterprise-grade identity and access management with single sign-on (SSO).
+Enterprise-grade identity and access management with single sign-on (SSO). Powered by [`fastapi-keycloak`](https://github.com/fastapi-keycloak/fastapi-keycloak).
 
 ```bash
 fastman install:auth --type=keycloak
@@ -147,12 +147,18 @@ fastman install:auth --type=keycloak --append-certificate
 ```
 
 This:
-1. Installs `fastapi-keycloak-middleware`
-2. Creates `app/core/keycloak.py` with `add_swagger_auth=True` (Authorize button in Swagger UI)
-3. Updates `app/core/config.py` with Keycloak settings
-4. Adds environment variables to all `.env.*` files
-5. Optionally appends certificates from `certs/` to the local `certifi` bundle
-6. Dynamically excludes docs, redoc, public, and health routes from authentication
+1. Installs `fastapi-keycloak`
+2. Creates `app/core/keycloak.py` with a `FastAPIKeycloak` instance and Swagger OAuth config
+3. Registers a `GET /me` endpoint that returns the current authenticated user
+4. Updates `app/core/config.py` with Keycloak settings
+5. Adds environment variables to all `.env.*` files
+6. Optionally appends certificates from `certs/` to the local `certifi` bundle
+
+### Generated Endpoint
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/me` | Return the current authenticated Keycloak user |
 
 ### Configuration
 
@@ -161,33 +167,51 @@ KEYCLOAK_URL=https://keycloak.example.com
 KEYCLOAK_REALM=my-realm
 KEYCLOAK_CLIENT_ID=my-client
 KEYCLOAK_CLIENT_SECRET=your-secret
-KEYCLOAK_VERIFY_SSL=certifi
+KEYCLOAK_ADMIN_SECRET=your-admin-cli-secret
+KEYCLOAK_CALLBACK_URI=http://localhost:8000/callback
+KEYCLOAK_VERIFY_SSL=true
 ```
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `KEYCLOAK_VERIFY_SSL` | `certifi` — checks `certs/` dir first, then certifi CA bundle | `certifi` |
-| | `false` — disable SSL verification (not recommended for production) | |
-| | `certs/my-cert.pem` or `/certs/my-cert.pem` — use a specific certificate file (leading `/` is stripped) | |
-### Route Exclusion
+| `KEYCLOAK_URL` | Keycloak server URL (with `/auth` suffix if required by your version) | `http://localhost:8080` |
+| `KEYCLOAK_REALM` | Keycloak realm name | `master` |
+| `KEYCLOAK_CLIENT_ID` | Client ID for your application | — |
+| `KEYCLOAK_CLIENT_SECRET` | Client secret | — |
+| `KEYCLOAK_ADMIN_SECRET` | Secret for the `admin-cli` client (required for user/role management) | — |
+| `KEYCLOAK_CALLBACK_URI` | OAuth2 callback URL — must match a Valid Redirect URI in Keycloak | `http://localhost:8000/callback` |
+| `KEYCLOAK_VERIFY_SSL` | `true` — enable SSL verification; `false` — disable (not recommended for production) | `true` |
 
-The Keycloak middleware automatically excludes these routes from authentication:
+### Protecting Routes
 
-- `settings.DOCS_URL` (default `/docs`) and its sub-paths
-- `settings.REDOC_URL` (default `/redoc`) and its sub-paths
-- `/openapi.json`, `/favicon.ico`, `/health`
-- `/public` and `/public/*`
+Unlike middleware-based approaches, `fastapi-keycloak` uses **dependency injection**. Routes are unprotected by default — you opt in per-route:
 
-Customize docs paths in your `.env`:
+```python
+from fastapi import Depends
+from fastapi_keycloak import OIDCUser
+from app.core.keycloak import get_current_user
 
-```env
-DOCS_URL=/docs
-REDOC_URL=/redoc
+@router.get("/protected")
+def protected_route(user: OIDCUser = Depends(get_current_user)):
+    return {"message": f"Hello, {user.email}"}
+```
+
+To require specific roles:
+
+```python
+from app.core.keycloak import idp
+
+get_admin = idp.get_current_user(required_roles=["admin"])
+
+@router.get("/admin")
+def admin_route(user: OIDCUser = Depends(get_admin)):
+    return {"message": f"Welcome admin {user.email}"}
 ```
 
 ### Swagger Authorize Button
 
-The generated middleware uses `add_swagger_auth=True`, which automatically adds an **Authorize** button to the Swagger UI. Click it to authenticate with Keycloak before testing protected endpoints.
+`init_keycloak(app)` calls `idp.add_swagger_config(app)` and registers the `/me` endpoint. The Swagger UI automatically gets an **Authorize** button — click it to authenticate with Keycloak before testing protected endpoints.
+
 ### Private CA / Certificate Support
 
 For environments that terminate TLS with an internal CA, store your certificate chain in the project-level `certs/` directory using `.pem` or `.crt` files.

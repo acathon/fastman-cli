@@ -641,30 +641,33 @@ OAUTH_CLIENT_SECRET=your-{provider}-client-secret
             Output.info("Run 'fastman create <project-name>' to create a new project first.")
             return
 
-        packages = ["fastapi-keycloak-middleware", "certifi"]
+        packages = ["fastapi-keycloak", "certifi"]
         if not PackageManager.install(packages):
             Output.error("Failed to install dependencies")
             return
 
         # Create keycloak configuration file
         keycloak_config = '''"""Keycloak authentication configuration"""
-import os
 from pathlib import Path
 from fastapi import FastAPI
-from fastapi_keycloak_middleware import KeycloakConfiguration, setup_keycloak_middleware
+from fastapi_keycloak import FastAPIKeycloak
 from app.core.config import settings
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-def _resolve_verify():
+def _resolve_ssl_verification() -> bool:
     """
     Resolve the SSL verification setting for Keycloak.
 
     - "certifi"  -> use the certifi CA bundle (includes any appended project certs)
     - "false"    -> disable SSL verification (NOT recommended for production)
     - file path  -> use that specific certificate file
+
+    Note: fastapi-keycloak accepts bool for ssl_verification.
+    When a custom CA is needed, append it to the certifi bundle via
+    ``fastman install:certificate`` and keep ssl_verification=True.
     """
     value = getattr(settings, "KEYCLOAK_VERIFY_SSL", "certifi")
     if isinstance(value, str):
@@ -672,104 +675,42 @@ def _resolve_verify():
         if lower == "false":
             logger.warning("SSL verification is DISABLED for Keycloak. Not recommended for production.")
             return False
-        if lower in ("certifi", ""):
-            # First check project's certs/ directory for a single .pem or .crt
-            certs_dir = Path("certs")
-            if certs_dir.is_dir():
-                cert_files = sorted(
-                    p for p in certs_dir.iterdir()
-                    if p.is_file() and p.suffix in (".pem", ".crt")
-                )
-                if len(cert_files) == 1:
-                    ca_path = str(cert_files[0].resolve())
-                    logger.info(f"Using project certificate: {ca_path}")
-                    return ca_path
-
-            # Fall back to certifi CA bundle
-            try:
-                import certifi
-                ca_path = certifi.where()
-                if Path(ca_path).is_file():
-                    logger.info(f"Using certifi CA bundle: {ca_path}")
-                    return ca_path
-            except ImportError:
-                pass
-
-            # Last resort: check certs/ for any cert file
-            if certs_dir.is_dir():
-                cert_files = sorted(
-                    p for p in certs_dir.iterdir()
-                    if p.is_file() and p.suffix in (".pem", ".crt")
-                )
-                if cert_files:
-                    ca_path = str(cert_files[0].resolve())
-                    logger.info(f"Using project certificate (certifi unavailable): {ca_path}")
-                    return ca_path
-
-            logger.warning("No certifi bundle or project certificates found")
-            return False
-        # Treat as a file path — normalize leading slash for relative paths
-        cert_path = value.strip()
-        if cert_path.startswith("/") or cert_path.startswith("\\\\"):
-            # Could be /certs/cert.pem — try as relative to project root
-            relative = cert_path.lstrip("/").lstrip("\\\\")
-            if Path(relative).is_file():
-                ca_path = str(Path(relative).resolve())
-                logger.info(f"Using custom certificate: {ca_path}")
-                return ca_path
-        if Path(cert_path).is_file():
-            logger.info(f"Using custom certificate: {Path(cert_path).resolve()}")
-            return str(Path(cert_path).resolve())
-        logger.error(f"Certificate file not found: {value}")
-        return False
-    return False
+        if lower in ("certifi", "true", ""):
+            return True
+    return True
 
 
-# Keycloak configuration
-keycloak_config = KeycloakConfiguration(
-    url=settings.KEYCLOAK_URL,
-    realm=settings.KEYCLOAK_REALM,
+# Keycloak IDP instance
+idp = FastAPIKeycloak(
+    server_url=settings.KEYCLOAK_URL,
     client_id=settings.KEYCLOAK_CLIENT_ID,
     client_secret=settings.KEYCLOAK_CLIENT_SECRET,
-    admin_client_secret=settings.KEYCLOAK_ADMIN_SECRET if hasattr(settings, 'KEYCLOAK_ADMIN_SECRET') else None,
-    verify=_resolve_verify(),
+    admin_client_secret=settings.KEYCLOAK_ADMIN_SECRET,
+    realm=settings.KEYCLOAK_REALM,
+    callback_uri=settings.KEYCLOAK_CALLBACK_URI,
+    ssl_verification=_resolve_ssl_verification(),
 )
 
-
-def _get_exclude_patterns() -> list:
-    """Build exclude patterns from settings."""
-    patterns = [
-        "/openapi.json",
-        "/favicon.ico",
-        "/health",
-        "/public",
-        "/public/*",
-    ]
-    docs_url = getattr(settings, "DOCS_URL", "/docs")
-    redoc_url = getattr(settings, "REDOC_URL", "/redoc")
-    if docs_url:
-        patterns.extend([docs_url, f"{docs_url}/*"])
-    if redoc_url:
-        patterns.extend([redoc_url, f"{redoc_url}/*"])
-    return patterns
+# Re-usable dependencies — import these in your routers
+get_current_user = idp.get_current_user()
 
 
 def init_keycloak(app: FastAPI):
-    """Initialize Keycloak middleware with Swagger auth."""
-    exclude_patterns = _get_exclude_patterns()
+    """Initialize Keycloak Swagger auth and register /me endpoint."""
+    from fastapi import Depends
+    from fastapi_keycloak import OIDCUser
 
     try:
-        setup_keycloak_middleware(
-            app,
-            keycloak_config,
-            exclude_patterns=exclude_patterns,
-            add_swagger_auth=True,
-        )
-        logger.info("Keycloak middleware initialized successfully")
-        logger.info(f"Excluded routes: {exclude_patterns}")
+        idp.add_swagger_config(app)
+        logger.info("Keycloak initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize Keycloak: {e}")
         raise
+
+    @app.get("/me", tags=["Authentication"])
+    def me(user: OIDCUser = Depends(get_current_user)):
+        """Return the current authenticated user."""
+        return user
 '''
 
         # Write keycloak.py
@@ -792,8 +733,9 @@ def init_keycloak(app: FastAPI):
     KEYCLOAK_REALM: str = "master"
     KEYCLOAK_CLIENT_ID: str = ""
     KEYCLOAK_CLIENT_SECRET: str = ""
-    KEYCLOAK_ADMIN_SECRET: Optional[str] = None
-    KEYCLOAK_VERIFY_SSL: str = "certifi"
+    KEYCLOAK_ADMIN_SECRET: str = ""
+    KEYCLOAK_CALLBACK_URI: str = "http://localhost:8000/callback"
+    KEYCLOAK_VERIFY_SSL: str = "true"
     '''
 
                 # Insert before "class Config:"
@@ -834,23 +776,35 @@ KEYCLOAK_URL=http://localhost:8080
 KEYCLOAK_REALM=master
 KEYCLOAK_CLIENT_ID=your-client-id
 KEYCLOAK_CLIENT_SECRET=your-client-secret
-KEYCLOAK_VERIFY_SSL=certifi
+KEYCLOAK_ADMIN_SECRET=your-admin-cli-secret
+KEYCLOAK_CALLBACK_URI=http://localhost:8000/callback
+KEYCLOAK_VERIFY_SSL=true
 '''
         EnvManager.append_to_all(keycloak_env, "KEYCLOAK_URL")
         Output.info("Updated env files with Keycloak configuration")
 
         Output.success("Keycloak authentication installed!")
         Output.info("\nFiles created/updated:")
-        Output.echo("  app/core/keycloak.py - Keycloak configuration", Style.GREEN)
+        Output.echo("  app/core/keycloak.py - Keycloak configuration & dependencies", Style.GREEN)
         Output.echo("  app/core/config.py - Added Keycloak settings", Style.GREEN)
         Output.echo("  app/main.py - Added Keycloak initialization", Style.GREEN)
         Output.echo("  .env.* - Added Keycloak environment variables", Style.GREEN)
+        Output.info("\nEndpoints created:")
+        Output.echo("  GET /me - Current authenticated user", Style.GREEN)
         Output.info("\nNext steps:")
         Output.echo("  1. Update .env with your Keycloak credentials", Style.CYAN)
         Output.echo("  2. Restart your server", Style.CYAN)
-        Output.echo("  3. All routes are now protected by Keycloak", Style.CYAN)
-        Output.info("\nTo access user info in routes:")
-        Output.echo("  request.state.user - Contains Keycloak user info", Style.YELLOW)
+        Output.echo("  3. Test at: http://localhost:8000/docs (use Authorize button)", Style.CYAN)
+        Output.info("\nTo protect additional routes:")
+        Output.echo("  from fastapi import Depends", Style.YELLOW)
+        Output.echo("  from fastapi_keycloak import OIDCUser", Style.YELLOW)
+        Output.echo("  from app.core.keycloak import get_current_user", Style.YELLOW)
+        Output.echo("", Style.YELLOW)
+        Output.echo("  @router.get(\"/protected\")", Style.YELLOW)
+        Output.echo("  def protected_route(user: OIDCUser = Depends(get_current_user)):", Style.YELLOW)
+        Output.echo("      return {\"message\": f\"Hello, {user.email}\"}", Style.YELLOW)
+        Output.info("\nTo require specific roles:")
+        Output.echo("  get_admin = idp.get_current_user(required_roles=[\"admin\"])", Style.YELLOW)
 
     def _install_passkey(self):
         """Install WebAuthn/Passkey authentication (passwordless)"""

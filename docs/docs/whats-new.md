@@ -63,29 +63,20 @@ Configure the directory name in `.env`:
 PUBLIC_DIR=public
 ```
 
-### Keycloak Swagger Authorize Button
+### Keycloak: Switched to `fastapi-keycloak`
 
-The generated Keycloak middleware now includes `add_swagger_auth=True`, which adds an **Authorize** button to the Swagger UI automatically. No manual OpenAPI schema customization needed.
+Keycloak authentication now uses [`fastapi-keycloak`](https://github.com/fastapi-keycloak/fastapi-keycloak) instead of `fastapi-keycloak-middleware`. Key changes:
 
-### Dynamic Route Exclusion
-
-Keycloak middleware now reads `settings.DOCS_URL` and `settings.REDOC_URL` to dynamically build its `exclude_patterns`, along with `/public/*`, `/health`, `/openapi.json`, and `/favicon.ico`.
+- **Dependency injection** — routes are protected via `Depends(get_current_user)` instead of global middleware
+- **`GET /me` endpoint** — automatically registered, returns the current OIDC user
+- **Swagger Authorize button** — `idp.add_swagger_config(app)` adds OAuth2 auth to Swagger UI
+- **User & role management** — the `FastAPIKeycloak` instance (`idp`) exposes methods for creating/deleting users, roles, and groups
+- New env variables: `KEYCLOAK_ADMIN_SECRET`, `KEYCLOAK_CALLBACK_URI`
 
 ### Certificate Path Fixes
 
-- `KEYCLOAK_VERIFY_SSL=/certs/cert.pem` now works — leading `/` or `\` is stripped and resolved relative to the project root
 - `fastman install:certificate` now shows the resolved certificate directory and target CA bundle paths
 - `fastman env` displays certificate paths and certifi CA bundle location
-
-### Simplified SSL Resolution
-
-`_resolve_verify()` now only accepts three values for `KEYCLOAK_VERIFY_SSL`:
-
-| Value | Behavior |
-|---|---|
-| `certifi` | Checks `certs/` dir first, then certifi CA bundle |
-| `false` | Disables SSL verification |
-| `certs/my-cert.pem` | Uses that specific certificate file |
 
 ---
 
