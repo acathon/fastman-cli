@@ -26,16 +26,6 @@ const config: Config = {
   themes: [
     '@docusaurus/theme-mermaid',
     '@docusaurus/theme-live-codeblock',
-    [
-      '@easyops-cn/docusaurus-search-local',
-      {
-        hashed: true,
-        language: ['en'],
-        indexBlog: false,
-        docsRouteBasePath: '/docs',
-        highlightSearchTermsOnTargetPage: true,
-      },
-    ],
   ],
 
   headTags: [
