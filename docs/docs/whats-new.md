@@ -8,6 +8,45 @@ Stay up to date with the latest Fastman releases and features.
 
 ---
 
+## v0.3.6 (Cheetah) — March 2026
+
+**Safer Keycloak startup, non-destructive SSL certificate handling, and clearer admin credential guidance**
+
+### `install:cert` Command
+
+The certificate utility is now modeled around merged CA bundles instead of patching `certifi`.
+
+- New primary command: `fastman install:cert`
+- It builds `certs/ca-bundle-merged.pem` from `certifi` plus your project certificates
+- It writes `CERTS_PATH`, `REQUESTS_CA_BUNDLE`, and `SSL_CERT_FILE` into env files when needed
+- `install:certificate` remains as a deprecated alias for compatibility
+
+### Graceful Keycloak Startup
+
+Keycloak integration no longer takes your whole app down when the identity provider is unavailable during startup.
+
+- If `KEYCLOAK_URL` is unreachable, Fastman logs the error, disables Keycloak for that boot, and still starts the API
+- `/health` and other non-Keycloak routes stay available
+- Protected routes continue to work as soon as Keycloak is configured correctly and the app is restarted
+
+### Public Client Compatibility
+
+If Keycloak returns `unauthorized_client` while trying to obtain an admin token, Fastman now treats that as an admin-only limitation instead of a fatal boot error.
+
+- Basic auth flows still work: Swagger authorize, `Depends(get_current_user)`, and `GET /me`
+- Admin features are disabled until you provide a confidential admin client with service accounts enabled
+- `KEYCLOAK_ADMIN_SECRET` is now documented as optional for projects that do not use admin API methods
+
+### Non-Destructive SSL Certificate Support
+
+Fastman no longer edits the installed `certifi` bundle in place for generated Keycloak projects.
+
+- `init_keycloak()` builds a merged CA bundle from `certifi` plus project certificates
+- It sets `REQUESTS_CA_BUNDLE` and `SSL_CERT_FILE` for the running process
+- Projects with no `certs/` directory remain unaffected
+
+---
+
 ## v0.3.4 (Cheetah) — March 2026
 
 **Persistent env switching, configurable docs, public directory, and Keycloak Swagger auth**
@@ -72,6 +111,26 @@ Keycloak authentication now uses [`fastapi-keycloak`](https://github.com/fastapi
 - **Swagger Authorize button** — `idp.add_swagger_config(app)` adds OAuth2 auth to Swagger UI
 - **User & role management** — the `FastAPIKeycloak` instance (`idp`) exposes methods for creating/deleting users, roles, and groups
 - New env variables: `KEYCLOAK_ADMIN_SECRET`, `KEYCLOAK_CALLBACK_URI`
+
+### Lazy Keycloak Initialization & Auto Certificate Appending
+
+The `FastAPIKeycloak` instance is now **lazy-initialized** inside `init_keycloak(app)` instead of at module import time. This solves SSL verification failures that occurred when the IDP tried to contact Keycloak during import.
+
+At startup, `init_keycloak()` automatically:
+1. Scans `certs/` (or `CERTS_PATH`) for `.pem`/`.crt` files and builds a merged CA bundle
+2. Sets `REQUESTS_CA_BUNDLE` and `SSL_CERT_FILE` for the running process
+3. Creates the `FastAPIKeycloak` instance — HTTPS calls now trust your custom certificates
+4. Configures Swagger OAuth and registers the `/me` endpoint
+
+No separate certificate script is needed — just drop your cert files in `certs/` and start the server.
+
+### Graceful Keycloak Fallback
+
+The app no longer crashes if Keycloak is unreachable or misconfigured:
+
+- **Connection refused** (Keycloak not running): the app starts with Keycloak disabled, logs a warning, and `/health` still responds
+- **Public client** (`unauthorized_client`): the app starts with admin features (user/role management) disabled — basic auth still works
+- **Valid Keycloak**: full functionality including admin features and Swagger Authorize button
 
 ### Certificate Path Fixes
 

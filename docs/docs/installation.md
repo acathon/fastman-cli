@@ -50,7 +50,7 @@ fastman --version
 You should see output like:
 
 ```
-Fastman v0.3.5 (Cheetah)
+Fastman v0.3.6 (Cheetah)
 Python 3.12.0
 Package Manager: uv
 ```
@@ -64,7 +64,7 @@ If `fastman` is not recognized, make sure your Python scripts directory is on yo
 Fastman installs its CLI dependencies automatically, including Rich, Pyfiglet, IPython, and certifi.
 
 - `ipython` powers `fastman tinker` out of the box
-- `certifi` provides the CA bundle used by `fastman install:certificate`
+- `certifi` provides the base CA bundle used by `fastman install:cert`
 
 ## Updating Fastman
 

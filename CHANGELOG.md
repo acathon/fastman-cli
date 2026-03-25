@@ -7,15 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-03-26
+
+### ✨ Added
+
+- **`install:cert` command**: Fastman's certificate utility now builds a merged CA bundle from `certifi` plus project certificates and writes `CERTS_PATH`, `REQUESTS_CA_BUNDLE`, and `SSL_CERT_FILE` into env files when needed
+- **Graceful Keycloak startup**: generated `app/core/keycloak.py` now lets the API start even when Keycloak is unreachable during boot. Fastman logs the failure, disables Keycloak for that process, and keeps non-Keycloak routes available
+- **Public-client fallback**: when Keycloak returns `unauthorized_client` while requesting an admin token, Fastman now retries without admin features so basic route protection and `/me` can still be used
+- **Non-destructive SSL certificate loading**: generated Keycloak projects build a merged CA bundle from `certifi` plus project certificates and set `REQUESTS_CA_BUNDLE` / `SSL_CERT_FILE` instead of editing `certifi` in place
+
+### 📚 Documentation
+
+- Rewrote the Keycloak auth guide to distinguish minimal auth setup from admin-enabled setup
+- Documented that `KEYCLOAK_ADMIN_SECRET` is optional unless your code uses admin operations on `idp`
+- Renamed certificate setup docs to `install:cert` and documented `install:certificate` as a deprecated alias
+- Updated the docs site, installation page, landing page, and release banner to `v0.3.6`
+
 ## [0.3.5] - 2026-03-25
 
 ### ⚠️ Breaking
 
-- **Keycloak: switched from `fastapi-keycloak-middleware` to `fastapi-keycloak`**: The generated `app/core/keycloak.py` now uses a `FastAPIKeycloak` instance with dependency-based route protection instead of global middleware. Routes are no longer protected by default — add `Depends(get_current_user)` to each protected endpoint. New env variables: `KEYCLOAK_ADMIN_SECRET` (required), `KEYCLOAK_CALLBACK_URI`. Removed: `KEYCLOAK_VERIFY_SSL=certifi` file-path mode (use `fastman install:certificate` to append custom CAs instead).
+- **Keycloak: switched from `fastapi-keycloak-middleware` to `fastapi-keycloak`**: The generated `app/core/keycloak.py` now uses a `FastAPIKeycloak` instance with dependency-based route protection instead of global middleware. Routes are no longer protected by default — add `Depends(get_current_user)` to each protected endpoint. New env variables: `KEYCLOAK_ADMIN_SECRET`, `KEYCLOAK_CALLBACK_URI`. Removed: `KEYCLOAK_VERIFY_SSL=certifi` file-path mode.
 
 ### ✨ Added
 
 - **Keycloak `/me` endpoint**: `init_keycloak(app)` now registers a `GET /me` route that returns the current `OIDCUser` via `Depends(get_current_user)`
+- **Lazy Keycloak initialization**: `FastAPIKeycloak` instance is now created inside `init_keycloak(app)` instead of at module level — no network calls at import time, preventing SSL crashes when Keycloak is unreachable during import
+- **Auto certificate appending**: `init_keycloak()` automatically scans `certs/` (or `CERTS_PATH` env var) for `.pem`/`.crt` files, builds a merged CA bundle, and sets `REQUESTS_CA_BUNDLE` — no separate script or manual step needed, and the original certifi bundle is never modified
+- **Graceful Keycloak fallback**: the app no longer crashes if Keycloak is unreachable (connection refused) or configured with a public client (`unauthorized_client`). The server starts with Keycloak disabled and logs a clear warning
 
 ## [0.3.4] - 2026-03-25
 
@@ -165,7 +184,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/acathon/fastman-cli/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/acathon/fastman-cli/compare/v0.3.6...HEAD
+[0.3.6]: https://github.com/acathon/fastman-cli/compare/v0.3.5...v0.3.6
+[0.3.5]: https://github.com/acathon/fastman-cli/compare/v0.3.2...v0.3.5
 [0.3.2]: https://github.com/acathon/fastman-cli/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/acathon/fastman-cli/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/acathon/fastman-cli/compare/v0.2.6...v0.3.0

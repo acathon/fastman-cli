@@ -147,12 +147,20 @@ fastman install:auth --type=keycloak --append-certificate
 ```
 
 This:
-1. Installs `fastapi-keycloak`
-2. Creates `app/core/keycloak.py` with a `FastAPIKeycloak` instance and Swagger OAuth config
-3. Registers a `GET /me` endpoint that returns the current authenticated user
-4. Updates `app/core/config.py` with Keycloak settings
-5. Adds environment variables to all `.env.*` files
-6. Optionally appends certificates from `certs/` to the local `certifi` bundle
+1. Installs `fastapi-keycloak` and `certifi`
+2. Creates `app/core/keycloak.py` with lazy-initialized `FastAPIKeycloak` instance, Swagger OAuth config, and a `GET /me` endpoint
+3. Updates `app/core/config.py` with Keycloak settings
+4. Adds environment variables to all `.env.*` files
+5. Automatically uses certificates from `certs/` when present by building a merged CA bundle for the running app
+
+:::info Lazy initialization and startup fallback
+The `FastAPIKeycloak` instance is **not** created at import time. It is initialized inside `init_keycloak(app)` during application startup. This gives you a safer startup flow:
+- Custom certificates are loaded **before** any HTTPS call to Keycloak
+- No network calls happen during module import
+- `idp` and `get_current_user` are populated only after `init_keycloak()` runs
+- If Keycloak is temporarily unreachable, the app still starts and logs that Keycloak is disabled
+- If Keycloak returns `unauthorized_client`, the app still starts with admin features disabled
+:::
 
 ### Generated Endpoint
 
@@ -167,7 +175,7 @@ KEYCLOAK_URL=https://keycloak.example.com
 KEYCLOAK_REALM=my-realm
 KEYCLOAK_CLIENT_ID=my-client
 KEYCLOAK_CLIENT_SECRET=your-secret
-KEYCLOAK_ADMIN_SECRET=your-admin-cli-secret
+KEYCLOAK_ADMIN_SECRET=
 KEYCLOAK_CALLBACK_URI=http://localhost:8000/callback
 KEYCLOAK_VERIFY_SSL=true
 ```
@@ -178,9 +186,27 @@ KEYCLOAK_VERIFY_SSL=true
 | `KEYCLOAK_REALM` | Keycloak realm name | `master` |
 | `KEYCLOAK_CLIENT_ID` | Client ID for your application | — |
 | `KEYCLOAK_CLIENT_SECRET` | Client secret | — |
-| `KEYCLOAK_ADMIN_SECRET` | Secret for the `admin-cli` client (required for user/role management) | — |
+| `KEYCLOAK_ADMIN_SECRET` | Secret for the `admin-cli` client. Only needed if you want admin operations such as managing users, roles, or groups from code. | empty |
 | `KEYCLOAK_CALLBACK_URI` | OAuth2 callback URL — must match a Valid Redirect URI in Keycloak | `http://localhost:8000/callback` |
 | `KEYCLOAK_VERIFY_SSL` | `true` — enable SSL verification; `false` — disable (not recommended for production) | `true` |
+
+### Minimal vs Admin-Enabled Setup
+
+For most projects, you only need these values:
+
+- `KEYCLOAK_URL`
+- `KEYCLOAK_REALM`
+- `KEYCLOAK_CLIENT_ID`
+- `KEYCLOAK_CLIENT_SECRET`
+- `KEYCLOAK_CALLBACK_URI`
+
+That is enough for:
+
+- `Depends(get_current_user)` route protection
+- the generated `GET /me` endpoint
+- Swagger's **Authorize** button
+
+`KEYCLOAK_ADMIN_SECRET` is only needed when you want to call admin methods on `idp`, such as creating users or assigning roles. Fastman does not expose a `KEYCLOAK_ADMIN_CLIENT_ID` setting; `fastapi-keycloak` uses its default admin client (`admin-cli`) internally.
 
 ### Protecting Routes
 
@@ -212,9 +238,11 @@ def admin_route(user: OIDCUser = Depends(get_admin)):
 
 `init_keycloak(app)` calls `idp.add_swagger_config(app)` and registers the `/me` endpoint. The Swagger UI automatically gets an **Authorize** button — click it to authenticate with Keycloak before testing protected endpoints.
 
+If Keycloak cannot be reached at startup, the app still boots and your non-Keycloak routes continue to work. In that state, `/me` and any route protected with `get_current_user` remain unavailable until Keycloak becomes reachable again.
+
 ### Private CA / Certificate Support
 
-For environments that terminate TLS with an internal CA, store your certificate chain in the project-level `certs/` directory using `.pem` or `.crt` files.
+For environments that terminate TLS with an internal CA (e.g. corporate proxies, on-prem Keycloak), store your certificate chain in the project-level `certs/` directory using `.pem` or `.crt` files.
 
 ```text
 your-project/
@@ -224,27 +252,21 @@ your-project/
 └── pyproject.toml
 ```
 
-Example for a Keycloak deployment behind an internal gateway:
+**Certificates are loaded automatically at startup.** When `init_keycloak(app)` runs, it scans `certs/` for `.pem` and `.crt` files, builds a merged CA bundle from `certifi` plus your project certificates, and points `requests` and Python SSL at that merged bundle *before* creating the `FastAPIKeycloak` instance. No separate script or manual step is needed — just drop your certs and start the server.
 
-```text
-certs/
-├── keycloak-root-ca.pem
-└── company-intermediate-ca.crt
-```
+You can also set `CERTS_PATH` environment variable to point to a custom certificates directory instead of `certs/`.
 
-If `KEYCLOAK_URL=https://sso.internal.example.com`, place the CA chain that signs that endpoint in `certs/` before running the install command.
-
-You can append those certificates in two ways:
+Alternatively, you can prepare the certificate bundle independently:
 
 ```bash
-# During Keycloak installation
+# Prepare during Keycloak installation
 fastman install:auth --type=keycloak --append-certificate
 
-# Or later as a standalone step
-fastman install:certificate
+# Or as a standalone step
+fastman install:cert
 ```
 
-Fastman creates a backup of the original `certifi` CA bundle before appending new certificates and skips certificates that are already present.
+This approach is non-destructive: the installed `certifi` bundle is left untouched, and the generated merged bundle is rebuilt when the app starts. `fastman install:cert` is optional for the generated Keycloak scaffold, but useful when you want to prebuild the bundle, validate your certificate files, or expose the paths through env files for other tools and scripts.
 
 ---
 

@@ -1,14 +1,13 @@
-"""
-Certificate management commands.
-"""
-import shutil
+"""Certificate bundle management commands."""
 from pathlib import Path
+
 from .base import Command, register
 from ..console import Output, Style
-from ..utils import PathManager, PackageManager
+from ..utils import EnvManager, PathManager, PackageManager
 
 
 CERTS_DIR = Path("certs")
+MERGED_CA_BUNDLE_NAME = "ca-bundle-merged.pem"
 
 
 def get_certificate_files(certs_dir: Path = CERTS_DIR) -> list:
@@ -17,7 +16,7 @@ def get_certificate_files(certs_dir: Path = CERTS_DIR) -> list:
         return []
     return sorted(
         p for p in certs_dir.iterdir()
-        if p.is_file() and p.suffix in (".pem", ".crt")
+        if p.is_file() and p.suffix in (".pem", ".crt") and p.name != MERGED_CA_BUNDLE_NAME
     )
 
 
@@ -34,71 +33,93 @@ def _ensure_certifi() -> bool:
         return False
 
 
-def append_certificates_to_certifi(certs_dir: Path = CERTS_DIR) -> bool:
-    """
-    Append all certificates from the certs/ directory to the certifi CA bundle.
-
-    Returns True if at least one certificate was appended.
-    """
+def build_merged_ca_bundle(certs_dir: Path = CERTS_DIR) -> Path | None:
+    """Build a merged CA bundle from certifi plus project certificates."""
     if not _ensure_certifi():
-        return False
+        return None
 
     import certifi
 
     cert_files = get_certificate_files(certs_dir)
     if not cert_files:
         Output.warn(f"No certificate files (.pem, .crt) found in {certs_dir}/")
-        return False
+        return None
 
-    ca_bundle = certifi.where()
-    backup_path = ca_bundle + ".backup"
-
-    # Create a backup only if one doesn't already exist
-    if not Path(backup_path).exists():
-        shutil.copy(ca_bundle, backup_path)
-        Output.info(f"Backup of CA bundle created at {backup_path}")
-
-    appended = 0
-    ca_bundle_content = Path(ca_bundle).read_bytes()
+    base_bundle = Path(certifi.where())
+    merged_bundle = certs_dir / MERGED_CA_BUNDLE_NAME
+    merged_content = base_bundle.read_bytes()
+    added = 0
 
     for cert_path in cert_files:
         cert_data = cert_path.read_bytes().strip()
-
-        # Skip if certificate is already in the bundle
-        if cert_data in ca_bundle_content:
-            Output.info(f"Certificate already in bundle: {cert_path.name}")
+        if not cert_data:
+            Output.warn(f"Skipping empty certificate file: {cert_path.name}")
             continue
 
-        with open(ca_bundle, "ab") as bundle:
-            bundle.write(b"\n")
-            bundle.write(cert_data)
-            bundle.write(b"\n")
+        if cert_data in merged_content:
+            Output.info(f"Certificate already present in bundle: {cert_path.name}")
+            continue
 
-        Output.success(f"Appended: {cert_path.name}")
-        appended += 1
+        merged_content += b"\n" + cert_data + b"\n"
+        Output.success(f"Added to merged bundle: {cert_path.name}")
+        added += 1
 
-    if appended:
-        Output.success(f"{appended} certificate(s) appended to certifi CA bundle")
+    merged_bundle.write_bytes(merged_content)
+    Output.info(f"Base CA bundle: {base_bundle}")
+    Output.info(f"Merged CA bundle: {merged_bundle}")
+
+    if added:
+        Output.success(f"{added} certificate(s) added to merged CA bundle")
     else:
-        Output.info("No new certificates to append (all already present)")
+        Output.info("No new certificates were added (all already present)")
 
-    return appended > 0
+    return merged_bundle
+
+
+def configure_certificate_env(bundle_path: Path, certs_dir: Path = CERTS_DIR) -> None:
+    """Write certificate bundle paths into project env files if not already present."""
+    try:
+        bundle_value = bundle_path.relative_to(Path.cwd()).as_posix()
+    except ValueError:
+        bundle_value = bundle_path.as_posix()
+
+    try:
+        certs_value = certs_dir.relative_to(Path.cwd()).as_posix()
+    except ValueError:
+        certs_value = certs_dir.as_posix()
+
+    env_block = f"""
+# Project certificate bundle
+CERTS_PATH={certs_value}
+REQUESTS_CA_BUNDLE={bundle_value}
+SSL_CERT_FILE={bundle_value}
+"""
+    EnvManager.append_to_all(env_block, "REQUESTS_CA_BUNDLE")
+    Output.info("Updated env files with CERTS_PATH, REQUESTS_CA_BUNDLE, and SSL_CERT_FILE")
+
+
+def prepare_certificate_bundle(certs_dir: Path = CERTS_DIR, update_env: bool = True) -> Path | None:
+    """Build the merged certificate bundle and optionally wire it into env files."""
+    bundle_path = build_merged_ca_bundle(certs_dir)
+    if bundle_path and update_env:
+        configure_certificate_env(bundle_path, certs_dir)
+    return bundle_path
 
 
 @register
-class InstallCertificateCommand(Command):
-    signature = "install:certificate"
-    description = "Append custom SSL certificates to the certifi CA bundle"
+class InstallCertCommand(Command):
+    signature = "install:cert"
+    description = "Build a merged SSL CA bundle from project certificates"
     help = """
 Examples:
-  fastman install:certificate
+  fastman install:cert
 
 Place your .pem or .crt certificate files in the certs/ directory
 at the root of your project, then run this command.
 """
 
     def handle(self):
-        Output.info("Certificate Manager")
+        Output.info("Certificate Bundle Manager")
         Output.new_line()
 
         certs_dir = CERTS_DIR.resolve()
@@ -116,7 +137,7 @@ at the root of your project, then run this command.
             Output.new_line()
             Output.info("Next steps:")
             Output.echo(f"  1. Place your .pem or .crt files in the certs/ directory", Style.CYAN)
-            Output.echo(f"  2. Run: fastman install:certificate", Style.CYAN)
+            Output.echo(f"  2. Run: fastman install:cert", Style.CYAN)
             return
 
         # Find certificates
@@ -134,13 +155,15 @@ at the root of your project, then run this command.
         # Show target CA bundle path
         try:
             import certifi
-            Output.info(f"Target CA bundle: {certifi.where()}")
+            Output.info(f"Base CA bundle: {certifi.where()}")
         except ImportError:
             Output.info("certifi not yet installed (will be installed automatically)")
         Output.new_line()
 
-        # Append certificates
-        append_certificates_to_certifi(certs_dir)
+        bundle_path = prepare_certificate_bundle(certs_dir)
+        if not bundle_path:
+            return
 
         Output.new_line()
-        Output.info("The certificates are now trusted by Python's requests/httpx/aiohttp libraries.")
+        Output.info("The merged CA bundle is ready for Python's requests/httpx/aiohttp libraries.")
+        Output.info("Use REQUESTS_CA_BUNDLE / SSL_CERT_FILE to make external clients trust your project certificates.")

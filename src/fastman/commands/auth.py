@@ -31,19 +31,19 @@ Examples:
         elif auth_type == "keycloak":
             self._install_keycloak()
             if self.flag("append-certificate"):
-                from .certificate import append_certificates_to_certifi, CERTS_DIR
+                from .certificate import prepare_certificate_bundle, CERTS_DIR
                 from ..utils import PathManager
                 Output.new_line()
-                Output.info("Certificate append requested...")
+                Output.info("Certificate bundle preparation requested...")
                 if not CERTS_DIR.exists():
                     PathManager.ensure_dir(CERTS_DIR)
                     init_file = CERTS_DIR / "__init__.py"
                     if init_file.exists():
                         init_file.unlink()
                     Output.info(f"Created {CERTS_DIR}/ directory.")
-                    Output.echo("  Place your .pem or .crt files there, then run: fastman install:certificate", Style.CYAN)
+                    Output.echo("  Place your .pem or .crt files there, then run: fastman install:cert", Style.CYAN)
                 else:
-                    append_certificates_to_certifi(CERTS_DIR)
+                    prepare_certificate_bundle(CERTS_DIR)
         elif auth_type == "passkey":
             self._install_passkey()
         else:
@@ -648,65 +648,146 @@ OAUTH_CLIENT_SECRET=your-{provider}-client-secret
 
         # Create keycloak configuration file
         keycloak_config = '''"""Keycloak authentication configuration"""
+import os
+import logging
 from pathlib import Path
 from fastapi import FastAPI
-from fastapi_keycloak import FastAPIKeycloak
 from app.core.config import settings
-import logging
 
 logger = logging.getLogger(__name__)
+
+# Module-level references (populated by init_keycloak)
+idp = None
+get_current_user = None
+
+
+def _setup_ssl_certificates():
+    """
+    If custom certificates exist in certs/ (or CERTS_PATH), build a merged
+    CA bundle (certifi defaults + project certs) and set REQUESTS_CA_BUNDLE
+    so that requests/urllib3/httpx trust them automatically.
+
+    This is non-destructive — the original certifi bundle is never modified.
+    If no certs/ directory or no cert files are found, this is a no-op.
+    """
+    try:
+        import certifi
+    except ImportError:
+        logger.debug("certifi not installed, skipping certificate setup")
+        return
+
+    certs_dir = Path(os.environ.get("CERTS_PATH", "")) if os.environ.get("CERTS_PATH") else Path.cwd() / "certs"
+
+    if not certs_dir.is_dir():
+        return
+
+    cert_files = sorted(
+        p for p in certs_dir.iterdir()
+        if p.is_file() and p.suffix in (".pem", ".crt")
+    )
+    if not cert_files:
+        return
+
+    # Build a merged bundle: certifi defaults + project certs
+    merged_bundle = certs_dir / "ca-bundle-merged.pem"
+    ca_data = Path(certifi.where()).read_bytes()
+
+    for cert_path in cert_files:
+        if cert_path.name == "ca-bundle-merged.pem":
+            continue
+        cert_data = cert_path.read_bytes().strip()
+        if cert_data not in ca_data:
+            ca_data += b"\\n" + cert_data + b"\\n"
+            logger.info(f"Added certificate to bundle: {cert_path.name}")
+
+    merged_bundle.write_bytes(ca_data)
+
+    os.environ["REQUESTS_CA_BUNDLE"] = str(merged_bundle)
+    os.environ["SSL_CERT_FILE"] = str(merged_bundle)
+    logger.info(f"SSL CA bundle set to {merged_bundle}")
 
 
 def _resolve_ssl_verification() -> bool:
     """
     Resolve the SSL verification setting for Keycloak.
 
-    - "certifi"  -> use the certifi CA bundle (includes any appended project certs)
-    - "false"    -> disable SSL verification (NOT recommended for production)
-    - file path  -> use that specific certificate file
-
-    Note: fastapi-keycloak accepts bool for ssl_verification.
-    When a custom CA is needed, append it to the certifi bundle via
-    ``fastman install:certificate`` and keep ssl_verification=True.
+    - "true" / "certifi" -> verify SSL (default)
+    - "false"            -> disable verification (NOT recommended for production)
     """
-    value = getattr(settings, "KEYCLOAK_VERIFY_SSL", "certifi")
-    if isinstance(value, str):
-        lower = value.strip().lower()
-        if lower == "false":
-            logger.warning("SSL verification is DISABLED for Keycloak. Not recommended for production.")
-            return False
-        if lower in ("certifi", "true", ""):
-            return True
+    value = getattr(settings, "KEYCLOAK_VERIFY_SSL", "true")
+    if isinstance(value, str) and value.strip().lower() == "false":
+        logger.warning("SSL verification is DISABLED for Keycloak. Not recommended for production.")
+        return False
     return True
 
 
-# Keycloak IDP instance
-idp = FastAPIKeycloak(
-    server_url=settings.KEYCLOAK_URL,
-    client_id=settings.KEYCLOAK_CLIENT_ID,
-    client_secret=settings.KEYCLOAK_CLIENT_SECRET,
-    admin_client_secret=settings.KEYCLOAK_ADMIN_SECRET,
-    realm=settings.KEYCLOAK_REALM,
-    callback_uri=settings.KEYCLOAK_CALLBACK_URI,
-    ssl_verification=_resolve_ssl_verification(),
-)
-
-# Re-usable dependencies — import these in your routers
-get_current_user = idp.get_current_user()
-
-
 def init_keycloak(app: FastAPI):
-    """Initialize Keycloak Swagger auth and register /me endpoint."""
-    from fastapi import Depends
-    from fastapi_keycloak import OIDCUser
+    """
+    Initialize Keycloak: set up SSL certificates, create the IDP
+    instance, configure Swagger auth, and register the /me endpoint.
 
+    If the admin token cannot be acquired (e.g. public client), the app
+    still starts — only admin features (user/role management) are disabled.
+    """
+    global idp, get_current_user
+
+    from fastapi import Depends
+    from fastapi_keycloak import FastAPIKeycloak, OIDCUser
+
+    # 1. Set up SSL certificates (REQUESTS_CA_BUNDLE) BEFORE any HTTPS call
+    _setup_ssl_certificates()
+
+    keycloak_kwargs = dict(
+        server_url=settings.KEYCLOAK_URL,
+        client_id=settings.KEYCLOAK_CLIENT_ID,
+        client_secret=settings.KEYCLOAK_CLIENT_SECRET,
+        admin_client_secret=settings.KEYCLOAK_ADMIN_SECRET,
+        realm=settings.KEYCLOAK_REALM,
+        callback_uri=settings.KEYCLOAK_CALLBACK_URI,
+        ssl_verification=_resolve_ssl_verification(),
+    )
+
+    # 2. Create the IDP instance (this contacts Keycloak)
+    try:
+        idp = FastAPIKeycloak(**keycloak_kwargs)
+    except Exception as exc:
+        err_msg = str(exc)
+        if "unauthorized_client" in err_msg:
+            logger.warning(
+                "Admin token acquisition failed: %s. "
+                "Starting without admin features (user/role management disabled). "
+                "To fix: in Keycloak admin console, set the admin-cli client to "
+                "'confidential' and enable 'Service Accounts Enabled'.",
+                exc,
+            )
+            _orig = FastAPIKeycloak._get_admin_token
+            FastAPIKeycloak._get_admin_token = lambda self: None
+            try:
+                idp = FastAPIKeycloak(**keycloak_kwargs)
+            finally:
+                FastAPIKeycloak._get_admin_token = _orig
+        else:
+            logger.error(
+                "Keycloak initialization failed: %s. "
+                "Check that KEYCLOAK_URL (%s) is reachable and credentials are correct.",
+                exc,
+                settings.KEYCLOAK_URL,
+            )
+            logger.warning("Keycloak is DISABLED — /me and protected routes will not work.")
+            return
+
+    # 3. Re-usable dependency for your routers
+    get_current_user = idp.get_current_user()
+
+    # 4. Swagger OAuth2 integration
     try:
         idp.add_swagger_config(app)
-        logger.info("Keycloak initialized successfully")
     except Exception as e:
-        logger.error(f"Failed to initialize Keycloak: {e}")
-        raise
+        logger.warning(f"Swagger OAuth config failed (non-fatal): {e}")
 
+    logger.info("Keycloak initialized successfully")
+
+    # 5. /me endpoint
     @app.get("/me", tags=["Authentication"])
     def me(user: OIDCUser = Depends(get_current_user)):
         """Return the current authenticated user."""
@@ -795,6 +876,12 @@ KEYCLOAK_VERIFY_SSL=true
         Output.echo("  1. Update .env with your Keycloak credentials", Style.CYAN)
         Output.echo("  2. Restart your server", Style.CYAN)
         Output.echo("  3. Test at: http://localhost:8000/docs (use Authorize button)", Style.CYAN)
+        Output.info("\nKeycloak client requirements:")
+        Output.echo("  - KEYCLOAK_CLIENT_ID / KEYCLOAK_CLIENT_SECRET: your app's client (confidential)", Style.YELLOW)
+        Output.echo("  - KEYCLOAK_ADMIN_SECRET: secret for admin-cli client (optional — leave empty", Style.YELLOW)
+        Output.echo("    to skip admin features like user/role management)", Style.YELLOW)
+        Output.echo("  - If admin-cli is a public client, the app will still start but admin", Style.YELLOW)
+        Output.echo("    features will be disabled automatically", Style.YELLOW)
         Output.info("\nTo protect additional routes:")
         Output.echo("  from fastapi import Depends", Style.YELLOW)
         Output.echo("  from fastapi_keycloak import OIDCUser", Style.YELLOW)

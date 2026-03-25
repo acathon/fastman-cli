@@ -138,7 +138,7 @@ const config: Config = {
           price: '0',
           priceCurrency: 'USD',
         },
-        softwareVersion: '0.3.5',
+        softwareVersion: '0.3.6',
         programmingLanguage: 'Python',
       }),
     },
@@ -183,8 +183,8 @@ const config: Config = {
     },
 
     announcementBar: {
-      id: 'v0.3.5',
-      content: '🎉 <strong>Fastman v0.3.5</strong> is out! Keycloak now uses fastapi-keycloak with dependency injection and a built-in /me endpoint. <a href="/fastman-cli/docs/whats-new">Learn more</a>',
+      id: 'v0.3.6',
+      content: '🎉 <strong>Fastman v0.3.6</strong> is out! Keycloak now starts safely when the IDP is unavailable, uses non-destructive SSL certificate handling, and documents admin credentials more clearly. <a href="/fastman-cli/docs/whats-new">Learn more</a>',
       backgroundColor: '#2563eb',
       textColor: '#ffffff',
       isCloseable: true,

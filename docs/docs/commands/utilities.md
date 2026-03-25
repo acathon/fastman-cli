@@ -135,7 +135,7 @@ fastman install:auth [--type=jwt|oauth|keycloak|passkey] [--provider=<provider>]
 |--------|-------------|---------|
 | `--type` | Authentication strategy: `jwt`, `oauth`, `keycloak`, or `passkey` | `jwt` |
 | `--provider` | OAuth provider identifier (only used with `--type=oauth`) | — |
-| `--append-certificate` | Append project certificates from `certs/` after Keycloak installation | disabled |
+| `--append-certificate` | Prepare a merged CA bundle from `certs/` and wire env vars after Keycloak installation | disabled |
 
 ```bash
 # JWT authentication (default) — creates /register, /login, /me endpoints
@@ -147,7 +147,7 @@ fastman install:auth --type=jwt
 # Keycloak enterprise SSO
 fastman install:auth --type=keycloak
 
-# Keycloak with project certificates appended to certifi
+# Keycloak with project certificates prepared as a merged CA bundle
 fastman install:auth --type=keycloak --append-certificate
 
 # OAuth with Google
@@ -162,23 +162,23 @@ The OAuth scaffolding installs `authlib` and `httpx` as dependencies but require
 :::
 
 :::tip Keycloak certificates
-Place `.pem` or `.crt` files in your project's `certs/` directory before using `--append-certificate`. Fastman appends them to the Python `certifi` CA bundle so HTTP clients can trust internal or private certificate chains.
+Place `.pem` or `.crt` files in your project's `certs/` directory before using `--append-certificate`. Fastman builds a merged CA bundle and writes `CERTS_PATH`, `REQUESTS_CA_BUNDLE`, and `SSL_CERT_FILE` into your env files so HTTP clients can trust internal or private certificate chains.
 :::
 
-### `install:certificate`
+### `install:cert`
 
-Appends all `.pem` and `.crt` files from your project's `certs/` directory to the local `certifi` CA bundle. This is useful for Keycloak, internal gateways, and any third-party service that uses a private CA.
+Builds `certs/ca-bundle-merged.pem` from the system `certifi` bundle plus your project's `.pem` / `.crt` files. It also writes `CERTS_PATH`, `REQUESTS_CA_BUNDLE`, and `SSL_CERT_FILE` into your env files when needed. This is useful for Keycloak, internal gateways, tests, SDKs, and any third-party service that uses a private CA.
 
 ```bash
-fastman install:certificate
+fastman install:cert
 ```
 
 ```bash
 # Create certs/ if it does not exist, then add your certificate files
-fastman install:certificate
+fastman install:cert
 
-# After copying certificates into certs/, run again to append them
-fastman install:certificate
+# After copying certificates into certs/, run again to rebuild the bundle
+fastman install:cert
 ```
 
 ---

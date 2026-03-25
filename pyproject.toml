@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fastman"
-version = "0.3.5"
+version = "0.3.6"
 description = "Fastman CLI for FastAPI that makes building APIs a breeze"
 readme = "README.md"
 requires-python = ">=3.9"

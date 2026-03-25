@@ -24,7 +24,7 @@ class ShellCompletion:
         'make:migration', 'database:migrate', 'migrate:rollback', 'migrate:reset',
         'migrate:status', 'database:seed',
         # Auth commands
-        'install:auth',
+        'install:auth', 'install:cert',
         # Route commands
         'route:list',
         # Utility commands
@@ -44,6 +44,7 @@ class ShellCompletion:
         'migrate:rollback': ['--steps='],
         'database:seed': ['--class='],
         'install:auth': ['--type=', '--provider='],
+        'install:cert': [],
         'route:list': ['--path=', '--method='],
         'serve': ['--host=', '--port=', '--reload', '--no-reload'],
         'build': ['--docker'],
@@ -97,6 +98,9 @@ _fastman_completions() {{
             ;;
         install:auth)
             opts="--type= --provider= --help"
+            ;;
+        install:cert)
+            opts="--help"
             ;;
         docs)
             opts="--open --help"
@@ -216,6 +220,9 @@ _fastman() {{
                 '--type=[Auth type]:type:(jwt oauth keycloak)' \\
                 '--provider=[OAuth provider identifier]'
             ;;
+        install:cert)
+            _arguments
+            ;;
         docs)
             _arguments '--open[Open docs in browser]'
             ;;
@@ -323,6 +330,7 @@ $fastmanCompletions = @{{
     'migrate:rollback' = @('--steps=', '--help')
     'database:seed' = @('--class=', '--help')
     'install:auth' = @('--type=', '--provider=', '--help')
+    'install:cert' = @('--help')
     'route:list' = @('--path=', '--method=', '--help')
     'serve' = @('--host=', '--port=', '--reload', '--no-reload', '--help')
     'build' = @('--docker', '--help')
@@ -405,6 +413,7 @@ Register-ArgumentCompleter -Native -CommandName fastman -ScriptBlock {{
             'migrate:status': 'Check migration status',
             'database:seed': 'Run database seeders',
             'install:auth': 'Install authentication system',
+            'install:cert': 'Prepare merged SSL certificate bundle',
             'route:list': 'List all API routes',
             'tinker': 'Interactive shell',
             'config:appkey': 'Generate secret key',

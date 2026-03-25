@@ -58,6 +58,10 @@ class CLI:
         command_name = args[0]
         command_args = args[1:]
 
+        if command_name == "install:certificate":
+            Output.warn("'install:certificate' is deprecated. Use 'install:cert' instead.")
+            command_name = "install:cert"
+
         # Handle special flags
         if command_name == "--version" or command_name == "-v":
             misc.VersionCommand([], self.context).handle()

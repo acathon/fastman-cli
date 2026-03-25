@@ -9,7 +9,7 @@
 [![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Linting](https://img.shields.io/badge/linting-ruff-261230)](https://github.com/astral-sh/ruff)
-[![Version](https://img.shields.io/badge/version-0.3.5-orange.svg)](https://test.pypi.org/project/fastman/)
+[![Version](https://img.shields.io/badge/version-0.3.6-orange.svg)](https://test.pypi.org/project/fastman/)
 
 **Eliminate boilerplate. Ship faster.**
 
@@ -93,7 +93,7 @@ fastman install:auth --type=passkey       # WebAuthn / biometric
 - Shell completions for Bash, Zsh, Fish, PowerShell
 - SQLite, PostgreSQL, MySQL, Oracle, Firebase support
 - Ruff for linting and formatting
-- Certificate management for private CAs
+- Merged certificate bundle support for private CAs
 
 ---
 

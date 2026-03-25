@@ -44,7 +44,7 @@ FastAPI gives you incredible performance and flexibility — but every new proje
 | **`make:model`, `make:service`, ...** | 15+ generators for every component type (controllers, middleware, repos, etc.) |
 | **`database:migrate`** | Alembic migrations without touching INI files or configuration |
 | **`install:auth --type=jwt`** | Full JWT auth with `/register`, `/login`, `/me` endpoints and password hashing |
-| **`install:certificate`** | Trust project-local `.pem` / `.crt` files from `certs/` for private services |
+| **`install:cert`** | Build a merged CA bundle from project-local `.pem` / `.crt` files for private services |
 | **`serve`** | Development server with automatic hot reload |
 | **`tinker`** | Interactive Python shell with your database session pre-loaded |
 | **`route:list`** | View all registered API routes in a formatted table |
@@ -63,12 +63,14 @@ uv · poetry · pipenv · pip — auto-detected from your project
 - **API** — resource-grouped with built-in API versioning
 - **Layer** — traditional MVC-style separation of concerns
 
-## What's New in v0.3.5 (Cheetah)
+## What's New in v0.3.6 (Cheetah)
 
 - Keycloak switched to [`fastapi-keycloak`](https://github.com/fastapi-keycloak/fastapi-keycloak) with dependency-based route protection
 - `GET /me` endpoint automatically registered for Keycloak auth
 - Swagger Authorize button via `idp.add_swagger_config(app)`
-- User, role, and group management through the `FastAPIKeycloak` instance
+- Lazy Keycloak initialization — no network calls at import time, no SSL crashes on startup
+- Non-destructive SSL support — Fastman builds a merged CA bundle instead of modifying `certifi`
+- Graceful startup fallback — the app still boots if Keycloak is unreachable or admin token setup is incomplete
 
 See the full [changelog](./whats-new).
 
