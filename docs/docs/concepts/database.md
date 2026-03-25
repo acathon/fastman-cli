@@ -18,7 +18,7 @@ Fastman uses SQLAlchemy for the ORM and Alembic for migrations.
 
 ## Configuration
 
-When you create a project with `fastman new`, individual database settings are generated in `app/core/config.py`:
+When you create a project with `fastman create`, individual database settings are generated in `app/core/config.py`:
 
 ```python
 # config.py (PostgreSQL example)

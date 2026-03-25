@@ -8,16 +8,16 @@ This guide walks you through creating a complete REST API from scratch. By the e
 
 ## Step 1: Create the Project
 
-The `fastman new` command generates a full project structure with all the boilerplate already configured:
+The `fastman create` command generates a full project structure with all the boilerplate already configured:
 
 ```bash
-fastman new blog-api
+fastman create blog-api
 ```
 
 You can also specify options upfront to skip interactive prompts:
 
 ```bash
-fastman new blog-api --pattern=feature --database=postgresql --package=uv
+fastman create blog-api --pattern=feature --database=postgresql --package=uv
 ```
 
 ### Available Options

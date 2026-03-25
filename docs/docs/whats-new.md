@@ -8,7 +8,7 @@ Stay up to date with the latest Fastman releases and features.
 
 ---
 
-## v0.3.3 (Cheetah) — March 2026
+## v0.3.4 (Cheetah) — March 2026
 
 **Persistent env switching, configurable docs, public directory, and Keycloak Swagger auth**
 
@@ -314,7 +314,7 @@ You can still set `DATABASE_URL` directly to override the computed value.
 
 ---
 
-### Progress bar for `fastman new`
+### Progress bar for `fastman create`
 
 Project creation now shows a single real-time progress bar instead of printing individual file/directory creation messages:
 
@@ -328,14 +328,14 @@ Project creation now shows a single real-time progress bar instead of printing i
 
 Several flags that were already implemented in the CLI are now fully documented, exposed in `--help` output, and included in shell completions.
 
-#### `fastman new` — `--graphql` and `--minimal` flags
+#### `fastman create` — `--graphql` and `--minimal` flags
 
 ```bash
 # Scaffold a project that includes GraphQL support out of the box
-fastman new gql-api --graphql
+fastman create gql-api --graphql
 
 # Skip optional dev dependencies (faker, pytest, httpx)
-fastman new tiny-api --minimal
+fastman create tiny-api --minimal
 ```
 
 - `--graphql` generates `app/core/graphql.py` and adds `strawberry-graphql[fastapi]` to dependencies.
@@ -392,7 +392,7 @@ fastman completion bash --install  # install completion, not just print it
 | --- | --- |
 | **pip on Windows** | Venv pip path now resolves correctly (`.venv\Scripts\pip.exe`) |
 | **Package manager detection** | Falls back to `pip` when `uv` isn't installed; detects `requirements.txt`-only projects |
-| **`fastman new` on existing dir** | Now exits with code 1 instead of silently returning |
+| **`fastman create` on existing dir** | Now exits with code 1 instead of silently returning |
 | **Banner rendering** | Gracefully handles missing/corrupt Pyfiglet fonts |
 | **Docker CMD** | Generated Dockerfile uses `python -m` for alembic and uvicorn |
 
@@ -462,7 +462,7 @@ Real filesystem tests (not mocks) covering project creation, feature scaffolding
 ### Project & scaffolding
 
 ```bash
-fastman new my-api --pattern=feature --database=postgresql
+fastman create my-api --pattern=feature --database=postgresql
 fastman make:feature users --crud
 fastman make:model post
 fastman make:service payment
@@ -484,7 +484,7 @@ fastman database:seed
 fastman serve              # Start dev server with hot reload
 fastman tinker             # Interactive shell with DB session
 fastman route:list         # Show all API routes
-fastman generate:key       # Generate SECRET_KEY
+fastman config:appkey      # Generate SECRET_KEY
 fastman optimize           # Run black + isort + autoflake
 ```
 

@@ -15,13 +15,13 @@ from ..templates import Template, Templates
 
 @register
 class NewCommand(Command):
-    signature = "new {name} {--minimal} {--pattern=feature} {--package=uv} {--database=sqlite} {--graphql}"
+    signature = "create {name} {--minimal} {--pattern=feature} {--package=uv} {--database=sqlite} {--graphql}"
     description = "Create a new FastAPI project"
     help = """
 Examples:
-  fastman new my_api --pattern=api
-  fastman new my_proj --database=postgresql --graphql
-  fastman new my_feature --pattern=feature
+  fastman create my_api --pattern=api
+  fastman create my_proj --database=postgresql --graphql
+  fastman create my_feature --pattern=feature
 """
 
     def handle(self):

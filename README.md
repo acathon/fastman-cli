@@ -8,8 +8,8 @@
 
 [![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Code style](https://img.shields.io/badge/code%20style-black-black)](https://github.com/psf/black)
-[![Version](https://img.shields.io/badge/version-0.3.3-orange.svg)](https://github.com/acathon/fastman-cli)
+[![Linting](https://img.shields.io/badge/linting-ruff-261230)](https://github.com/astral-sh/ruff)
+[![Version](https://img.shields.io/badge/version-0.3.4-orange.svg)](https://github.com/acathon/fastman-cli)
 
 **Laravel-inspired CLI for FastAPI. Eliminate boilerplate. Ship faster.**
 
@@ -65,7 +65,7 @@ uv tool install fastman
 
 ```bash
 # Create a new FastAPI project
-fastman new my-api --pattern=feature --database=sqlite
+fastman create my-api --pattern=feature --database=sqlite
 
 # Navigate to project
 cd my-api
@@ -182,7 +182,7 @@ fastman completion powershell --install
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `fastman new` | Create new FastAPI project | `fastman new my-api --pattern=feature` |
+| `fastman create` | Create new FastAPI project | `fastman create my-api --pattern=feature` |
 | `fastman init` | Initialize Fastman in existing project | `fastman init` |
 | `fastman activate` | Show venv activation command | `fastman activate` |
 
@@ -223,8 +223,8 @@ fastman completion powershell --install
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `fastman generate:key` | Generate secret key | `fastman generate:key` |
-| `fastman optimize` | Optimize code (black/isort) | `fastman optimize` |
+| `fastman config:appkey` | Generate secret key | `fastman config:appkey` |
+| `fastman optimize` | Optimize code (ruff lint & format) | `fastman optimize` |
 | `fastman build --docker` | Generate Dockerfile | `fastman build --docker` |
 
 ---
@@ -274,7 +274,7 @@ Let's build a complete pizza ordering system to see Fastman in action.
 ### Step 1: Create Project
 
 ```bash
-fastman new pizza-api --pattern=feature --package=uv --database=sqlite
+fastman create pizza-api --pattern=feature --package=uv --database=sqlite
 cd pizza-api
 ```
 
@@ -356,9 +356,9 @@ pip install -e ".[dev]"
 # Run tests
 pytest
 
-# Format code
-black src/
-isort src/
+# Lint and format
+ruff check src/ --fix
+ruff format src/
 ```
 
 ---

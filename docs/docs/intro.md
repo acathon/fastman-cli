@@ -15,7 +15,7 @@ Fastman is a Laravel-inspired command-line tool that brings structure, speed, an
 pip install fastman
 
 # 2. Create a project with PostgreSQL
-fastman new my-api --database=postgresql
+fastman create my-api --database=postgresql
 
 # 3. Navigate into the project and scaffold a feature
 cd my-api
@@ -39,7 +39,7 @@ FastAPI gives you incredible performance and flexibility — but every new proje
 
 | Command | What it does |
 |---|---|
-| **`fastman new`** | Production-ready project with configuration, database, migrations, and tests |
+| **`fastman create`** | Production-ready project with configuration, database, migrations, and tests |
 | **`make:feature`** | Complete vertical slice — model, schema, service, and router — in one command |
 | **`make:model`, `make:service`, ...** | 15+ generators for every component type (controllers, middleware, repos, etc.) |
 | **`database:migrate`** | Alembic migrations without touching INI files or configuration |
@@ -63,7 +63,7 @@ uv · poetry · pipenv · pip — auto-detected from your project
 - **API** — resource-grouped with built-in API versioning
 - **Layer** — traditional MVC-style separation of concerns
 
-## What's New in v0.3.3 (Cheetah)
+## What's New in v0.3.4 (Cheetah)
 
 - `fastman env --source=development` persistently switches the active environment
 - `fastman serve` automatically uses the locked environment (no `--env` needed)

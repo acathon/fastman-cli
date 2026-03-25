@@ -97,13 +97,13 @@ You can specify the pattern when creating a project:
 
 ```bash
 # Feature pattern (default)
-fastman new my-api --pattern=feature
+fastman create my-api --pattern=feature
 
 # API pattern
-fastman new my-api --pattern=api
+fastman create my-api --pattern=api
 
 # Layer pattern
-fastman new my-api --pattern=layer
+fastman create my-api --pattern=layer
 ```
 
 :::tip

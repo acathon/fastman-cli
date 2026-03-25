@@ -15,7 +15,7 @@ A product catalog with orders and user management.
 ### Create the Project
 
 ```bash
-fastman new ecommerce-api --pattern=feature --database=postgresql
+fastman create ecommerce-api --pattern=feature --database=postgresql
 cd ecommerce-api
 ```
 
@@ -164,7 +164,7 @@ A simple blog with versioned API.
 ### Create the Project
 
 ```bash
-fastman new blog-api --pattern=api --database=sqlite
+fastman create blog-api --pattern=api --database=sqlite
 cd blog-api
 ```
 
@@ -278,7 +278,7 @@ A complex CRM with clear separation of concerns.
 ### Create the Project
 
 ```bash
-fastman new crm-api --pattern=layer --database=postgresql
+fastman create crm-api --pattern=layer --database=postgresql
 cd crm-api
 ```
 

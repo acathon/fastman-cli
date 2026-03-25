@@ -11,7 +11,7 @@ An overview of how to deploy your Fastman-generated FastAPI application to produ
 Before deploying, make sure you've completed these steps:
 
 - [ ] Set `DEBUG=false` in your production environment
-- [ ] Generate a secure `SECRET_KEY` with `fastman generate:key`
+- [ ] Generate a secure `SECRET_KEY` with `fastman config:appkey`
 - [ ] Configure a production database URL (not SQLite)
 - [ ] Run all pending migrations: `fastman database:migrate`
 - [ ] Run your test suite: `fastman build`
@@ -80,7 +80,7 @@ For cloud deployments, prefer your platform's environment variable management ov
 ### Generate a Secure Secret Key
 
 ```bash
-fastman generate:key --show
+fastman config:appkey --show
 ```
 
 Copy the output and set it as the `SECRET_KEY` environment variable in your deployment platform.

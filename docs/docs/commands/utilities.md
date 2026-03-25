@@ -185,12 +185,12 @@ fastman install:certificate
 
 ## Configuration
 
-### `generate:key`
+### `config:appkey`
 
 Generates a cryptographically secure `SECRET_KEY` using `secrets.token_urlsafe()` and writes it to **all** environment files (`.env`, `.env.development`, `.env.staging`, `.env.production`).
 
 ```bash
-fastman generate:key [--show]
+fastman config:appkey [--show]
 ```
 
 | Option | Description |
@@ -356,12 +356,12 @@ fastman optimize [--check]
 
 ## Configuration
 
-### `generate:key`
+### `config:appkey`
 
 Generates a new `SECRET_KEY` and updates `.env`.
 
 ```bash
-fastman generate:key [--show]
+fastman config:appkey [--show]
 ```
 
 ### `config:cache`

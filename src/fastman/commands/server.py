@@ -9,6 +9,18 @@ from ..utils import PackageManager
 
 FASTMAN_CONFIG = Path(".fastman")
 
+# Planned .fastman config keys (wire up in next version):
+# {
+#   "env": "production",          # active env file (implemented)
+#   "host": "127.0.0.1",          # default serve host
+#   "port": 8000,                 # default serve port
+#   "package_manager": "uv",      # preferred package manager
+#   "architecture": "feature",    # project scaffold pattern
+#   "database": "sqlite",         # database driver
+#   "python": "python3.12",       # python executable path
+#   "auth": "keycloak"            # auth provider
+# }
+
 
 def _read_config() -> dict:
     """Read the .fastman config file."""

@@ -30,7 +30,7 @@ function HomepageHeader() {
       <div className="container">
         <div className={styles.heroContent}>
           <div className={styles.badge}>
-              <span>v0.3.3</span> Cheetah
+                <span>v0.3.4</span> Cheetah
           </div>
           <Heading as="h1" className={styles.heroTitle}>
             The Elegant CLI for
@@ -181,7 +181,7 @@ function CodeExample() {
               </div>
               <div className={styles.terminalLine}>
                 <span className={styles.prompt}>$</span>
-                <span className={styles.command}>fastman new my-api --database=postgresql</span>
+                <span className={styles.command}>fastman create my-api --database=postgresql</span>
               </div>
               <div className={styles.terminalOutput}>
                 <span className={styles.success}>✓</span> Creating project structure...

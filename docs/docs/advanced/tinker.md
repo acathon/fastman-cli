@@ -100,6 +100,37 @@ fastman tinker
 150
 ```
 
+### 5.1 Test Database Connection After Config Changes
+
+If you updated `DATABASE_URL` or individual database settings like `DB_USER`, `DB_PASSWORD`, `DB_HOST`, or `DB_NAME`, use a trivial query first to confirm the connection is valid before testing models or services.
+
+```python
+>>> from sqlalchemy import text
+>>> db.execute(text("SELECT 1")).scalar()
+1
+```
+
+If you want to verify which connection string your app resolved:
+
+```python
+>>> getattr(settings, "database_url", None) or getattr(settings, "DATABASE_URL", None)
+'postgresql://postgres:secret@localhost:5432/myapp'
+```
+
+If your credentials are stored in a non-default environment file, set `ENVIRONMENT` before launching tinker:
+
+```bash
+$env:ENVIRONMENT = "staging"
+fastman tinker
+```
+
+For PostgreSQL, you can also verify the selected database directly:
+
+```python
+>>> db.execute(text("select current_database()")).scalar()
+'myapp'
+```
+
 ### 6. Explore Relationships
 
 ```python

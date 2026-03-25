@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.3.3] - 2026-03-25
+## [0.3.4] - 2026-03-25
 
 ### ✨ Added
 
@@ -80,7 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✨ Added
 
-- **Progress bar for project creation**: `fastman new` now shows a real-time progress bar (using Rich) instead of individual task lines, giving clearer feedback during scaffolding and dependency installation
+- **Progress bar for project creation**: `fastman create` now shows a real-time progress bar (using Rich) instead of individual task lines, giving clearer feedback during scaffolding and dependency installation
 - **`Output.start_progress()` / `Output.stop_progress()`**: New console methods for managed progress bars
 
 ### 🔧 Fixed
@@ -93,7 +93,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Docker CMD**: Generated Dockerfile now uses `python -m alembic` and `python -m uvicorn` so containers work without PATH hacks
 - **pip path on Windows**: `_initialize_package_manager` now uses absolute paths to the venv's `pip.exe` on Windows instead of relative Unix-style paths
 - **Package manager detection**: `PackageManager.detect()` now correctly falls back to `pip` when no lock files exist and `uv` is not installed; also detects `requirements.txt`-only projects
-- **Existing project directory**: `fastman new` now exits with code 1 (instead of silently returning) when the target directory already exists
+- **Existing project directory**: `fastman create` now exits with code 1 (instead of silently returning) when the target directory already exists
 - **Banner crash**: Pyfiglet font rendering is now wrapped in try/except to handle missing or corrupt fonts gracefully
 - **Test reliability**: `test_detect_pip` now properly mocks `shutil.which`; Oracle integration test updated for `oracledb` driver
 
@@ -142,10 +142,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **Initial release** with 30+ commands:
 
-- **Project**: `new`, `serve`, `init`, `build`, `activate`
+- **Project**: `create`, `serve`, `init`, `build`, `activate`
 - **Scaffolding**: `make:feature`, `make:model`, `make:service`, `make:controller`, `make:middleware`, `make:schema`, `make:repository`, `make:command`, `make:exception`, `make:dependency`, `make:websocket`, `make:test`, `make:seeder`, `make:factory`, `make:api`
 - **Database**: `make:migration`, `database:migrate`, `migrate:rollback`, `migrate:reset`, `migrate:status`, `database:seed`
-- **Dev tools**: `serve`, `tinker`, `route:list`, `generate:key`, `config:cache`, `config:clear`, `cache:clear`, `optimize`, `inspect`
+- **Dev tools**: `serve`, `tinker`, `route:list`, `config:appkey`, `config:cache`, `config:clear`, `cache:clear`, `optimize`, `inspect`
 - **Auth**: `install:auth jwt|oauth|keycloak`
 - **Utilities**: `list`, `version`, `docs`, `package:import`, `package:remove`
 - Auto-detection of uv / poetry / pipenv / pip

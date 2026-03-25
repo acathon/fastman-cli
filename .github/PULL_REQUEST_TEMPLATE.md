@@ -16,7 +16,7 @@ Please describe the tests that you ran to verify your changes. Provide instructi
 - [ ] Test B
 
 ## Checklist:
-- [ ] My code follows the style guidelines of this project (`black` and `isort`)
+- [ ] My code follows the style guidelines of this project (`ruff`)
 - [ ] I have performed a self-review of my code
 - [ ] I have commented my code, particularly in hard-to-understand areas
 - [ ] I have made corresponding changes to the documentation

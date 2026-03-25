@@ -247,7 +247,7 @@ class TinkerCommand(Command):
 
 @register
 class GenerateKeyCommand(Command):
-    signature = "generate:key {--show}"
+    signature = "config:appkey {--show}"
     description = "Generate secret key"
 
     def handle(self):
@@ -495,7 +495,7 @@ class ListCommand(Command):
 
         for name, cls in sorted(COMMAND_REGISTRY.items()):
             # Categorize commands
-            if name in ["new", "init"]:
+            if name in ["create", "init"]:
                 categories["Project Setup"].append((name, cls.description))
             elif name in ["serve", "build"]:
                 categories["Development"].append((name, cls.description))
@@ -591,7 +591,7 @@ class DocsCommand(Command):
             Output.echo("\n📚 Fastman Documentation", Style.BOLD + Style.CYAN)
             Output.echo("=" * 80)
             Output.echo("\nQuick Start:")
-            Output.echo("  1. fastman new myproject", Style.GREEN)
+            Output.echo("  1. fastman create myproject", Style.GREEN)
             Output.echo("  2. cd myproject", Style.GREEN)
             Output.echo("  3. fastman serve", Style.GREEN)
 
@@ -721,7 +721,7 @@ class InspectCommand(Command):
 @register
 class OptimizeCommand(Command):
     signature = "optimize {--check}"
-    description = "Optimize project (remove unused imports, format code)"
+    description = "Optimize project (lint, format, fix imports)"
 
     def handle(self):
         check_only = self.flag("check")
@@ -731,71 +731,57 @@ class OptimizeCommand(Command):
         else:
             Output.info("Optimizing project...")
 
-        # Check for common tools
-        tools = {
-            "black": "Code formatting",
-            "isort": "Import sorting",
-            "autoflake": "Remove unused imports"
-        }
-
-        missing_tools = []
-        for tool, desc in tools.items():
-            if not shutil.which(tool):
-                missing_tools.append(tool)
-
-        if missing_tools:
-            Output.warn(f"Missing tools: {', '.join(missing_tools)}")
-            if Output.confirm("Install optimization tools?"):
+        if not shutil.which("ruff"):
+            Output.warn("Ruff is not installed")
+            if Output.confirm("Install ruff?"):
                 manager, _ = PackageManager.detect()
-                
-                # Install dev packages properly based on package manager
                 try:
                     if manager == "uv":
-                        subprocess.run(["uv", "add", "--dev"] + missing_tools, check=True, timeout=300)
+                        subprocess.run(["uv", "add", "--dev", "ruff"], check=True, timeout=300)
                     elif manager == "poetry":
-                        subprocess.run(["poetry", "add", "--group", "dev"] + missing_tools, check=True, timeout=300)
+                        subprocess.run(["poetry", "add", "--group", "dev", "ruff"], check=True, timeout=300)
                     elif manager == "pipenv":
-                        subprocess.run(["pipenv", "install", "--dev"] + missing_tools, check=True, timeout=300)
+                        subprocess.run(["pipenv", "install", "--dev", "ruff"], check=True, timeout=300)
                     else:
-                        PackageManager.install(missing_tools)
-                    Output.success("Optimization tools installed")
+                        PackageManager.install(["ruff"])
+                    Output.success("Ruff installed")
                 except subprocess.CalledProcessError as e:
-                    Output.error(f"Failed to install tools: {e}")
+                    Output.error(f"Failed to install ruff: {e}")
+                    return
                 except subprocess.TimeoutExpired:
                     Output.error("Installation timed out")
+                    return
+            else:
+                return
 
-        # Run optimization
         app_path = Path("app")
         if not app_path.exists():
             Output.error("Not in a Fastman project")
             return
 
         if not check_only:
-            # Format with black
-            if shutil.which("black"):
-                Output.info("Formatting code with black...")
-                subprocess.run(["python", "-m", "black", "app/", "tests/"], capture_output=True, timeout=120)
+            Output.info("Fixing imports and lint issues...")
+            subprocess.run(
+                ["python", "-m", "ruff", "check", "--fix", "app/", "tests/"],
+                capture_output=True, timeout=120,
+            )
 
-            # Sort imports
-            if shutil.which("isort"):
-                Output.info("Sorting imports with isort...")
-                subprocess.run(["python", "-m", "isort", "app/", "tests/"], capture_output=True, timeout=120)
-
-            # Remove unused imports
-            if shutil.which("autoflake"):
-                Output.info("Removing unused imports...")
-                subprocess.run([
-                    "python", "-m", "autoflake",
-                    "--remove-all-unused-imports",
-                    "--recursive",
-                    "--in-place",
-                    "app/",
-                    "tests/"
-                ], capture_output=True, timeout=120)
+            Output.info("Formatting code...")
+            subprocess.run(
+                ["python", "-m", "ruff", "format", "app/", "tests/"],
+                capture_output=True, timeout=120,
+            )
 
             Output.success("Project optimized!")
         else:
-            Output.info("Check complete")
+            subprocess.run(
+                ["python", "-m", "ruff", "check", "app/", "tests/"],
+                timeout=120,
+            )
+            subprocess.run(
+                ["python", "-m", "ruff", "format", "--check", "app/", "tests/"],
+                timeout=120,
+            )
 
 
 @register
@@ -995,7 +981,7 @@ class ActivateCommand(Command):
         if not venv_path:
             Output.error("No virtual environment found")
             Output.info("Expected one of: .venv, venv, env")
-            Output.info("Run 'fastman new' to create a new project with venv")
+            Output.info("Run 'fastman create' to create a new project with venv")
             return
         
         # Detect OS

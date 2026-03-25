@@ -138,7 +138,7 @@ const config: Config = {
           price: '0',
           priceCurrency: 'USD',
         },
-        softwareVersion: '0.3.3',
+        softwareVersion: '0.3.4',
         programmingLanguage: 'Python',
       }),
     },
@@ -183,8 +183,8 @@ const config: Config = {
     },
 
     announcementBar: {
-      id: 'v0.3.3',
-      content: '🎉 <strong>Fastman v0.3.3</strong> is out! Persistent env switching, certificate path fixes, and improved SSL resolution. <a href="/fastman-cli/docs/whats-new">Learn more</a>',
+      id: 'v0.3.4',
+      content: '🎉 <strong>Fastman v0.3.4</strong> is out! Persistent env switching, certificate path fixes, and improved SSL resolution. <a href="/fastman-cli/docs/whats-new">Learn more</a>',
       backgroundColor: '#2563eb',
       textColor: '#ffffff',
       isCloseable: true,

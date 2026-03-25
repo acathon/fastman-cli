@@ -47,11 +47,11 @@ class TestProjectCreation:
     """Integration tests for project creation commands."""
     
     def test_new_project_creates_directory_structure(self, temp_dir: Path, cli: CLI):
-        """Test that 'new' command creates proper directory structure."""
+        """Test that 'create' command creates proper directory structure."""
         project_name = "test_project"
         
         # Run the command
-        cli.run(["new", project_name, "--pattern=feature", "--package=pip", "--database=sqlite"])
+        cli.run(["create", project_name, "--pattern=feature", "--package=pip", "--database=sqlite"])
         
         # Verify project directory exists
         project_path = temp_dir / project_name
@@ -67,10 +67,10 @@ class TestProjectCreation:
         assert (project_path / "alembic").exists(), "alembic should exist for SQLite"
     
     def test_new_project_creates_core_files(self, temp_dir: Path, cli: CLI):
-        """Test that 'new' command creates essential files."""
+        """Test that 'create' command creates essential files."""
         project_name = "test_api"
         
-        cli.run(["new", project_name, "--pattern=api", "--package=pip", "--database=sqlite"])
+        cli.run(["create", project_name, "--pattern=api", "--package=pip", "--database=sqlite"])
         
         project_path = temp_dir / project_name
         
@@ -86,7 +86,7 @@ class TestProjectCreation:
         """Test that .env file contains proper configuration."""
         project_name = "test_env"
         
-        cli.run(["new", project_name, "--pattern=feature", "--package=pip", "--database=sqlite"])
+        cli.run(["create", project_name, "--pattern=feature", "--package=pip", "--database=sqlite"])
         
         env_path = temp_dir / project_name / ".env"
         env_content = env_path.read_text()
@@ -103,7 +103,7 @@ class TestProjectCreation:
         
         for pattern in patterns:
             project_name = f"test_{pattern}"
-            cli.run(["new", project_name, f"--pattern={pattern}", "--package=pip", "--database=sqlite"])
+            cli.run(["create", project_name, f"--pattern={pattern}", "--package=pip", "--database=sqlite"])
             
             project_path = temp_dir / project_name
             
@@ -123,7 +123,7 @@ class TestProjectCreation:
         
         for db in databases:
             project_name = f"test_{db}"
-            cli.run(["new", project_name, "--pattern=feature", "--package=pip", f"--database={db}"])
+            cli.run(["create", project_name, "--pattern=feature", "--package=pip", f"--database={db}"])
             
             env_path = temp_dir / project_name / ".env"
             env_content = env_path.read_text()
@@ -141,7 +141,7 @@ class TestProjectCreation:
         """Test that Firebase projects don't have alembic."""
         project_name = "test_firebase"
         
-        cli.run(["new", project_name, "--pattern=feature", "--package=pip", "--database=firebase"])
+        cli.run(["create", project_name, "--pattern=feature", "--package=pip", "--database=firebase"])
         
         project_path = temp_dir / project_name
         
@@ -153,7 +153,7 @@ class TestProjectCreation:
         assert (project_path / "firebase-credentials.json.example").exists(), "Firebase projects should have credentials example"
     
     def test_new_project_refuses_existing_directory(self, temp_dir: Path, cli: CLI):
-        """Test that 'new' command refuses to overwrite existing directory."""
+        """Test that 'create' command refuses to overwrite existing directory."""
         project_name = "existing_project"
         existing_path = temp_dir / project_name
         existing_path.mkdir()
@@ -161,7 +161,7 @@ class TestProjectCreation:
         
         # Capture exit code
         with pytest.raises(SystemExit) as exc_info:
-            cli.run(["new", project_name])
+            cli.run(["create", project_name])
         
         assert exc_info.value.code == 1, "Should exit with error code 1"
     
@@ -170,7 +170,7 @@ class TestProjectCreation:
         project_name = "test_invalid"
         
         # Should not raise, but should print error
-        cli.run(["new", project_name, "--pattern=invalid_pattern"])
+        cli.run(["create", project_name, "--pattern=invalid_pattern"])
         
         # Directory should not be created
         assert not (temp_dir / project_name).exists(), "Invalid pattern should not create project"
@@ -182,7 +182,7 @@ class TestScaffoldCommands:
     def test_make_feature_creates_feature_files(self, temp_dir: Path, cli: CLI):
         """Test that 'make:feature' creates all necessary files."""
         # First create a project
-        cli.run(["new", "test_project", "--pattern=feature", "--package=pip", "--database=sqlite"])
+        cli.run(["create", "test_project", "--pattern=feature", "--package=pip", "--database=sqlite"])
         os.chdir(temp_dir / "test_project")
         
         # Create a feature
@@ -199,7 +199,7 @@ class TestScaffoldCommands:
     
     def test_make_feature_content_is_valid(self, temp_dir: Path, cli: CLI):
         """Test that generated feature files contain valid Python code."""
-        cli.run(["new", "test_project", "--pattern=feature", "--package=pip", "--database=sqlite"])
+        cli.run(["create", "test_project", "--pattern=feature", "--package=pip", "--database=sqlite"])
         os.chdir(temp_dir / "test_project")
         
         cli.run(["make:feature", "product"])
@@ -222,7 +222,7 @@ class TestScaffoldCommands:
     def test_make_feature_fails_without_feature_directory(self, temp_dir: Path, cli: CLI):
         """Test that 'make:feature' fails if not in a feature project."""
         # Create a layer project instead
-        cli.run(["new", "test_project", "--pattern=layer", "--package=pip", "--database=sqlite"])
+        cli.run(["create", "test_project", "--pattern=layer", "--package=pip", "--database=sqlite"])
         os.chdir(temp_dir / "test_project")
         
         # Try to create a feature in a layer project
@@ -234,7 +234,7 @@ class TestScaffoldCommands:
     
     def test_make_feature_refuses_duplicate(self, temp_dir: Path, cli: CLI):
         """Test that 'make:feature' refuses to overwrite existing feature."""
-        cli.run(["new", "test_project", "--pattern=feature", "--package=pip", "--database=sqlite"])
+        cli.run(["create", "test_project", "--pattern=feature", "--package=pip", "--database=sqlite"])
         os.chdir(temp_dir / "test_project")
         
         # Create feature first time

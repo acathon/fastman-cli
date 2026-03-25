@@ -638,7 +638,7 @@ OAUTH_CLIENT_SECRET=your-{provider}-client-secret
         if not core_dir.exists():
             Output.error("Directory 'app/core' not found.")
             Output.info("Make sure you are in a Fastman project directory.")
-            Output.info("Run 'fastman new <project-name>' to create a new project first.")
+            Output.info("Run 'fastman create <project-name>' to create a new project first.")
             return
 
         packages = ["fastapi-keycloak-middleware", "certifi"]

@@ -12,7 +12,7 @@ class ShellCompletion:
     # List of all Fastman commands
     COMMANDS = [
         # Project commands
-        'new', 'init',
+        'create', 'init',
         # Server commands
         'serve',
         # Scaffold commands
@@ -28,7 +28,7 @@ class ShellCompletion:
         # Route commands
         'route:list',
         # Utility commands
-        'tinker', 'generate:key', 'config:cache', 'config:clear',
+        'tinker', 'config:appkey', 'config:cache', 'config:clear',
         'cache:clear', 'package:import', 'package:list', 'package:remove',
         'list', 'version', 'docs', 'inspect', 'optimize', 'build', 'activate',
         'completion',
@@ -36,7 +36,7 @@ class ShellCompletion:
     
     # Options for each command
     COMMAND_OPTIONS: Dict[str, List[str]] = {
-        'new': ['--minimal', '--pattern=', '--package=', '--database=', '--graphql'],
+        'create': ['--minimal', '--pattern=', '--package=', '--database=', '--graphql'],
         'make:feature': ['--crud'],
         'make:api': ['--style='],
         'make:model': ['--table='],
@@ -77,7 +77,7 @@ _fastman_completions() {{
     
     # Options for specific commands
     case "${{COMP_WORDS[1]}}" in
-        new)
+        create)
             opts="--minimal --pattern= --package= --database= --graphql --help"
             ;;
         make:feature)
@@ -188,7 +188,7 @@ _fastman() {{
         '*: :->command' && return 0
     
     case "$line[1]" in
-        new)
+        create)
             _arguments \\
                 '--minimal[Create minimal project]' \\
                 '--graphql[Include GraphQL support]' \\
@@ -266,11 +266,11 @@ complete -c fastman -s v -l version -d "Show version"
 {chr(10).join([f'complete -c fastman -n "__fish_use_subcommand" -a "{cmd}" -d "{cls._get_command_description(cmd)}"' for cmd in cls.COMMANDS])}
 
 # Command-specific completions
-complete -c fastman -n "__fish_seen_subcommand_from new" -l minimal -d "Create minimal project"
-complete -c fastman -n "__fish_seen_subcommand_from new" -l graphql -d "Include GraphQL support"
-complete -c fastman -n "__fish_seen_subcommand_from new" -l pattern -d "Architecture pattern" -a "feature api layer"
-complete -c fastman -n "__fish_seen_subcommand_from new" -l package -d "Package manager" -a "uv poetry pipenv pip"
-complete -c fastman -n "__fish_seen_subcommand_from new" -l database -d "Database type" -a "sqlite postgresql mysql oracle firebase"
+complete -c fastman -n "__fish_seen_subcommand_from create" -l minimal -d "Create minimal project"
+complete -c fastman -n "__fish_seen_subcommand_from create" -l graphql -d "Include GraphQL support"
+complete -c fastman -n "__fish_seen_subcommand_from create" -l pattern -d "Architecture pattern" -a "feature api layer"
+complete -c fastman -n "__fish_seen_subcommand_from create" -l package -d "Package manager" -a "uv poetry pipenv pip"
+complete -c fastman -n "__fish_seen_subcommand_from create" -l database -d "Database type" -a "sqlite postgresql mysql oracle firebase"
 
 complete -c fastman -n "__fish_seen_subcommand_from make:feature" -l crud -d "Generate CRUD endpoints"
 
@@ -316,7 +316,7 @@ complete -c fastman -n "__fish_seen_subcommand_from completion" -l install -d "I
 $fastmanCommands = @('{commands_list}')
 
 $fastmanCompletions = @{{
-    'new' = @('--minimal', '--pattern=', '--package=', '--database=', '--graphql', '--help')
+    'create' = @('--minimal', '--pattern=', '--package=', '--database=', '--graphql', '--help')
     'make:feature' = @('--crud', '--help')
     'make:api' = @('--style=', '--help')
     'make:model' = @('--table=', '--help')
@@ -380,7 +380,7 @@ Register-ArgumentCompleter -Native -CommandName fastman -ScriptBlock {{
     def _get_command_description(cls, cmd: str) -> str:
         """Get description for a command"""
         descriptions = {
-            'new': 'Create a new FastAPI project',
+            'create': 'Create a new FastAPI project',
             'init': 'Initialize Fastman in existing project',
             'serve': 'Start development server',
             'make:feature': 'Create vertical slice feature',
@@ -407,7 +407,7 @@ Register-ArgumentCompleter -Native -CommandName fastman -ScriptBlock {{
             'install:auth': 'Install authentication system',
             'route:list': 'List all API routes',
             'tinker': 'Interactive shell',
-            'generate:key': 'Generate secret key',
+            'config:appkey': 'Generate secret key',
             'config:cache': 'Cache configuration',
             'config:clear': 'Clear config cache',
             'cache:clear': 'Clear application cache',

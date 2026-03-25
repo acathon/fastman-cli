@@ -67,7 +67,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 Generate a secure secret key (updates all env files):
 
 ```bash
-fastman generate:key
+fastman config:appkey
 ```
 
 ---

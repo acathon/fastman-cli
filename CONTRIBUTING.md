@@ -56,10 +56,10 @@ By participating in this project, you are expected to uphold our [Code of Conduc
     ```
     Ensure all tests pass before submitting your code.
 
-4. Format and lint your code:
+4. Lint and format your code:
     ```bash
-    black src/ tests/
-    isort src/ tests/
+    ruff check src/ tests/ --fix
+    ruff format src/ tests/
     ```
 
 ## Submitting Changes

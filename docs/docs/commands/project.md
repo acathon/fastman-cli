@@ -6,12 +6,12 @@ sidebar_position: 1
 
 Commands for creating, initializing, serving, and building FastAPI projects.
 
-## `new`
+## `create`
 
 Creates a brand-new FastAPI project with a complete directory structure, configuration files, database setup, migration tooling, and dependency management — all ready to run.
 
 ```bash
-fastman new <project-name> [options]
+fastman create <project-name> [options]
 ```
 
 ### Options
@@ -28,22 +28,22 @@ fastman new <project-name> [options]
 
 ```bash
 # Simple project with defaults (feature pattern, SQLite, auto package manager)
-fastman new my-api
+fastman create my-api
 
 # Production-ready with PostgreSQL and feature architecture
-fastman new my-api --pattern=feature --database=postgresql
+fastman create my-api --pattern=feature --database=postgresql
 
 # Quick prototype with API versioning pattern
-fastman new prototype --pattern=api --database=sqlite
+fastman create prototype --pattern=api --database=sqlite
 
 # Firebase project (no SQL, no Alembic migrations)
-fastman new mobile-backend --database=firebase
+fastman create mobile-backend --database=firebase
 
 # Minimal project — smaller dependency footprint
-fastman new tiny-api --minimal
+fastman create tiny-api --minimal
 
 # Include GraphQL support alongside REST
-fastman new gql-api --graphql
+fastman create gql-api --graphql
 ```
 
 ### What Gets Created
@@ -123,7 +123,7 @@ Under the hood, Fastman runs `python -m uvicorn app.main:app` with the appropria
 
 ## `init`
 
-Initializes Fastman configuration in an existing FastAPI project. Use this when you have a project that wasn't created with `fastman new` but you want to use Fastman's commands.
+Initializes Fastman configuration in an existing FastAPI project. Use this when you have a project that wasn't created with `fastman create` but you want to use Fastman's commands.
 
 ```bash
 fastman init

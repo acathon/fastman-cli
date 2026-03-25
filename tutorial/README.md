@@ -12,7 +12,7 @@ This tutorial guides you through building a simple Pizza Ordering API using Fast
 First, generate a new Fastman project.
 
 ```bash
-fastman new pizza-order
+fastman create pizza-order
 cd pizza-order
 ```
 
