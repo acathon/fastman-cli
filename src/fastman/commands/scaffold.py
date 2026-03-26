@@ -704,7 +704,7 @@ class {pascal}Middleware(BaseHTTPMiddleware):
         """
         # Before request
         start_time = time.time()
-        logger.info(f"{request.method} {request.url.path}")
+        logger.info(f"{{request.method}} {{request.url.path}}")
 
         # Process request
         response = await call_next(request)
@@ -712,7 +712,7 @@ class {pascal}Middleware(BaseHTTPMiddleware):
         # After request
         process_time = time.time() - start_time
         response.headers["X-Process-Time"] = str(process_time)
-        logger.info(f"Completed in {process_time:.4f}s")
+        logger.info(f"Completed in {{process_time:.4f}}s")
 
         return response
 '''
@@ -779,7 +779,7 @@ class {pascal}Dependency:
 
     async def __call__(self) -> str:
         """Execute dependency"""
-        logger.info(f"{pascal}Dependency called with param={self.param}")
+        logger.info(f"{pascal}Dependency called with param={{self.param}}")
         # TODO: Implement logic
         return "result"
 '''
@@ -1169,7 +1169,7 @@ class {pascal}Command(Command):
         """Execute the command"""
         option = self.option("option", "default")
 
-        Output.info(f"Running {snake} command with option={option}")
+        Output.info(f"Running {snake} command with option={{option}}")
 
         # TODO: Implement command logic
 
