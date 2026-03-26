@@ -41,6 +41,7 @@ const sidebars: SidebarsConfig = {
       ],
     },
     'deployment',
+    'roadmap',
   ],
 };
 
