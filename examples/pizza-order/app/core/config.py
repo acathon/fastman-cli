@@ -24,6 +24,7 @@ class Settings(BaseSettings):
 
     # API
     API_V1_PREFIX: str = "/api/v1"
+    API_V2_PREFIX: str = "/api/v2"
 
     class Config:
         env_file = ".env"

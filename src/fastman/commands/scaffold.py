@@ -158,6 +158,9 @@ from typing import List
 from app.core.database import get_db
 from . import service, schemas
 
+# API version for this router. Change to "v2" to mount under /api/v2 instead.
+# Omitting this line or setting to "v1" keeps it under /api/v1.
+api_version = "v1"
 
 router = APIRouter(
     prefix="/{snake}s",
@@ -229,6 +232,9 @@ from typing import List
 from app.core.database import get_db
 from . import service, schemas
 
+# API version for this router. Change to "v2" to mount under /api/v2 instead.
+# Omitting this line or setting to "v1" keeps it under /api/v1.
+api_version = "v1"
 
 router = APIRouter(
     prefix="/{snake}s",
@@ -264,13 +270,14 @@ def list_{snake}s(db: Session = Depends(get_db)):
         if crud:
             Output.section("Generated Endpoints")
             endpoints = [
-                (f"GET    /{snake}s", "List all items"),
-                (f"GET    /{snake}s/{{id}}", "Get single item"),
-                (f"POST   /{snake}s", "Create new item"),
-                (f"PUT    /{snake}s/{{id}}", "Update item"),
-                (f"DELETE /{snake}s/{{id}}", "Delete item"),
+                (f"GET    /api/v1/{snake}s", "List all items"),
+                (f"GET    /api/v1/{snake}s/{{id}}", "Get single item"),
+                (f"POST   /api/v1/{snake}s", "Create new item"),
+                (f"PUT    /api/v1/{snake}s/{{id}}", "Update item"),
+                (f"DELETE /api/v1/{snake}s/{{id}}", "Delete item"),
             ]
             Output.listing(endpoints)
+            Output.info("Versioning is applied automatically by the router discovery layer.")
 
 
 @register

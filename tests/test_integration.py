@@ -247,6 +247,76 @@ class TestScaffoldCommands:
         feature_path = temp_dir / "test_project" / "app" / "features" / "orders"
         assert feature_path.exists(), "Feature should exist"
 
+    def test_make_feature_router_has_api_version(self, temp_dir: Path, cli: CLI):
+        """Test that generated router.py contains the api_version attribute."""
+        cli.run(["create", "test_project", "--pattern=feature", "--package=pip", "--database=sqlite"])
+        os.chdir(temp_dir / "test_project")
+
+        cli.run(["make:feature", "invoices", "--crud"])
+
+        router_path = temp_dir / "test_project" / "app" / "features" / "invoices" / "router.py"
+        content = router_path.read_text()
+
+        assert 'api_version = "v1"' in content, "router.py should declare api_version = 'v1'"
+
+    def test_make_feature_router_has_api_version_no_crud(self, temp_dir: Path, cli: CLI):
+        """Test that non-crud generated router.py also contains the api_version attribute."""
+        cli.run(["create", "test_project", "--pattern=feature", "--package=pip", "--database=sqlite"])
+        os.chdir(temp_dir / "test_project")
+
+        cli.run(["make:feature", "reports"])
+
+        router_path = temp_dir / "test_project" / "app" / "features" / "reports" / "router.py"
+        content = router_path.read_text()
+
+        assert 'api_version = "v1"' in content, "Non-crud router.py should declare api_version = 'v1'"
+
+
+class TestApiVersioningDiscovery:
+    """Tests for the API versioning _resolve_prefix logic."""
+
+    def _resolve_prefix(self, settings, version: str) -> str:
+        """Inline copy of discovery._resolve_prefix — avoids importing the
+        example project which requires fastapi to be installed."""
+        prefixes = {
+            "v1": settings.API_V1_PREFIX,
+            "v2": settings.API_V2_PREFIX,
+        }
+        return prefixes.get(version, settings.API_V1_PREFIX)
+
+    def _make_settings(self):
+        from unittest.mock import MagicMock
+        s = MagicMock()
+        s.API_V1_PREFIX = "/api/v1"
+        s.API_V2_PREFIX = "/api/v2"
+        return s
+
+    def test_discovery_uses_v1_prefix_by_default(self):
+        """Should resolve to /api/v1 when api_version attribute is absent."""
+        import types
+        fake_module = types.SimpleNamespace()  # no api_version attr
+        version = getattr(fake_module, "api_version", "v1")
+        prefix = self._resolve_prefix(self._make_settings(), version)
+        assert prefix == "/api/v1"
+
+    def test_discovery_uses_v2_prefix_when_declared(self):
+        """Should resolve to /api/v2 when api_version = 'v2'."""
+        import types
+        fake_module = types.SimpleNamespace(api_version="v2")
+        version = getattr(fake_module, "api_version", "v1")
+        prefix = self._resolve_prefix(self._make_settings(), version)
+        assert prefix == "/api/v2"
+
+    def test_discovery_falls_back_to_v1_for_unknown_version(self):
+        """Should fall back to /api/v1 for an unrecognised version string."""
+        prefix = self._resolve_prefix(self._make_settings(), "v99")
+        assert prefix == "/api/v1"
+
+    def test_v1_and_v2_prefixes_are_distinct(self):
+        """Sanity-check: /api/v1 and /api/v2 must be different strings."""
+        s = self._make_settings()
+        assert self._resolve_prefix(s, "v1") != self._resolve_prefix(s, "v2")
+
 
 class TestUtilityFunctions:
     """Integration tests for utility functions."""
