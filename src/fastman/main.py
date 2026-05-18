@@ -19,6 +19,7 @@ from .commands import (
     certificate,
     mail,
     package,
+    update,
     misc
 )
 
