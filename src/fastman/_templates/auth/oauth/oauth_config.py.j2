@@ -1,0 +1,16 @@
+"""OAuth configuration for {{ provider }}"""
+from authlib.integrations.starlette_client import OAuth
+from starlette.config import Config as StarletteConfig
+from app.core.config import settings
+
+oauth = OAuth()
+
+oauth.register(
+    name="{{ provider }}",
+    client_id=settings.OAUTH_CLIENT_ID,
+    client_secret=settings.OAUTH_CLIENT_SECRET,
+    authorize_url="{{ authorize_url }}",
+    access_token_url="{{ access_token_url }}",
+    userinfo_endpoint="{{ userinfo_url }}",
+    client_kwargs={"scope": "{{ scopes }}"},
+)

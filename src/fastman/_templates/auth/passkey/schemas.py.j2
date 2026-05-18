@@ -1,0 +1,58 @@
+"""Passkey authentication schemas"""
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from typing import Optional, Any
+from datetime import datetime
+
+
+class UserCreate(BaseModel):
+    """Schema for user registration"""
+    email: EmailStr
+    username: str = Field(..., min_length=3, max_length=100)
+
+
+class UserRead(BaseModel):
+    """Schema for user response"""
+    id: int
+    email: EmailStr
+    username: str
+    is_active: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class Token(BaseModel):
+    """Token response schema"""
+    access_token: str
+    token_type: str = "bearer"
+
+
+class RegistrationOptionsRequest(BaseModel):
+    """Request to start passkey registration"""
+    email: EmailStr
+    username: str = Field(..., min_length=3, max_length=100)
+
+
+class RegistrationVerifyRequest(BaseModel):
+    """Verify passkey registration"""
+    email: str
+    credential: Any
+
+
+class AuthenticationOptionsRequest(BaseModel):
+    """Request to start passkey authentication"""
+    email: Optional[EmailStr] = None
+
+
+class AuthenticationVerifyRequest(BaseModel):
+    """Verify passkey authentication"""
+    credential: Any
+
+
+class CredentialRead(BaseModel):
+    """Credential info response"""
+    id: int
+    device_name: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

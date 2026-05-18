@@ -8,6 +8,139 @@ Stay up to date with the latest Fastman releases and features.
 
 ---
 
+## v0.4.0 (Dolphin) — May 2026
+
+**Lean command surface, modern codegen, mail scaffolding, pattern-aware tooling.**
+
+### Command surface tightened
+
+Six low-leverage commands were removed in favor of the underlying tool:
+
+| Removed | Use this instead |
+|---------|------------------|
+| `package:import` | `fastman package:install` (new, venv-aware) |
+| `package:list` | `uv pip list` / `pip list` |
+| `config:cache`, `config:clear` | (dead code — the cache was never read) |
+| `inspect` | `fastman route:list` + reading source |
+| `migrate:reset` | `alembic downgrade base` (destructive — make it deliberate) |
+
+Net: 46 → 41 commands.
+
+### Smarter package install
+
+`package:install` (renamed from `package:import`) and `package:remove` now
+route pip installs through the **project's own `.venv` pip**, even when the
+user hasn't activated the venv. Previously fastman used `sys.executable`,
+which is the global interpreter when the CLI is installed system-wide — so
+`fastman install:auth` could quietly write packages to the wrong env.
+
+```bash
+# No need to activate first — package:install finds .venv automatically
+fastman package:install requests
+fastman package:install "sqlalchemy>=2.0"
+```
+
+The same fix benefits `install:auth`, `install:mail`, `install:cert`, and
+`optimize` — every command that installs packages.
+
+### Alembic bug fixes
+
+Four bugs in the generated `alembic/env.py` and the migration commands:
+
+- **PostgreSQL/MySQL/Oracle migrations were broken.** Those database configs
+  expose `settings.database_url` (lowercase computed property) but
+  `alembic/env.py` was reading `settings.DATABASE_URL` (uppercase), which
+  was always `None`. The generated env.py now reads either source and
+  raises a clear error if neither is set.
+- **Feature-pattern models were silently missed by autogenerate.** The
+  template used `from app.models import *`, which only picks up models
+  registered in `app/models/__init__.py`. Generated feature modules live at
+  `app/features/<name>/models.py` — those were never imported, so
+  `make:migration` produced empty migration files for the flagship workflow.
+  Env.py now walks `app/models/`, `app/features/*/models.py`, and
+  `app/api/*/models.py`.
+- **`make:migration`, `database:migrate`, `migrate:rollback`,
+  `migrate:status`** now refuse to run when `alembic.ini` is missing,
+  with an actionable error ("This project doesn't use Alembic — Firebase
+  projects don't scaffold it.") instead of a cryptic stack trace.
+- `parents[2]` corrected to `parents[1]` in `alembic/env.py`'s `sys.path`
+  manipulation.
+
+### Mail scaffolding
+
+New `install:mail` and `make:mail` commands built on `fastapi-mail`:
+
+```bash
+fastman install:mail --provider=sendgrid --from=hello@mysite.io
+fastman make:mail WelcomeEmail
+fastman make:mail OrderShipped --markdown
+```
+
+You get:
+
+- `app/core/mail.py` with `FastMail` client, `send_mail()`, `send_mail_background()`
+- `app/mail/base.py` with a `Mailable` base class supporting `.send()` and `.send_later(background_tasks)`
+- Per-provider env defaults (SMTP, SendGrid, Mailgun, AWS SES)
+- `--markdown` flag for templates rendered via `markdown-it-py` at send time
+
+### Modernized generated code
+
+- **SQLAlchemy 2.0**: `app/core/database.py` now uses `class Base(DeclarativeBase)` instead of `declarative_base()`. Generated models use typed `Mapped[]` columns:
+  ```python
+  class User(Base):
+      __tablename__ = "users"
+      id: Mapped[int] = mapped_column(primary_key=True)
+      email: Mapped[str] = mapped_column(String(255), unique=True)
+  ```
+- **Pydantic v2**: Generated schemas use `model_config = ConfigDict(from_attributes=True)` instead of the deprecated `class Config` block. `Settings` uses `SettingsConfigDict`.
+
+### Smart pluralization
+
+`__tablename__`, router prefixes, and `list_*` function names now use real English plurals:
+
+| Singular | Old (broken) | New |
+|----------|--------------|-----|
+| `address` | `addresss` | `addresses` |
+| `category` | `categorys` | `categories` |
+| `analysis` | `analysiss` | `analyses` |
+| `person` | `persons` | `people` |
+| `data` | `datas` | `data` |
+
+### Pattern-aware `make:*`
+
+`fastman create` now records `pattern`/`package_manager`/`database` in `.fastmanrc`. When you run a `make:*` command that doesn't fit (e.g. `make:controller` in a feature-pattern project), you get an actionable error instead of "directory not found":
+
+```
+✗ 'make:controller' is not the right command for the 'feature' pattern.
+  Use one of these instead:
+  make:feature, make:model, make:middleware
+```
+
+Generated projects also include a per-pattern command guide in the README.
+
+### Keyword + builtin guard
+
+`fastman create class`, `fastman make:feature list`, `fastman make:model True` — all rejected with a clear error *before* any code is generated:
+
+```
+✗ Invalid name 'list'. It shadows a Python builtin.
+```
+
+### Other polish
+
+- **Dynamic shell completions**: `shell_completion.py` now reads commands and options directly from `COMMAND_REGISTRY` + `parse_signature` — adding a new registered command lights up all four shells (bash / zsh / fish / powershell) with zero edits.
+- **Version-pinned requirements**: `requirements.txt` fallback emits lower bounds (`fastapi>=0.110.0`, `sqlalchemy>=2.0.0`, ...).
+- **`MANIFEST.in`** cleanup — dropped the contradictory `recursive-include docs/assets *` line that the next-line exclude was wiping out.
+- **`.fastmanrc`** added to generated `.gitignore`.
+
+### Breaking changes summary
+
+1. 7 commands removed (see table above).
+2. Generated `app/core/database.py` switched to `DeclarativeBase`. Existing models built on `Column(...)` still work — SA 2.0 is backward-compatible.
+3. Generated schemas switched to `model_config = ConfigDict(...)`. Old `class Config` blocks in existing projects keep working under Pydantic v2's deprecation shim, but new scaffolds use the modern form.
+
+---
+
 ## v0.3.6 (Cheetah) — March 2026
 
 **Safer Keycloak startup, non-destructive SSL certificate handling, and clearer admin credential guidance**
@@ -69,7 +202,7 @@ fastman env
 fastman env --reset
 ```
 
-The selection is stored in `.fastman` (add to `.gitignore`). You can always override temporarily with `fastman serve --env=staging`.
+The selection is stored in `.fastmanrc` (which is gitignored by default in projects created from Fastman 0.4.0+). You can always override temporarily with `fastman serve --env=staging`.
 
 ### Configurable Documentation URLs
 
@@ -456,7 +589,7 @@ The first major update after the initial release, focused on developer experienc
 
 ### Professional Console UI
 
-All CLI output is now styled with [Rich](https://github.com/Textualize/rich) (when installed), with Laravel-inspired aesthetics:
+All CLI output is now styled with [Rich](https://github.com/Textualize/rich) (when installed), with a clean, modern aesthetic:
 
 ```bash
 > Project 'my-api' created successfully!

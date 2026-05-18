@@ -29,53 +29,72 @@ Before deploying, make sure you've completed these steps:
 
 ## Environment Setup
 
-### Multi-Environment Files
+### Three env files, not four
 
-Fastman generates environment files for each stage:
+Fastman 0.4.0+ scaffolds three environment files:
 
 | File | Purpose |
 |------|---------|
-| `.env` | Fallback (used if no environment-specific file found) |
-| `.env.development` | Local development settings |
+| `.env` | Fallback / local override (gitignored by default) |
+| `.env.develop` | Local development settings |
 | `.env.staging` | Staging environment settings |
-| `.env.production` | Production environment settings |
+
+There is intentionally **no `.env.production`**. Production secrets should
+come from a real secrets manager — AWS SSM, HashiCorp Vault, Kubernetes
+Secrets, Doppler, or your deployment platform's env-var UI — not from a
+committed file. Pretending to scaffold a `.env.production` invites
+placeholder credentials into version control.
 
 The active file is selected via the `--env` flag:
 
 ```bash
-# Use development settings
-fastman serve --env=development
+# Use develop settings
+fastman serve --env=develop
 
 # Use staging settings
 fastman serve --env=staging
-
-# Use production settings (or just `fastman serve` — auto-detected)
-fastman serve --env=production
 ```
 
-When no `--env` flag is provided, Fastman auto-detects `.env.production` if it exists, otherwise falls back to `.env`.
+When no `--env` flag is provided, Fastman auto-detects `.env.develop` if it
+exists, otherwise falls back to `.env`.
 
 ### Production Configuration
 
-Your `.env.production` (or deployment platform env vars) should include:
+In production, do **not** ship a `.env.production` file. Instead, inject
+environment variables through your platform:
+
+| Platform | Where to set vars |
+|----------|-------------------|
+| Docker / Compose | `environment:` section or `env_file:` pointing to a secrets-mounted file |
+| Kubernetes | `Secret` + `envFrom:` in the pod spec |
+| AWS ECS / Lambda | Task definition env or Secrets Manager |
+| Fly.io | `fly secrets set` |
+| Railway / Render / Vercel | Project settings UI |
+| Bare metal / systemd | `EnvironmentFile=` directive |
+
+The variables your app needs at boot are the same shape as `.env.staging`,
+plus production-grade replacements:
 
 ```env
 ENVIRONMENT=production
 DEBUG=false
-SECRET_KEY=<your-production-secret-key>
+SECRET_KEY=<from-secrets-manager>
 
 # Database
-DB_HOST=production-db-host
+DB_HOST=<production-host>
 DB_PORT=5432
-DB_USER=prod_user
-DB_PASSWORD=<strong-password>
+DB_USER=<from-secrets-manager>
+DB_PASSWORD=<from-secrets-manager>
 DB_NAME=myapp
 
-# Optional CORS
-CORS_ORIGINS=https://myapp.com,https://www.myapp.com
+# CORS
+ALLOWED_HOSTS=["https://myapp.com","https://www.myapp.com"]
 ```
 
-For cloud deployments, prefer your platform's environment variable management over `.env` files.
+Setting `ENVIRONMENT=production` causes `app/core/config.py` to look for
+`.env.production`, fail to find it (correct!), and fall back to `.env` —
+which itself should not exist on the production host, so the app reads
+purely from injected env vars. That's the intended boot path.
 
 ### Generate a Secure Secret Key
 

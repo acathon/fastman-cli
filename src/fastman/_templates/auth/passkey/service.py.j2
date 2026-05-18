@@ -1,0 +1,166 @@
+"""Passkey authentication service"""
+import json
+import secrets
+from typing import Optional
+from sqlalchemy.orm import Session
+import webauthn
+from webauthn.helpers.structs import (
+    AuthenticatorSelectionCriteria,
+    ResidentKeyRequirement,
+    UserVerificationRequirement,
+    PublicKeyCredentialDescriptor,
+)
+from webauthn.helpers.cose import COSEAlgorithmIdentifier
+from webauthn.helpers import bytes_to_base64url, base64url_to_bytes
+from app.core.config import settings
+from . import models
+
+# In-memory challenge store (use Redis in production)
+_challenges: dict[str, bytes] = {}
+
+
+def _get_rp_id() -> str:
+    """Get relying party ID from settings"""
+    return getattr(settings, "PASSKEY_RP_ID", "localhost")
+
+
+def _get_rp_name() -> str:
+    """Get relying party name from settings"""
+    return getattr(settings, "PASSKEY_RP_NAME", "Fastman App")
+
+
+def _get_origin() -> str:
+    """Get expected origin from settings"""
+    return getattr(settings, "PASSKEY_ORIGIN", "http://localhost:8000")
+
+
+class PasskeyService:
+    """WebAuthn/Passkey service"""
+
+    @staticmethod
+    def get_user_by_email(db: Session, email: str) -> Optional[models.User]:
+        return db.query(models.User).filter(models.User.email == email).first()
+
+    @staticmethod
+    def create_user(db: Session, email: str, username: str) -> models.User:
+        user = models.User(email=email, username=username)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        return user
+
+    @staticmethod
+    def generate_registration_options(db: Session, email: str, username: str) -> dict:
+        """Generate WebAuthn registration options"""
+        user = PasskeyService.get_user_by_email(db, email)
+        if not user:
+            user = PasskeyService.create_user(db, email, username)
+
+        existing_credentials = [
+            PublicKeyCredentialDescriptor(id=cred.credential_id)
+            for cred in user.credentials
+        ]
+
+        options = webauthn.generate_registration_options(
+            rp_id=_get_rp_id(),
+            rp_name=_get_rp_name(),
+            user_id=str(user.id).encode(),
+            user_name=user.email,
+            user_display_name=user.username,
+            exclude_credentials=existing_credentials,
+            authenticator_selection=AuthenticatorSelectionCriteria(
+                resident_key=ResidentKeyRequirement.PREFERRED,
+                user_verification=UserVerificationRequirement.PREFERRED,
+            ),
+            supported_pub_key_algs=[
+                COSEAlgorithmIdentifier.ECDSA_SHA_256,
+                COSEAlgorithmIdentifier.RSASSA_PKCS1_v1_5_SHA_256,
+            ],
+        )
+
+        _challenges[email] = options.challenge
+        return json.loads(webauthn.options_to_json(options))
+
+    @staticmethod
+    def verify_registration(db: Session, email: str, credential: dict) -> models.PasskeyCredential:
+        """Verify and store WebAuthn registration"""
+        challenge = _challenges.pop(email, None)
+        if not challenge:
+            raise ValueError("Registration challenge expired or not found")
+
+        verification = webauthn.verify_registration_response(
+            credential=credential,
+            expected_challenge=challenge,
+            expected_rp_id=_get_rp_id(),
+            expected_origin=_get_origin(),
+        )
+
+        user = PasskeyService.get_user_by_email(db, email)
+        if not user:
+            raise ValueError("User not found")
+
+        passkey = models.PasskeyCredential(
+            user_id=user.id,
+            credential_id=verification.credential_id,
+            public_key=verification.credential_public_key,
+            sign_count=verification.sign_count,
+            device_name=credential.get("device_name", "Unknown device"),
+        )
+        db.add(passkey)
+        db.commit()
+        db.refresh(passkey)
+        return passkey
+
+    @staticmethod
+    def generate_authentication_options(db: Session, email: Optional[str] = None) -> dict:
+        """Generate WebAuthn authentication options"""
+        allow_credentials = []
+
+        if email:
+            user = PasskeyService.get_user_by_email(db, email)
+            if user:
+                allow_credentials = [
+                    PublicKeyCredentialDescriptor(id=cred.credential_id)
+                    for cred in user.credentials
+                ]
+
+        options = webauthn.generate_authentication_options(
+            rp_id=_get_rp_id(),
+            allow_credentials=allow_credentials,
+            user_verification=UserVerificationRequirement.PREFERRED,
+        )
+
+        key = email or "__discoverable__"
+        _challenges[key] = options.challenge
+        return json.loads(webauthn.options_to_json(options))
+
+    @staticmethod
+    def verify_authentication(db: Session, credential: dict, email: Optional[str] = None) -> models.User:
+        """Verify WebAuthn authentication"""
+        credential_id = base64url_to_bytes(credential["id"])
+
+        stored = db.query(models.PasskeyCredential).filter(
+            models.PasskeyCredential.credential_id == credential_id
+        ).first()
+
+        if not stored:
+            raise ValueError("Credential not found")
+
+        key = email or "__discoverable__"
+        challenge = _challenges.pop(key, None)
+        if not challenge:
+            raise ValueError("Authentication challenge expired or not found")
+
+        verification = webauthn.verify_authentication_response(
+            credential=credential,
+            expected_challenge=challenge,
+            expected_rp_id=_get_rp_id(),
+            expected_origin=_get_origin(),
+            credential_public_key=stored.public_key,
+            credential_current_sign_count=stored.sign_count,
+        )
+
+        stored.sign_count = verification.new_sign_count
+        db.commit()
+
+        return stored.user

@@ -30,16 +30,16 @@ function HomepageHeader() {
       <div className="container">
         <div className={styles.heroContent}>
           <div className={styles.badge}>
-                <span>v0.3.6</span> Cheetah
+                <span>v0.4.0</span> Dolphin
           </div>
           <Heading as="h1" className={styles.heroTitle}>
             The Elegant CLI for
             <span className={styles.gradient}> FastAPI </span>
-            Artisans
+            Developers
           </Heading>
           <p className={styles.heroSubtitle}>
             Generate projects, scaffold features, manage databases, and deploy with confidence.
-            Laravel-inspired developer experience for FastAPI.
+            Batteries-included developer experience for FastAPI.
           </p>
           <div className={styles.heroButtons}>
             <Link className={styles.primaryButton} to="/docs/intro">
@@ -236,7 +236,7 @@ export default function Home() {
   return (
     <Layout
       title="The Elegant CLI for FastAPI"
-      description="Laravel-inspired CLI tool for FastAPI. Generate projects, scaffold features, manage databases, and deploy with confidence.">
+      description="A complete CLI for FastAPI. Generate projects, scaffold features, manage databases, and deploy with confidence.">
       <HomepageHeader />
       <main>
         <HomepageFeatures />

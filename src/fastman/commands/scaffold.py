@@ -4,7 +4,47 @@ Scaffolding commands for generating code.
 from pathlib import Path
 from .base import Command, register
 from ..console import Output, Style
-from ..utils import NameValidator, PathManager
+from ..utils import FastmanConfig, NameValidator, PathManager
+
+
+# Per-make:* command, the patterns where this command makes sense.
+# Used to give an actionable error message instead of "directory not found".
+_COMMAND_PATTERNS = {
+    "make:feature": {"feature"},
+    "make:api": {"api"},
+    "make:controller": {"layer"},
+    "make:repository": {"layer"},
+    "make:service": {"layer", "feature"},  # services exist as cross-cutting in feature too
+}
+
+
+def _check_pattern_fit(command_name: str) -> bool:
+    """Return True if the recorded project pattern is one this command targets.
+
+    Returns True (skip the check) when:
+    - .fastmanrc is missing (older projects)
+    - The command isn't pattern-restricted
+    Returns False with a friendly error when the command and pattern don't fit.
+    """
+    allowed = _COMMAND_PATTERNS.get(command_name)
+    if not allowed:
+        return True
+    pattern = FastmanConfig.pattern()
+    if not pattern:
+        return True  # No recorded pattern → fall back to filesystem-based check
+    if pattern in allowed:
+        return True
+    Output.error(
+        f"'{command_name}' is not the right command for the '{pattern}' pattern."
+    )
+    Output.info(f"  Use one of these instead:")
+    suggestions = {
+        "feature": "make:feature, make:model, make:middleware",
+        "api": "make:api, make:schema, make:model",
+        "layer": "make:controller, make:service, make:repository, make:model",
+    }
+    Output.info(f"  {suggestions.get(pattern, '')}")
+    return False
 
 
 @register
@@ -18,19 +58,22 @@ Examples:
 """
 
     def handle(self):
-        name = self.validate_name(self.argument(0), "Feature name is required")
+        name = self.prompt_argument(0, "Feature name")
+        name = self.validate_name(name, "Feature name is required")
         crud = self.flag("crud")
 
         snake = NameValidator.to_snake_case(name)
         pascal = NameValidator.to_pascal_case(name)
         plural = NameValidator.pluralize(snake)
 
-        # Verify project pattern
+        if not _check_pattern_fit("make:feature"):
+            return
+
+        # Verify project pattern by filesystem (fallback for older projects without .fastmanrc)
         features_dir = Path("app/features")
         if not features_dir.exists():
             Output.error("Directory 'app/features' not found.")
             Output.info("The 'make:feature' command is only available for projects using the Feature pattern.")
-            Output.info("For Layer pattern, use 'make:model', 'make:service', etc.")
             return
 
         base = features_dir / snake
@@ -41,56 +84,60 @@ Examples:
 
         PathManager.ensure_dir(base)
 
-        # Model
+        # Model — SQLAlchemy 2.0 typed Mapped pattern.
         model_content = f'''"""Database model for {pascal}"""
-from sqlalchemy import Column, Integer, String, DateTime
+from datetime import datetime
+from typing import Optional
+
+from sqlalchemy import DateTime, String
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
+
 from app.core.database import Base
 
 
 class {pascal}(Base):
-    """{pascal} model"""
     __tablename__ = "{plural}"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(255), nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), onupdate=func.now(), nullable=True
+    )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<{pascal}(id={{self.id}}, name={{self.name}})>"
 '''
 
-        # Schemas
-        schema_content = f'''"""Pydantic schemas for {pascal}"""
-from pydantic import BaseModel, Field
+        # Schemas — Pydantic v2 ConfigDict
+        schema_content = f'''"""Pydantic schemas for {pascal} (Pydantic v2)."""
 from datetime import datetime
 from typing import Optional
 
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class {pascal}Base(BaseModel):
-    """Base schema with common attributes"""
     name: str = Field(..., min_length=1, max_length=255)
 
 
 class {pascal}Create({pascal}Base):
-    """Schema for creating a {pascal}"""
     pass
 
 
 class {pascal}Update(BaseModel):
-    """Schema for updating a {pascal}"""
     name: Optional[str] = Field(None, min_length=1, max_length=255)
 
 
 class {pascal}Read({pascal}Base):
-    """Schema for reading a {pascal}"""
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 '''
 
         # Service
@@ -285,9 +332,18 @@ def list_{plural}(db: Session = Depends(get_db)):
 class MakeApiCommand(Command):
     signature = "make:api {name} {--style=rest}"
     description = "Create a lightweight API endpoint (rest or graphql)"
+    help = """
+Examples:
+  fastman make:api users
+  fastman make:api users --style=graphql
+
+Creates a lightweight endpoint module without the full feature stack.
+For full CRUD-with-service-layer, use make:feature instead.
+"""
 
     def handle(self):
-        name = self.validate_name(self.argument(0), "API name is required")
+        name = self.prompt_argument(0, "API name")
+        name = self.validate_name(name, "API name is required")
         style = self.option("style", "rest").lower()
 
         if style not in ["rest", "graphql"]:
@@ -394,9 +450,18 @@ def get_{snake}(id: int):
 class MakeWebSocketCommand(Command):
     signature = "make:websocket {name}"
     description = "Create WebSocket feature with connection manager"
+    help = """
+Examples:
+  fastman make:websocket chat
+  fastman make:websocket notifications
+
+Generates a manager + router pair. Connect from the browser to
+ws://localhost:8000/ws/<name>.
+"""
 
     def handle(self):
-        name = self.validate_name(self.argument(0), "WebSocket name is required")
+        name = self.prompt_argument(0, "WebSocket name")
+        name = self.validate_name(name, "WebSocket name is required")
 
         snake = NameValidator.to_snake_case(name)
         pascal = NameValidator.to_pascal_case(name)
@@ -507,20 +572,28 @@ async def {snake}_endpoint(websocket: WebSocket):
 class MakeControllerCommand(Command):
     signature = "make:controller {name}"
     description = "Create a controller class (Layer pattern)"
+    help = """
+Examples:
+  fastman make:controller user
+
+For the Layer pattern only. In Feature-pattern projects, use make:feature.
+"""
 
     def handle(self):
-        name = self.validate_name(self.argument(0), "Controller name is required")
+        name = self.prompt_argument(0, "Controller name")
+        name = self.validate_name(name, "Controller name is required")
 
         snake = NameValidator.to_snake_case(name)
         pascal = NameValidator.to_pascal_case(name)
 
-        # Verify project pattern - controllers are for Layer pattern
+        if not _check_pattern_fit("make:controller"):
+            return
+
+        # Filesystem fallback for older projects without .fastmanrc
         controllers_dir = Path("app/controllers")
         if not controllers_dir.exists():
             Output.error("Directory 'app/controllers' not found.")
             Output.info("The 'make:controller' command is only available for projects using the Layer pattern.")
-            Output.info("For Feature pattern, use 'make:feature' instead.")
-            Output.info("For API pattern, use 'make:api' instead.")
             return
 
         # Determine path
@@ -547,9 +620,18 @@ class {pascal}Controller:
 class MakeModelCommand(Command):
     signature = "make:model {name} {--table=}"
     description = "Create database model"
+    help = """
+Examples:
+  fastman make:model Order
+  fastman make:model Address --table=mailing_addresses
+
+Generates a SQLAlchemy 2.0 model with typed Mapped[] columns and auto-
+registers it in app/models/__init__.py.
+"""
 
     def handle(self):
-        name = self.validate_name(self.argument(0), "Model name is required")
+        name = self.prompt_argument(0, "Model name")
+        name = self.validate_name(name, "Model name is required")
         table = self.option("table")
 
         snake = NameValidator.to_snake_case(name)
@@ -562,24 +644,32 @@ class MakeModelCommand(Command):
             Output.error(f"Model '{snake}' already exists")
             return
 
-        content = f'''"""Database model for {pascal}"""
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text
+        content = f'''"""Database model for {pascal} (SQLAlchemy 2.0)."""
+from datetime import datetime
+from typing import Optional
+
+from sqlalchemy import Boolean, DateTime, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
+
 from app.core.database import Base
 
 
 class {pascal}(Base):
-    """{pascal} model"""
     __tablename__ = "{table_name}"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(255), nullable=False, index=True)
-    description = Column(Text, nullable=True)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), onupdate=func.now(), nullable=True
+    )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<{pascal}(id={{self.id}}, name={{self.name}})>"
 '''
 
@@ -609,9 +699,18 @@ class {pascal}(Base):
 class MakeServiceCommand(Command):
     signature = "make:service {name}"
     description = "Create service class for business logic"
+    help = """
+Examples:
+  fastman make:service Payment
+  fastman make:service NotificationDispatcher
+
+Use for cross-cutting business logic that does not belong to a single
+feature (mail, billing, audit, etc.).
+"""
 
     def handle(self):
-        name = self.validate_name(self.argument(0), "Service name is required")
+        name = self.prompt_argument(0, "Service name")
+        name = self.validate_name(name, "Service name is required")
 
         snake = NameValidator.to_snake_case(name)
         pascal = NameValidator.to_pascal_case(name)
@@ -674,9 +773,18 @@ class {pascal}Service:
 class MakeMiddlewareCommand(Command):
     signature = "make:middleware {name}"
     description = "Create HTTP middleware"
+    help = """
+Examples:
+  fastman make:middleware RequestTiming
+  fastman make:middleware AuditLog
+
+After generation, register in app/main.py:
+  app.add_middleware(RequestTimingMiddleware)
+"""
 
     def handle(self):
-        name = self.validate_name(self.argument(0), "Middleware name is required")
+        name = self.prompt_argument(0, "Middleware name")
+        name = self.validate_name(name, "Middleware name is required")
 
         snake = NameValidator.to_snake_case(name)
         pascal = NameValidator.to_pascal_case(name)
@@ -737,9 +845,18 @@ class {pascal}Middleware(BaseHTTPMiddleware):
 class MakeDependencyCommand(Command):
     signature = "make:dependency {name}"
     description = "Create FastAPI dependency"
+    help = """
+Examples:
+  fastman make:dependency current_tenant
+  fastman make:dependency rate_limiter
+
+Generates both a function-style and class-style dependency. Use in a
+route via Depends().
+"""
 
     def handle(self):
-        name = self.validate_name(self.argument(0), "Dependency name is required")
+        name = self.prompt_argument(0, "Dependency name")
+        name = self.validate_name(name, "Dependency name is required")
 
         snake = NameValidator.to_snake_case(name)
         pascal = NameValidator.to_pascal_case(name)
@@ -804,9 +921,18 @@ class {pascal}Dependency:
 class MakeTestCommand(Command):
     signature = "make:test {name}"
     description = "Create test file"
+    help = """
+Examples:
+  fastman make:test users
+  fastman make:test order_creation
+
+Generates tests/test_<name>.py with a TestClient setup and CRUD stubs.
+Run with: pytest tests/test_<name>.py
+"""
 
     def handle(self):
-        name = self.validate_name(self.argument(0), "Test name is required")
+        name = self.prompt_argument(0, "Test name")
+        name = self.validate_name(name, "Test name is required")
 
         snake = NameValidator.to_snake_case(name)
         pascal = NameValidator.to_pascal_case(name)
@@ -869,9 +995,17 @@ class Test{pascal}:
 class MakeSeederCommand(Command):
     signature = "make:seeder {name}"
     description = "Create database seeder"
+    help = """
+Examples:
+  fastman make:seeder UserSeeder
+  fastman make:seeder DemoData
+
+Run later with: fastman database:seed --class=UserSeeder
+"""
 
     def handle(self):
-        name = self.validate_name(self.argument(0), "Seeder name is required")
+        name = self.prompt_argument(0, "Seeder name")
+        name = self.validate_name(name, "Seeder name is required")
 
         snake = NameValidator.to_snake_case(name)
         pascal = NameValidator.to_pascal_case(name)
@@ -935,9 +1069,19 @@ class {pascal}Seeder:
 class MakeFactoryCommand(Command):
     signature = "make:factory {name}"
     description = "Create model factory for testing"
+    help = """
+Examples:
+  fastman make:factory User
+  fastman make:factory Order
+
+Use in tests/seeders:
+  from database.factories.user_factory import create_user
+  user = create_user(db, email="alice@example.com")
+"""
 
     def handle(self):
-        name = self.validate_name(self.argument(0), "Factory name is required")
+        name = self.prompt_argument(0, "Factory name")
+        name = self.validate_name(name, "Factory name is required")
 
         snake = NameValidator.to_snake_case(name)
         pascal = NameValidator.to_pascal_case(name)
@@ -1010,9 +1154,18 @@ def create_{snake}(db, **overrides):
 class MakeExceptionCommand(Command):
     signature = "make:exception {name}"
     description = "Create custom exception class"
+    help = """
+Examples:
+  fastman make:exception PaymentDeclined
+  fastman make:exception RateLimit
+
+Generates the base, NotFound, and Forbidden variants. Raise from a
+route to convert to a proper HTTP error response.
+"""
 
     def handle(self):
-        name = self.validate_name(self.argument(0), "Exception name is required")
+        name = self.prompt_argument(0, "Exception name")
+        name = self.validate_name(name, "Exception name is required")
 
         snake = NameValidator.to_snake_case(name)
         pascal = NameValidator.to_pascal_case(name)
@@ -1060,9 +1213,18 @@ class {pascal}Forbidden(HTTPException):
 class MakeRepositoryCommand(Command):
     signature = "make:repository {name}"
     description = "Create repository pattern class"
+    help = """
+Examples:
+  fastman make:repository User
+  fastman make:repository Order
+
+For the Layer pattern. Generates a class with get_all / get_by_id /
+create / update / delete / find_by.
+"""
 
     def handle(self):
-        name = self.validate_name(self.argument(0), "Repository name is required")
+        name = self.prompt_argument(0, "Repository name")
+        name = self.validate_name(name, "Repository name is required")
 
         snake = NameValidator.to_snake_case(name)
         pascal = NameValidator.to_pascal_case(name)
@@ -1145,9 +1307,18 @@ class {pascal}Repository:
 class MakeCommandCommand(Command):
     signature = "make:command {name}"
     description = "Create custom CLI command"
+    help = """
+Examples:
+  fastman make:command sync_users
+  fastman make:command rebuild_index
+
+Generates app/console/commands/<name>.py. Once created, run with:
+  fastman custom:<name>
+"""
 
     def handle(self):
-        name = self.validate_name(self.argument(0), "Command name is required")
+        name = self.prompt_argument(0, "Command name")
+        name = self.validate_name(name, "Command name is required")
 
         snake = NameValidator.to_snake_case(name)
         pascal = NameValidator.to_pascal_case(name)
@@ -1194,9 +1365,18 @@ class {pascal}Command(Command):
 class MakeSchemaCommand(Command):
     signature = "make:schema {name}"
     description = "Create Pydantic schema"
+    help = """
+Examples:
+  fastman make:schema User
+  fastman make:schema Address
+
+Generates Pydantic v2 schemas (Base/Create/Update/Read variants) using
+model_config = ConfigDict(from_attributes=True).
+"""
 
     def handle(self):
-        name = self.validate_name(self.argument(0), "Schema name is required")
+        name = self.prompt_argument(0, "Schema name")
+        name = self.validate_name(name, "Schema name is required")
 
         snake = NameValidator.to_snake_case(name)
         pascal = NameValidator.to_pascal_case(name)
@@ -1209,35 +1389,31 @@ class MakeSchemaCommand(Command):
 
         PathManager.ensure_dir(path.parent)
 
-        content = f'''"""Pydantic schema for {pascal}"""
-from pydantic import BaseModel, Field
-from typing import Optional
+        content = f'''"""Pydantic schema for {pascal} (Pydantic v2)."""
 from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class {pascal}Base(BaseModel):
-    """Base schema"""
     name: str = Field(..., min_length=1)
     description: Optional[str] = None
 
 
 class {pascal}Create({pascal}Base):
-    """Creation schema"""
     pass
 
 
 class {pascal}Update(BaseModel):
-    """Update schema"""
     name: Optional[str] = Field(None, min_length=1)
 
 
 class {pascal}Read({pascal}Base):
-    """Read schema"""
     id: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 '''
 
         PathManager.write_file(path, content)

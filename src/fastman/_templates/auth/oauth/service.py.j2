@@ -1,0 +1,47 @@
+"""OAuth authentication service"""
+from sqlalchemy.orm import Session
+from typing import Optional
+from . import models
+
+
+class OAuthService:
+    """OAuth service layer"""
+
+    @staticmethod
+    def get_user_by_email(db: Session, email: str) -> Optional[models.User]:
+        """Get user by email"""
+        return db.query(models.User).filter(models.User.email == email).first()
+
+    @staticmethod
+    def get_user_by_oauth_id(db: Session, provider: str, oauth_id: str) -> Optional[models.User]:
+        """Get user by OAuth provider and ID"""
+        return db.query(models.User).filter(
+            models.User.oauth_provider == provider,
+            models.User.oauth_id == oauth_id
+        ).first()
+
+    @staticmethod
+    def create_or_update_user(db: Session, provider: str, user_info: dict) -> models.User:
+        """Create or update user from OAuth data"""
+        oauth_id = str(user_info.get("sub") or user_info.get("id"))
+        email = user_info.get("email")
+
+        user = OAuthService.get_user_by_oauth_id(db, provider, oauth_id)
+
+        if user:
+            user.name = user_info.get("name", user.name)
+            user.avatar_url = user_info.get("picture") or user_info.get("avatar_url")
+            user.email = email or user.email
+        else:
+            user = models.User(
+                email=email,
+                name=user_info.get("name"),
+                avatar_url=user_info.get("picture") or user_info.get("avatar_url"),
+                oauth_provider=provider,
+                oauth_id=oauth_id,
+            )
+            db.add(user)
+
+        db.commit()
+        db.refresh(user)
+        return user

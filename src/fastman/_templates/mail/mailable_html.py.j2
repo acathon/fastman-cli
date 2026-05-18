@@ -1,0 +1,17 @@
+"""Mailable: {{ pascal }}"""
+from app.mail.base import Mailable
+
+
+class {{ pascal }}(Mailable):
+    """Override `context()` to inject template variables."""
+
+    subject = "{{ subject }}"
+    template = "{{ template_file }}"
+
+    def __init__(self, *, name: str = ""):
+        self.name = name
+
+    def context(self) -> dict:
+        return {
+            "name": self.name,
+        }

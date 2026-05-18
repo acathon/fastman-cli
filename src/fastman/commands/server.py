@@ -7,9 +7,9 @@ from .base import Command, register
 from ..console import Output, Style
 from ..utils import PackageManager
 
-FASTMAN_CONFIG = Path(".fastman")
+FASTMAN_CONFIG = Path(".fastmanrc")
 
-# Planned .fastman config keys (wire up in next version):
+# Planned .fastmanrc keys (wire up in next version):
 # {
 #   "env": "production",          # active env file (implemented)
 #   "host": "127.0.0.1",          # default serve host
@@ -23,7 +23,7 @@ FASTMAN_CONFIG = Path(".fastman")
 
 
 def _read_config() -> dict:
-    """Read the .fastman config file."""
+    """Read the .fastmanrc file."""
     if FASTMAN_CONFIG.exists():
         try:
             return json.loads(FASTMAN_CONFIG.read_text(encoding="utf-8"))
@@ -33,19 +33,19 @@ def _read_config() -> dict:
 
 
 def _write_config(config: dict):
-    """Write the .fastman config file."""
+    """Write the .fastmanrc file."""
     FASTMAN_CONFIG.write_text(
         json.dumps(config, indent=2) + "\n", encoding="utf-8"
     )
 
 
 def _read_locked_env() -> str | None:
-    """Read the persisted environment from .fastman config."""
+    """Read the persisted environment from .fastmanrc."""
     return _read_config().get("env")
 
 
 def _write_locked_env(env: str):
-    """Persist the selected environment to .fastman config."""
+    """Persist the selected environment to .fastmanrc."""
     config = _read_config()
     config["env"] = env
     _write_config(config)
@@ -54,22 +54,33 @@ def _write_locked_env(env: str):
 def _resolve_env_file(env: str | None = None) -> Path | None:
     """
     Resolve the env file.
-    Priority: explicit env arg > .fastman config > .env.production > .env
+
+    Priority:
+      1. explicit ``--env=X`` arg (if X is "production", always use ``.env``)
+      2. ``.fastmanrc`` lock
+      3. ``.env.develop`` if present
+      4. ``.env``
     """
     if env:
+        # production always reads the bare .env (populated by the deployment
+        # platform's secrets manager — no .env.production is scaffolded).
+        if env == "production":
+            return Path(".env") if Path(".env").exists() else None
         env_file = Path(f".env.{env}")
         return env_file if env_file.exists() else None
 
     # Check persisted selection
     locked = _read_locked_env()
     if locked:
+        if locked == "production":
+            return Path(".env") if Path(".env").exists() else None
         env_file = Path(f".env.{locked}")
         if env_file.exists():
             return env_file
 
-    # Default auto-detect
-    if Path(".env.production").exists():
-        return Path(".env.production")
+    # Default auto-detect: prefer .env.develop, fall back to .env.
+    if Path(".env.develop").exists():
+        return Path(".env.develop")
     if Path(".env").exists():
         return Path(".env")
     return None
@@ -97,7 +108,7 @@ Examples:
   fastman serve
   fastman serve --port=8080
   fastman serve --host=0.0.0.0 --no-reload
-  fastman serve --env=development
+  fastman serve --env=develop
   fastman serve --env=staging
 """
 
@@ -126,11 +137,12 @@ Examples:
             cmd.append("--reload")
 
         # Resolve env file
-        # Priority: --env flag > .fastman config > .env.production > .env
+        # Priority: --env flag > .fastmanrc lock > .env.develop > .env
         if env:
-            env_file = Path(f".env.{env}")
-            if not env_file.exists():
-                Output.error(f"Environment file not found: {env_file}")
+            env_file = _resolve_env_file(env)
+            if env_file is None:
+                expected = Path(".env") if env == "production" else Path(f".env.{env}")
+                Output.error(f"Environment file not found: {expected}")
                 Output.info("Available env files:")
                 for f in sorted(Path(".").glob(".env*")):
                     if f.is_file():
@@ -161,11 +173,11 @@ Set the active environment source. Once set, 'fastman serve' will
 automatically use that env file without needing --env.
 
 Examples:
-  fastman env                        Show active environment
-  fastman env --source=development   Switch to .env.development
-  fastman env --source=staging       Switch to .env.staging
-  fastman env --source=production    Switch to .env.production
-  fastman env --reset                Clear selection, return to auto-detect
+  fastman env                      Show active environment
+  fastman env --source=develop     Switch to .env.develop
+  fastman env --source=staging     Switch to .env.staging
+  fastman env --source=production  Switch to .env (production reads bare .env)
+  fastman env --reset              Clear selection, return to auto-detect
 """
 
     def handle(self):
@@ -184,21 +196,23 @@ Examples:
 
         # If --source provided, persist it
         if env:
-            env_file = Path(f".env.{env}")
-            if not env_file.exists():
-                Output.error(f"Environment file not found: .env.{env}")
+            # production maps to the bare .env (no .env.production exists).
+            target = Path(".env") if env == "production" else Path(f".env.{env}")
+            if not target.exists():
+                Output.error(f"Environment file not found: {target}")
                 Output.info("Available env files:")
                 for f in sorted(Path(".").glob(".env*")):
                     if f.is_file():
                         Output.echo(f"  {f.name}", Style.GREEN)
                 return
             _write_locked_env(env)
-            Output.success(f"Environment set to: .env.{env}")
+            display = ".env" if env == "production" else f".env.{env}"
+            Output.success(f"Environment set to: {display}")
             Output.info("'fastman serve' will now use this environment automatically.")
             Output.echo("")
 
         # List all available env files
-        env_files = sorted(f for f in Path(".").glob(".env*") if f.is_file() and f.name != ".fastman")
+        env_files = sorted(f for f in Path(".").glob(".env*") if f.is_file() and f.name != ".fastmanrc")
 
         if not env_files:
             Output.warn("No .env files found in the current directory.")

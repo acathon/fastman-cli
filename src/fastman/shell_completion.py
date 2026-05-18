@@ -23,7 +23,7 @@ OPTION_VALUES: Dict[str, List[str]] = {
     "type": ["jwt", "oauth", "keycloak", "passkey"],
     "provider": ["smtp", "sendgrid", "mailgun", "ses"],
     "method": ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    "source": ["development", "staging", "production"],
+    "source": ["develop", "staging", "production"],
 }
 
 

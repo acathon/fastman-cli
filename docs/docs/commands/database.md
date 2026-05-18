@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Database Commands
 
-Commands for managing your database schema through migrations and populating data with seeders. Fastman wraps [Alembic](https://alembic.sqlalchemy.org/) to provide a simpler, Laravel-style interface for migration management.
+Commands for managing your database schema through migrations and populating data with seeders. Fastman wraps [Alembic](https://alembic.sqlalchemy.org/) with a simpler, consistent interface for everyday migration tasks.
 
 ## Migrations
 
@@ -53,18 +53,6 @@ fastman migrate:rollback
 # Undo the last 3 migrations
 fastman migrate:rollback --steps=3
 ```
-
-### `migrate:reset`
-
-Rolls back **all** migrations, effectively dropping all tables and returning the database to a blank state. Always prompts for confirmation.
-
-```bash
-fastman migrate:reset
-```
-
-:::danger
-This is a destructive operation — all data in the database will be lost. Only use this during development. In production, use targeted rollbacks instead.
-:::
 
 ### `migrate:status`
 

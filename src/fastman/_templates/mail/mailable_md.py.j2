@@ -1,0 +1,48 @@
+"""Mailable: {{ pascal }} (Markdown-rendered)"""
+from pathlib import Path
+
+from markdown_it import MarkdownIt
+from fastapi_mail import MessageType
+
+from app.mail.base import Mailable
+
+
+_md = MarkdownIt()
+
+
+class {{ pascal }}(Mailable):
+    """Markdown body is rendered to HTML at send time.
+
+    Place your Markdown source at `templates/email/{{ template_file }}`.
+    """
+
+    subject = "{{ subject }}"
+    template = None
+    subtype = MessageType.html
+
+    def __init__(self, *, name: str = ""):
+        self.name = name
+
+    def context(self) -> dict:
+        return {
+            "name": self.name,
+        }
+
+    async def send(self, to, cc=None, bcc=None):
+        from app.core.config import settings
+        from app.core.mail import send_mail
+
+        src = Path(settings.MAIL_TEMPLATE_FOLDER) / "{{ template_file }}"
+        markdown_body = src.read_text(encoding="utf-8")
+        for key, value in self.context().items():
+            markdown_body = markdown_body.replace("{{ '{{ ' }}" + key + "{{ ' }}' }}", str(value))
+        html_body = _md.render(markdown_body)
+
+        await send_mail(
+            subject=self.subject,
+            recipients=to,
+            cc=cc,
+            bcc=bcc,
+            body=html_body,
+            subtype=self.subtype,
+        )

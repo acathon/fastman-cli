@@ -7,6 +7,123 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] "Dolphin" - 2026-05-18
+
+This release tightens the command surface, modernizes generated code for
+SQLAlchemy 2.0 / Pydantic v2, adds first-class mail scaffolding, and pulls
+shell completions out of the static lookup table they used to live in.
+
+### ⚠️ Breaking
+
+- **6 commands removed.** They were either pure wrappers around the underlying
+  package manager / FS or dead code that wrote files nothing read:
+  `package:import`, `package:list`, `config:cache`, `config:clear`, `inspect`,
+  `migrate:reset`. Use `uv pip list` / `pip list`, `fastman cache:clear`,
+  `fastman route:list`, or raw `alembic` respectively.
+- **Note**: `package:install` and `package:remove` were briefly cut and then
+  restored with venv-aware behaviour (see Added below) — they earn their keep
+  by routing pip installs into the project's `.venv` even when the user hasn't
+  activated it.
+- **Three env files, not four.** `fastman create` now scaffolds `.env`,
+  `.env.develop`, and `.env.staging` only. `.env.production` is intentionally
+  not generated — production secrets should come from a real secrets manager
+  (AWS SSM, Vault, k8s secrets) rather than a committed placeholder. The
+  default value of `ENVIRONMENT` is now `develop` (was `development`), and
+  `fastman serve` auto-detects `.env.develop` then `.env`.
+- **Generated `app/core/database.py` now subclasses `DeclarativeBase`** (SQLAlchemy
+  2.0) instead of calling `declarative_base()`. Existing models built on the
+  old `Base` still work — `DeclarativeBase` is backward-compatible with the
+  imperative `Column(...)` style — but new `make:feature` / `make:model`
+  output uses typed `Mapped[...]` columns.
+- **Generated Pydantic schemas use `model_config = ConfigDict(...)`** instead
+  of the nested `class Config:` block. Affects `make:feature`,
+  `make:model`, `make:schema`, and `install:auth` output.
+- **`Settings` uses `SettingsConfigDict`** instead of `class Config` for the
+  Pydantic v2 way of declaring `env_file` / `extra` / `case_sensitive`.
+- **Template engine swapped to Jinja2.** The homegrown `str.replace()` engine
+  was single-pass-but-order-dependent (a value containing a placeholder
+  would only get re-substituted when the dict happened to iterate in the
+  right order — actively masking the postgres/mysql `{project_name}` nested-
+  reference bug). All template placeholders are now `{{ name }}` instead of
+  `{name}`, missing variables raise loudly (`StrictUndefined`), and rendering
+  is order-independent. `jinja2>=3.1.0` is now a dependency.
+
+### ✨ Added
+
+- **`package:install` and `package:remove` (venv-aware).** Routes through the
+  right backend (uv / poetry / pipenv / pip) and, on the pip backend,
+  resolves the project's `.venv` / `venv` / `env` pip binary directly so the
+  install lands in the project even when the user hasn't activated the venv.
+  Previously fastman used `sys.executable`, which could be the global
+  interpreter when the CLI is installed system-wide. The same fix benefits
+  every command that installs packages (`install:auth`, `install:mail`,
+  `optimize`, `install:cert`).
+- **Production explicitly maps to `.env`.** Setting `ENVIRONMENT=production`
+  (or `fastman serve --env=production`) now reads the bare `.env` file by
+  design — that's the file the deployment platform populates from its
+  secrets manager. No more silent fallback semantics.
+- **Alembic fixes.** Four bugs in generated `alembic/env.py`:
+  - `settings.DATABASE_URL` was `None` for PostgreSQL / MySQL / Oracle
+    (those configs expose the URL via the lowercase `database_url`
+    computed property). Migrations now read either source, with a clear
+    error if neither is set.
+  - `from app.models import *` missed models living inside feature folders
+    (`app/features/<name>/models.py`). Generated migrations were silently
+    empty for the flagship `make:feature --crud` → `make:migration` flow.
+    Now walks `app/models/`, `app/features/*/models.py`, and
+    `app/api/*/models.py` to populate `Base.metadata`.
+  - `parents[2]` pointed one level above the project root; corrected to
+    `parents[1]`.
+  - `make:migration` / `database:migrate` / `migrate:rollback` /
+    `migrate:status` now refuse to run when `alembic.ini` is missing,
+    with an actionable message ("This project doesn't use Alembic
+    migrations — Firebase projects don't scaffold it.") instead of a
+    cryptic alembic stack trace.
+- **`install:mail` and `make:mail` commands.** Wires up `fastapi-mail` with
+  per-provider env defaults (SMTP, SendGrid, Mailgun, AWS SES), a `Mailable`
+  base class supporting both `.send()` and `.send_later(background_tasks)`,
+  and template scaffolding. `make:mail` ships an `--markdown` flag that
+  renders Markdown templates via `markdown-it-py` at send time.
+- **`NameValidator.pluralize()`** with irregulars, sibilant endings, Latin/
+  Greek `-is → -es`, and mass nouns. Wired into `make:feature` and
+  `make:model` so `__tablename__`, router prefixes, and `list_*` function
+  names use real plurals (`address → addresses`, `category → categories`,
+  `analysis → analyses`).
+- **Python keyword / builtin guard on `NameValidator`.** Project, feature,
+  and model names that collide with reserved words (`class`, `True`),
+  soft keywords (`type`, `match`), or builtins (`list`, `dict`) are
+  rejected with an actionable error before any code is generated.
+- **`.fastmanrc` records project shape.** `fastman create` now persists
+  `pattern`, `package_manager`, and `database`. The `make:*` commands read
+  this to give a pattern-specific error when called in the wrong project
+  (e.g. `make:controller` in a feature-pattern project). The env-locking
+  feature previously written to `.fastman` now lives in the same file.
+- **Per-pattern command guide in the generated README.** Each project's
+  README now lists the `make:*` commands that fit the chosen pattern and
+  flags the ones that don't.
+- **Dynamic shell completion.** `shell_completion.py` now reads commands,
+  options, and flags directly from `COMMAND_REGISTRY` + `parse_signature`.
+  Adding a new `@register`'d Command lights up bash / zsh / fish /
+  powershell automatically — no second list to maintain.
+- **Version-pinned requirements.txt fallback.** Lower bounds emitted for
+  every generated dependency (`fastapi>=0.110`, `sqlalchemy>=2.0`,
+  `pydantic-settings>=2.1`, ...) so fresh installs land on known-good
+  versions.
+
+### 🔧 Fixed
+
+- **MANIFEST.in contradictory rules.** Removed the orphaned
+  `recursive-include docs/assets` line that the next-line exclude was
+  wiping out.
+- **`.fastmanrc` in generated `.gitignore`** so the per-project config isn't
+  committed accidentally.
+
+### 📚 Documentation
+
+- Updated `fastman create --help` with explicit "when to pick this pattern"
+  guidance for each of API / Feature / Layer.
+- Updated `docs/whats-new.md` and version references across the docs site.
+
 ## [0.3.6] - 2026-03-26
 
 ### ✨ Added
@@ -184,7 +301,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/acathon/fastman-cli/compare/v0.3.6...HEAD
+[Unreleased]: https://github.com/acathon/fastman-cli/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/acathon/fastman-cli/compare/v0.3.6...v0.4.0
 [0.3.6]: https://github.com/acathon/fastman-cli/compare/v0.3.5...v0.3.6
 [0.3.5]: https://github.com/acathon/fastman-cli/compare/v0.3.2...v0.3.5
 [0.3.2]: https://github.com/acathon/fastman-cli/compare/v0.3.1...v0.3.2

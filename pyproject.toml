@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fastman"
-version = "0.3.6"
+version = "0.4.0"
 description = "Fastman CLI for FastAPI that makes building APIs a breeze"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -48,6 +48,7 @@ dependencies = [
     "ipython>=8.0.0",
     "certifi>=2023.0.0",
     "uv>=0.1.0",
+    "jinja2>=3.1.0",
 ]
 
 [project.optional-dependencies]
@@ -71,7 +72,7 @@ fastman = "fastman.main:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-fastman = ["py.typed"]
+fastman = ["py.typed", "_templates/**/*.j2", "_templates/**/*.md"]
 
 [tool.ruff]
 line-length = 100

@@ -18,6 +18,7 @@ from .commands import (
     auth,
     certificate,
     mail,
+    package,
     misc
 )
 

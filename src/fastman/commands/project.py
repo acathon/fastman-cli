@@ -18,10 +18,22 @@ class NewCommand(Command):
     signature = "create {name} {--minimal} {--pattern=feature} {--package=uv} {--database=sqlite} {--graphql}"
     description = "Create a new FastAPI project"
     help = """
+Patterns:
+  --pattern=api       Stateless APIs and microservices. Schemas + routes, no
+                      service layer. Pick this for BFFs, gateways, or any
+                      service whose job is "validate input -> call X -> return".
+  --pattern=feature   Vertical slices (default). Each feature owns its model,
+                      schema, service, and router in one folder. Pick this for
+                      monoliths that may later split into services.
+  --pattern=layer     Strict separation: controllers / services / repositories
+                      / middleware. Pick this for large teams or projects that
+                      need clean boundaries between HTTP, domain, and storage.
+
 Examples:
-  fastman create my_api --pattern=api
-  fastman create my_proj --database=postgresql --graphql
-  fastman create my_feature --pattern=feature
+  fastman create payments-api --pattern=api --database=postgresql
+  fastman create my-saas --pattern=feature --database=postgresql
+  fastman create big-shop --pattern=layer --database=postgresql
+  fastman create blog --pattern=feature --graphql
 """
 
     def handle(self):
@@ -119,13 +131,18 @@ Examples:
         # Generate secret key
         secret_key = secrets.token_urlsafe(32)
 
-        # Context for templates
+        # Context for templates. The inner config_db_fields template can
+        # reference {{ project_name }}, so render it explicitly with the
+        # same context before injecting (Jinja2 doesn't recursively render
+        # values substituted into the outer template).
         ctx = {
-            "config_db_fields": self._get_config_db_fields(database),
             "project_name": name,
             "version": __version__,
             "secret_key": secret_key,
         }
+        ctx["config_db_fields"] = Template.render(
+            self._get_config_db_fields(database), ctx
+        )
 
         # Select database template
         database_template = self._get_database_template(database)
@@ -179,11 +196,15 @@ Examples:
             PathManager.write_file(full_path, content)
 
 
+        # Persist project shape into .fastmanrc so future commands can
+        # adapt (e.g. make:* commands reject pattern-incompatible calls).
+        self._write_fastman_config(project_path, pattern, package_manager, database)
+
         # Create README
         pattern_desc = {
-            "feature": "Feature modules (vertical slices)",
-            "api": "API-focused structure",
-            "layer": "Layered architecture (controllers, services, repositories)"
+            "feature": "Vertical slices — model/schema/service/router per feature",
+            "api": "API-focused — schemas + routes, no service layer (microservices, BFFs)",
+            "layer": "Layered — controllers/services/repositories/middleware (large teams)",
         }
 
         # Prepare activation strings to avoid backslash syntax errors in f-string
@@ -198,7 +219,7 @@ Examples:
 
 FastAPI project generated with Fastman v{__version__}
 
-**Pattern**: {pattern} - {pattern_desc[pattern]}
+**Pattern**: `{pattern}` — {pattern_desc[pattern]}
 **Package Manager**: {package_manager}
 
 ## Getting Started
@@ -232,12 +253,16 @@ fastman list
 └── logs/              # Application logs
 ```
 
+## Commands for this pattern
+
+{self._get_pattern_command_guide(pattern)}
+
 ## Documentation
 
 - API Documentation: http://localhost:8000/docs
 {"- GraphQL Playground: http://localhost:8000/graphql" if graphql else ""}
 
-Generated with ❤️ by Fastman
+Generated with Fastman.
 """
         PathManager.write_file(project_path / "README.md", readme)
 
@@ -273,6 +298,43 @@ Generated with ❤️ by Fastman
             "poetry": "poetry install"
         }
         return commands.get(package_manager, "pip install -r requirements.txt")
+
+    def _write_fastman_config(self, project_path: Path, pattern: str, package_manager: str, database: str):
+        """Persist project shape so other commands can adapt to it."""
+        import json
+        config = {
+            "pattern": pattern,
+            "package_manager": package_manager,
+            "database": database,
+        }
+        PathManager.write_file(
+            project_path / ".fastmanrc",
+            json.dumps(config, indent=2) + "\n",
+            overwrite=True,
+        )
+
+    def _get_pattern_command_guide(self, pattern: str) -> str:
+        """Per-pattern guidance on which make:* commands fit this project."""
+        guides = {
+            "feature": """- `fastman make:feature <name> --crud` — add a vertical slice (model + schema + service + router)
+- `fastman make:model <name>` — add a shared model under `app/models/`
+- `fastman make:middleware <name>` — add HTTP middleware
+- `fastman make:migration "<message>"` — generate an Alembic migration
+- **Avoid**: `make:controller`, `make:service`, `make:repository` (those are for the `layer` pattern)""",
+            "api": """- `fastman make:api <name>` — add an endpoint module under `app/api/`
+- `fastman make:schema <name>` — add a Pydantic schema under `app/schemas/`
+- `fastman make:model <name>` — add a model under `app/models/`
+- `fastman make:middleware <name>` — add HTTP middleware
+- **Avoid**: `make:feature`, `make:service`, `make:repository` (those are for other patterns)""",
+            "layer": """- `fastman make:controller <name>` — add a controller under `app/controllers/`
+- `fastman make:service <name>` — add a service under `app/services/`
+- `fastman make:repository <name>` — add a repository under `app/repositories/`
+- `fastman make:model <name>` — add a model under `app/models/`
+- `fastman make:schema <name>` — add a Pydantic schema under `app/schemas/`
+- `fastman make:middleware <name>` — add HTTP middleware
+- **Avoid**: `make:feature`, `make:api` (those are for other patterns)""",
+        }
+        return guides.get(pattern, "")
 
     def _get_structure_docs(self, pattern: str) -> str:
         """Get structure documentation based on pattern"""
@@ -407,18 +469,21 @@ Generated with ❤️ by Fastman
         }
         return templates.get(database, Templates.DATABASE)
 
-    def _get_database_env_template(self, database: str, project_name: str, secret_key: str) -> str:
-        """Get database-specific environment variables for a single env file"""
+    def _get_database_env_template(self, database: str) -> str:
+        """Get the database-specific env template (Jinja2 source).
 
-        base_env = f"""# Application
-PROJECT_NAME={project_name}
-ENVIRONMENT={{environment}}
-DEBUG={{debug}}
-SECRET_KEY={secret_key}
+        Every placeholder uses ``{{ name }}`` syntax — :class:`Template` does
+        a single-pass render at write time. Don't pre-substitute here.
+        """
+        base_env = """# Application
+PROJECT_NAME={{ project_name }}
+ENVIRONMENT={{ environment }}
+DEBUG={{ debug }}
+SECRET_KEY={{ secret_key }}
 
 # API
 API_V1_PREFIX=/api/v1
-ALLOWED_HOSTS={{allowed_hosts}}
+ALLOWED_HOSTS={{ allowed_hosts }}
 
 # Documentation
 DOCS_URL=/docs
@@ -433,32 +498,32 @@ PUBLIC_DIR=public
 # Database
 DATABASE_URL=sqlite:///./app.db
 """,
-            "postgresql": f"""
+            "postgresql": """
 # Database (PostgreSQL)
-DB_HOST={{db_host}}
+DB_HOST={{ db_host }}
 DB_PORT=5432
-DB_USER={{db_user}}
-DB_PASSWORD={{db_password}}
-DB_NAME={project_name}
-DATABASE_URL=postgresql://{{db_user}}:{{db_password}}@{{db_host}}:5432/{project_name}
+DB_USER={{ db_user }}
+DB_PASSWORD={{ db_password }}
+DB_NAME={{ project_name }}
+DATABASE_URL=postgresql://{{ db_user }}:{{ db_password }}@{{ db_host }}:5432/{{ project_name }}
 """,
-            "mysql": f"""
+            "mysql": """
 # Database (MySQL)
-DB_HOST={{db_host}}
+DB_HOST={{ db_host }}
 DB_PORT=3306
-DB_USER={{db_user}}
-DB_PASSWORD={{db_password}}
-DB_NAME={project_name}
-DATABASE_URL=mysql+pymysql://{{db_user}}:{{db_password}}@{{db_host}}:3306/{project_name}
+DB_USER={{ db_user }}
+DB_PASSWORD={{ db_password }}
+DB_NAME={{ project_name }}
+DATABASE_URL=mysql+pymysql://{{ db_user }}:{{ db_password }}@{{ db_host }}:3306/{{ project_name }}
 """,
             "oracle": """
 # Database (Oracle)
-DB_HOST={db_host}
+DB_HOST={{ db_host }}
 DB_PORT=1521
-DB_USER={db_user}
-DB_PASSWORD={db_password}
+DB_USER={{ db_user }}
+DB_PASSWORD={{ db_password }}
 DB_NAME=XE
-DATABASE_URL=oracle+oracledb://{db_user}:{db_password}@{db_host}:1521/XE
+DATABASE_URL=oracle+oracledb://{{ db_user }}:{{ db_password }}@{{ db_host }}:1521/XE
 """,
             "firebase": """
 # Firebase
@@ -470,18 +535,22 @@ FIREBASE_CREDENTIALS_PATH=./firebase-credentials.json
         return base_env + database_configs.get(database, database_configs["sqlite"])
 
     def _get_env_files(self, database: str, project_name: str, secret_key: str) -> dict:
-        """Generate all environment files (dev, staging, production)"""
+        """Generate environment files (.env, .env.develop, .env.staging).
+
+        Production secrets are intentionally not scaffolded — they should come
+        from a real secrets manager (AWS SSM, Vault, k8s secrets, etc.).
+        """
         environments = {
             ".env": {
-                "environment": "development",
+                "environment": "develop",
                 "debug": "true",
                 "allowed_hosts": '["*"]',
                 "db_host": "localhost",
                 "db_user": "<YOUR_USER>",
                 "db_password": "<YOUR_PASSWORD>",
             },
-            ".env.development": {
-                "environment": "development",
+            ".env.develop": {
+                "environment": "develop",
                 "debug": "true",
                 "allowed_hosts": '["*"]',
                 "db_host": "localhost",
@@ -496,23 +565,17 @@ FIREBASE_CREDENTIALS_PATH=./firebase-credentials.json
                 "db_user": "<STAGING_USER>",
                 "db_password": "<STAGING_PASSWORD>",
             },
-            ".env.production": {
-                "environment": "production",
-                "debug": "false",
-                "allowed_hosts": '["https://yourdomain.com"]',
-                "db_host": "production-db-host",
-                "db_user": "<PROD_USER>",
-                "db_password": "<PROD_PASSWORD>",
-            },
         }
 
         env_files = {}
-        template = self._get_database_env_template(database, project_name, secret_key)
+        template = self._get_database_env_template(database)
         for filename, values in environments.items():
-            content = template
-            for key, value in values.items():
-                content = content.replace("{" + key + "}", value)
-            env_files[filename] = content
+            ctx = {
+                "project_name": project_name,
+                "secret_key": secret_key,
+                **values,
+            }
+            env_files[filename] = Template.render(template, ctx)
 
         return env_files
 
@@ -527,7 +590,7 @@ FIREBASE_CREDENTIALS_PATH=./firebase-credentials.json
     DB_PORT: int = 5432
     DB_USER: str = "postgres"
     DB_PASSWORD: str = ""
-    DB_NAME: str = "{project_name}"
+    DB_NAME: str = "{{ project_name }}"
     DATABASE_URL: Optional[str] = None
 
     @computed_field
@@ -542,7 +605,7 @@ FIREBASE_CREDENTIALS_PATH=./firebase-credentials.json
     DB_PORT: int = 3306
     DB_USER: str = "root"
     DB_PASSWORD: str = ""
-    DB_NAME: str = "{project_name}"
+    DB_NAME: str = "{{ project_name }}"
     DATABASE_URL: Optional[str] = None
 
     @computed_field
@@ -646,6 +709,17 @@ FIREBASE_CREDENTIALS_PATH=./firebase-credentials.json
 class InitCommand(Command):
     signature = "init"
     description = "Initialize Fastman in existing project"
+    help = """
+Examples:
+  fastman init
+
+Use when you have an existing FastAPI project that wasn't scaffolded by
+fastman, and you want to opt into the make:* commands. Creates the
+minimal directory layout (`app/console/commands`, `app/core`,
+`app/features`) and a default `.gitignore`.
+
+For new projects, use `fastman create <name>` instead.
+"""
 
     def handle(self):
         if not Output.confirm("Initialize Fastman in current directory?"):

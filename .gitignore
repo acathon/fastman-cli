@@ -101,3 +101,6 @@ Thumbs.db
 # Fastman specific
 config_cache.json
 .history
+
+# Local agent tooling state
+.claude/

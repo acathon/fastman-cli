@@ -1,0 +1,40 @@
+"""Passkey authentication models"""
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, LargeBinary, ForeignKey
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+from app.core.database import Base
+
+
+class User(Base):
+    """User model for passkey authentication"""
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    username = Column(String(100), unique=True, index=True, nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    credentials = relationship("PasskeyCredential", back_populates="user", cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"<User(id={self.id}, email={self.email})>"
+
+
+class PasskeyCredential(Base):
+    """Stored WebAuthn credential"""
+    __tablename__ = "passkey_credentials"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    credential_id = Column(LargeBinary, unique=True, nullable=False)
+    public_key = Column(LargeBinary, nullable=False)
+    sign_count = Column(Integer, default=0)
+    device_name = Column(String(200), default="Unknown device")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="credentials")
+
+    def __repr__(self):
+        return f"<PasskeyCredential(id={self.id}, user_id={self.user_id})>"

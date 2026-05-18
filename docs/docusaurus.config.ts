@@ -4,7 +4,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Fastman',
-  tagline: 'The elegant CLI for FastAPI artisans',
+  tagline: 'The elegant CLI for FastAPI developers',
   favicon: 'img/favicon.ico',
 
   future: {
@@ -54,14 +54,14 @@ const config: Config = {
       tagName: 'meta',
       attributes: {
         property: 'og:title',
-        content: 'Fastman — The Elegant CLI for FastAPI Artisans',
+        content: 'Fastman — The Elegant CLI for FastAPI Developers',
       },
     },
     {
       tagName: 'meta',
       attributes: {
         property: 'og:description',
-        content: 'Laravel-inspired CLI tool for FastAPI. Generate projects, scaffold features, manage databases, and deploy with confidence.',
+        content: 'A complete CLI for FastAPI. Generate projects, scaffold features, manage databases, and deploy with confidence.',
       },
     },
     {
@@ -89,14 +89,14 @@ const config: Config = {
       tagName: 'meta',
       attributes: {
         name: 'twitter:title',
-        content: 'Fastman — The Elegant CLI for FastAPI Artisans',
+        content: 'Fastman — The Elegant CLI for FastAPI Developers',
       },
     },
     {
       tagName: 'meta',
       attributes: {
         name: 'twitter:description',
-        content: 'Laravel-inspired CLI tool for FastAPI. Generate projects, scaffold features, manage databases, and deploy with confidence.',
+        content: 'A complete CLI for FastAPI. Generate projects, scaffold features, manage databases, and deploy with confidence.',
       },
     },
     {
@@ -129,7 +129,7 @@ const config: Config = {
         '@context': 'https://schema.org',
         '@type': 'SoftwareApplication',
         name: 'Fastman',
-        description: 'Laravel-inspired CLI tool for FastAPI. Generate projects, scaffold features, manage databases, and deploy with confidence.',
+        description: 'A complete CLI for FastAPI. Generate projects, scaffold features, manage databases, and deploy with confidence.',
         applicationCategory: 'DeveloperApplication',
         operatingSystem: 'Windows, macOS, Linux',
         url: 'https://acathon.github.io/fastman-cli/',
@@ -138,7 +138,7 @@ const config: Config = {
           price: '0',
           priceCurrency: 'USD',
         },
-        softwareVersion: '0.3.6',
+        softwareVersion: '0.4.0',
         programmingLanguage: 'Python',
       }),
     },
@@ -172,7 +172,7 @@ const config: Config = {
 
     metadata: [
       { name: 'keywords', content: 'fastapi, cli, python, framework, scaffold, generator, fastman, authentication, keycloak, database, migrations, docker, deployment' },
-      { name: 'description', content: 'Laravel-inspired CLI tool for FastAPI. Generate projects, scaffold features, manage databases, and deploy with confidence.' },
+      { name: 'description', content: 'A complete CLI for FastAPI. Generate projects, scaffold features, manage databases, and deploy with confidence.' },
       { name: 'google-site-verification', content: 'YOUR_VERIFICATION_CODE' },
     ],
 
@@ -183,8 +183,8 @@ const config: Config = {
     },
 
     announcementBar: {
-      id: 'v0.3.6',
-      content: '🎉 <strong>Fastman v0.3.6</strong> is out! Keycloak now starts safely when the IDP is unavailable, uses non-destructive SSL certificate handling, and documents admin credentials more clearly. <a href="/fastman-cli/docs/whats-new">Learn more</a>',
+      id: 'v0.4.0',
+      content: '🐬 <strong>Fastman v0.4.0 "Dolphin"</strong> is out! Leaner command surface, modern SQLAlchemy 2.0 + Pydantic v2 codegen, new <code>install:mail</code> + <code>make:mail</code>, smart pluralization, and pattern-aware <code>make:*</code>. <a href="/fastman-cli/docs/whats-new">What\'s new</a>',
       backgroundColor: '#2563eb',
       textColor: '#ffffff',
       isCloseable: true,

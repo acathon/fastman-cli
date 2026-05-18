@@ -543,35 +543,36 @@ class TestUtilityFunctions:
 
 
 class TestTemplateRendering:
-    """Integration tests for template rendering."""
-    
+    """Integration tests for template rendering (Jinja2-backed since 0.4.0)."""
+
     def test_template_rendering_basic(self):
-        """Test basic template rendering."""
-        template = "Hello, {name}!"
-        context = {"name": "World"}
-        
-        result = Template.render(template, context)
-        
-        assert result == "Hello, World!", "Template should render with context"
-    
+        template = "Hello, {{ name }}!"
+        result = Template.render(template, {"name": "World"})
+        assert result == "Hello, World!"
+
     def test_template_rendering_multiple_variables(self):
-        """Test template rendering with multiple variables."""
-        template = "{greeting}, {name}! You have {count} messages."
-        context = {"greeting": "Hi", "name": "Alice", "count": "5"}
-        
-        result = Template.render(template, context)
-        
+        template = "{{ greeting }}, {{ name }}! You have {{ count }} messages."
+        result = Template.render(template, {"greeting": "Hi", "name": "Alice", "count": "5"})
         assert result == "Hi, Alice! You have 5 messages."
-    
-    def test_template_rendering_missing_variable(self):
-        """Test template rendering with missing variables."""
-        template = "Hello, {name}!"
-        context = {}  # Missing 'name'
-        
-        result = Template.render(template, context)
-        
-        # Should leave placeholder as-is or handle gracefully
-        assert "{name}" in result or "Hello, " in result
+
+    def test_template_rendering_missing_variable_raises(self):
+        """StrictUndefined surfaces missing keys instead of silently producing broken files."""
+        from jinja2.exceptions import UndefinedError
+        with pytest.raises(UndefinedError):
+            Template.render("Hello, {{ name }}!", {})
+
+    def test_template_rendering_passes_single_braces_through(self):
+        """Bare { and } characters (e.g. Python dict literals in generated code) must survive Jinja."""
+        template = "return {'a': 1, 'b': {{ b }}}"
+        result = Template.render(template, {"b": 2})
+        assert result == "return {'a': 1, 'b': 2}"
+
+    def test_template_rendering_no_order_dependence(self):
+        """Single-pass render means context order doesn't change output."""
+        template = "{{ a }} {{ b }} {{ a }}"
+        # Both orderings should yield the same result.
+        assert Template.render(template, {"a": "x", "b": "y"}) == "x y x"
+        assert Template.render(template, {"b": "y", "a": "x"}) == "x y x"
 
 
 class TestCommandContext:

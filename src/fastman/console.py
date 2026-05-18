@@ -1,6 +1,5 @@
 """
 Professional console output and styling utilities for Fastman.
-Designed to be better than Laravel CLI with modern UI patterns.
 """
 import sys
 import time
@@ -79,7 +78,7 @@ class Style:
 
 
 class Icons:
-    """ASCII icons for different message types (Laravel-style)"""
+    """ASCII icons for different message types"""
     SUCCESS = ">"
     ERROR = "x"
     WARNING = "!"
@@ -114,7 +113,6 @@ class OutputLevel(Enum):
 class Output:
     """
     Professional CLI output handler with Rich support and fallback.
-    Designed to be better than Laravel CLI with modern UI patterns.
     """
     
     @staticmethod
@@ -365,7 +363,7 @@ class Output:
     @staticmethod
     def banner(version: str):
         """
-        Display a professional application banner (Laravel-style).
+        Display a professional application banner.
         """
         if HAS_PYFIGLET:
             # Try different fonts for a clean look
@@ -386,7 +384,7 @@ class Output:
                     # Fallback if font is missing or corrupt
                     banner_text = "Fastman"
         else:
-            # Clean ASCII banner (Laravel-style)
+            # Clean ASCII banner fallback when pyfiglet is unavailable
             banner_text = "Fastman"
         
         if HAS_RICH:

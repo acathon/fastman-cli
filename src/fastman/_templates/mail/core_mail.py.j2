@@ -1,0 +1,67 @@
+"""Mail transport configured at startup.
+
+The FastMail instance is built once from settings and reused for every
+send. Mailable subclasses call `send_mail()` / `send_mail_background()`
+rather than touching fastmail directly.
+"""
+from pathlib import Path
+from typing import Iterable, Optional
+
+from fastapi import BackgroundTasks
+from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
+
+from app.core.config import settings
+
+
+def _connection_config() -> ConnectionConfig:
+    template_folder = Path(settings.MAIL_TEMPLATE_FOLDER)
+    template_folder.mkdir(parents=True, exist_ok=True)
+    return ConnectionConfig(
+        MAIL_USERNAME=settings.MAIL_USERNAME,
+        MAIL_PASSWORD=settings.MAIL_PASSWORD,
+        MAIL_FROM=settings.MAIL_FROM,
+        MAIL_FROM_NAME=settings.MAIL_FROM_NAME,
+        MAIL_PORT=settings.MAIL_PORT,
+        MAIL_SERVER=settings.MAIL_SERVER,
+        MAIL_STARTTLS=settings.MAIL_STARTTLS,
+        MAIL_SSL_TLS=settings.MAIL_SSL_TLS,
+        USE_CREDENTIALS=bool(settings.MAIL_USERNAME),
+        VALIDATE_CERTS=True,
+        TEMPLATE_FOLDER=template_folder,
+    )
+
+
+mail_client = FastMail(_connection_config())
+
+
+async def send_mail(
+    *,
+    subject: str,
+    recipients: Iterable[str],
+    body: Optional[str] = None,
+    template_name: Optional[str] = None,
+    context: Optional[dict] = None,
+    subtype: MessageType = MessageType.html,
+    cc: Optional[Iterable[str]] = None,
+    bcc: Optional[Iterable[str]] = None,
+    attachments: Optional[list] = None,
+) -> None:
+    """Send synchronously. Use send_mail_background() inside request handlers."""
+    message = MessageSchema(
+        subject=subject,
+        recipients=list(recipients),
+        cc=list(cc) if cc else [],
+        bcc=list(bcc) if bcc else [],
+        body=body or "",
+        subtype=subtype,
+        attachments=attachments or [],
+    )
+    if template_name:
+        await mail_client.send_message(message, template_name=template_name)
+    else:
+        await mail_client.send_message(message)
+
+
+def send_mail_background(background_tasks: BackgroundTasks, **kwargs) -> None:
+    """Queue a send via FastAPI's BackgroundTasks (runs after response)."""
+    background_tasks.add_task(send_mail, **kwargs)

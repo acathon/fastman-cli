@@ -1,0 +1,57 @@
+"""OAuth authentication routes"""
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import RedirectResponse
+from sqlalchemy.orm import Session
+from datetime import timedelta
+from app.core.database import get_db
+from .oauth_config import oauth
+from . import schemas, service
+
+router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+PROVIDER = "{{ provider }}"
+
+
+@router.get("/login")
+async def oauth_login(request: Request):
+    """Redirect to OAuth provider login page"""
+    redirect_uri = str(request.url_for("oauth_callback"))
+    return await oauth.{{ provider }}.authorize_redirect(request, redirect_uri)
+
+
+@router.get("/callback", name="oauth_callback")
+async def oauth_callback(request: Request, db: Session = Depends(get_db)):
+    """Handle OAuth provider callback"""
+    try:
+        token = await oauth.{{ provider }}.authorize_access_token(request)
+    except Exception:
+        raise HTTPException(status_code=401, detail="OAuth authentication failed")
+
+    user_info = token.get("userinfo")
+    if user_info is None:
+        user_info = await oauth.{{ provider }}.userinfo(token=token)
+
+    user = service.OAuthService.create_or_update_user(db, PROVIDER, dict(user_info))
+
+    return schemas.UserRead.model_validate(user)
+
+
+@router.get("/me", response_model=schemas.UserRead)
+async def get_me(request: Request, db: Session = Depends(get_db)):
+    """Get current user info (requires session)"""
+    user_email = request.session.get("user_email")
+    if not user_email:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    user = service.OAuthService.get_user_by_email(db, user_email)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return user
+
+
+@router.get("/logout")
+async def logout(request: Request):
+    """Logout user"""
+    request.session.clear()
+    return {"message": "Logged out successfully"}

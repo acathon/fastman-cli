@@ -1,0 +1,58 @@
+"""Mailable base class — each email type subclasses this.
+
+Subclasses set `subject`, `template`, and override `context()` to provide
+template variables. Use either `.send(to=[...])` (synchronous, awaitable)
+or `.send_later(background_tasks, to=[...])` (queued).
+"""
+from typing import Iterable, Optional
+
+from fastapi import BackgroundTasks
+from fastapi_mail import MessageType
+
+from app.core.mail import send_mail, send_mail_background
+
+
+class Mailable:
+    """Base class for all email types."""
+
+    subject: str = ""
+    template: Optional[str] = None
+    subtype: MessageType = MessageType.html
+
+    def context(self) -> dict:
+        """Override to provide template variables."""
+        return {}
+
+    async def send(
+        self,
+        to: Iterable[str],
+        cc: Optional[Iterable[str]] = None,
+        bcc: Optional[Iterable[str]] = None,
+    ) -> None:
+        await send_mail(
+            subject=self.subject,
+            recipients=to,
+            cc=cc,
+            bcc=bcc,
+            template_name=self.template,
+            context=self.context(),
+            subtype=self.subtype,
+        )
+
+    def send_later(
+        self,
+        background_tasks: BackgroundTasks,
+        to: Iterable[str],
+        cc: Optional[Iterable[str]] = None,
+        bcc: Optional[Iterable[str]] = None,
+    ) -> None:
+        send_mail_background(
+            background_tasks,
+            subject=self.subject,
+            recipients=to,
+            cc=cc,
+            bcc=bcc,
+            template_name=self.template,
+            context=self.context(),
+            subtype=self.subtype,
+        )

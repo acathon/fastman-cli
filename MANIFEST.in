@@ -7,6 +7,10 @@ include CONTRIBUTING.md
 # Include type stubs
 include src/fastman/py.typed
 
+# Include code-generation templates (loaded by jinja2.PackageLoader)
+recursive-include src/fastman/_templates *.j2
+recursive-include src/fastman/_templates *.md
+
 # Exclude unnecessary files
 exclude .gitignore
 exclude .dockerignore

@@ -38,10 +38,10 @@ class Settings(BaseSettings):
         return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 ```
 
-Set database credentials in your environment files (`.env.development`, `.env.staging`, `.env.production`):
+Set database credentials in your environment files (`.env.develop`, `.env.staging`):
 
 ```env
-# .env.development
+# .env.develop
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
@@ -55,7 +55,7 @@ You can also set `DATABASE_URL` directly to override the computed URL:
 DATABASE_URL=postgresql://postgres:secret@localhost:5432/myapp
 ```
 
-The active environment file is selected based on the `ENVIRONMENT` variable (defaults to `development`).
+The active environment file is selected based on the `ENVIRONMENT` variable (defaults to `develop`). For production, inject these variables via your secrets manager — Fastman does not scaffold `.env.production`.
 
 ## Models
 

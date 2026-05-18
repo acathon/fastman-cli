@@ -1,12 +1,30 @@
 """
 Base classes for CLI commands.
 """
+import os
 import re
+import sys
 import threading
 from abc import ABC, abstractmethod
 from typing import List, Optional, Dict, Tuple
 from pathlib import Path
 from ..utils import PackageManager, NameValidator
+
+
+def _interaction_globally_disabled() -> bool:
+    """True when the runtime context can't or shouldn't prompt the user.
+
+    Honors (in order):
+      - ``FASTMAN_NO_INTERACTION=1`` env var (CI-friendly)
+      - stdin not attached to a TTY (piped input, cron, etc.)
+    """
+    if os.environ.get("FASTMAN_NO_INTERACTION") in {"1", "true", "yes"}:
+        return True
+    try:
+        return not sys.stdin.isatty()
+    except (AttributeError, ValueError):
+        return True
+
 
 class CommandContext:
     """Context passed to commands"""
@@ -43,11 +61,16 @@ class Command(ABC):
     help: str = ""  # Optional extended help text with examples
 
     def __init__(self, args: List[str], context: Optional[CommandContext] = None):
-        self.args = args
+        # Strip the global --no-interaction / -n flag so it doesn't leak into
+        # positional-argument indexing. The CLI honors it via the env var set
+        # in main.py, but stripping here keeps argument(0) clean for every
+        # command.
+        self.no_interaction = any(a in {"--no-interaction", "-n"} for a in args)
+        self.args = [a for a in args if a not in {"--no-interaction", "-n"}]
         self.context = context or CommandContext()
 
         # Auto-intercept --help / -h
-        if "--help" in args or "-h" in args:
+        if "--help" in self.args or "-h" in self.args:
             self.show_help()
             self._help_shown = True
         else:
@@ -61,9 +84,43 @@ class Command(ABC):
     def argument(self, index: int, default: Optional[str] = None) -> Optional[str]:
         """Get positional argument"""
         try:
-            return self.args[index]
+            # Skip flag-shaped tokens so positional indices stay stable when
+            # users mix flags into positions (e.g. `make:feature --crud users`).
+            positional = [a for a in self.args if not a.startswith("-")]
+            return positional[index]
         except IndexError:
             return default
+
+    def prompt_argument(
+        self,
+        index: int,
+        label: str,
+        default: Optional[str] = None,
+    ) -> Optional[str]:
+        """Get a positional arg, or interactively prompt for it.
+
+        Behaviour:
+          - If the arg is present, return it.
+          - Else, if interaction is possible (TTY + not ``--no-interaction``
+            + not ``FASTMAN_NO_INTERACTION=1``), prompt with ``label`` via
+            :meth:`Output.ask` and return the user's response.
+          - Else, return ``default`` (caller should handle the None case).
+
+        Implements the "ask for missing required arguments" behaviour
+        without ever silently blocking in CI.
+        """
+        existing = self.argument(index)
+        if existing is not None:
+            return existing
+
+        if self.no_interaction or _interaction_globally_disabled():
+            return default
+
+        # Lazy import — avoids a circular when Output imports from this module
+        # via other paths.
+        from ..console import Output
+        answer = Output.ask(label, default or "")
+        return answer or default
 
     def option(self, name: str, default: Optional[str] = None) -> Optional[str]:
         """Get named option (--name=value or --name value)"""
@@ -213,9 +270,11 @@ class Command(ABC):
                 print(f"  {Style.GREEN}--{flg['name']:18s}{Style.RESET}")
         Output.new_line()
 
-        # ── Extended help (examples) ──
+        # ── Extended help ──
+        # The help block owns its own section headers ("Examples:", "Notes:",
+        # "When to use:", ...). We print it as-is, slightly indented, so each
+        # command can shape its long-form documentation freely.
         if self.help:
-            print(f"{Style.BOLD}{Style.CYAN}Examples:{Style.RESET}")
             for line in self.help.strip().split("\n"):
                 print(f"  {line}")
             Output.new_line()

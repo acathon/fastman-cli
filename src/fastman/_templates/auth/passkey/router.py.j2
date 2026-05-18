@@ -1,0 +1,97 @@
+"""Passkey (WebAuthn) authentication routes"""
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from app.core.database import get_db
+from . import schemas, service
+from .security import create_access_token
+from .dependencies import get_current_active_user
+
+router = APIRouter(prefix="/auth/passkey", tags=["Passkey Authentication"])
+
+
+@router.post("/register/options")
+def registration_options(
+    data: schemas.RegistrationOptionsRequest,
+    db: Session = Depends(get_db)
+):
+    """Get WebAuthn registration options (step 1)"""
+    try:
+        options = service.PasskeyService.generate_registration_options(
+            db, data.email, data.username
+        )
+        return options
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/register/verify")
+def registration_verify(
+    data: schemas.RegistrationVerifyRequest,
+    db: Session = Depends(get_db)
+):
+    """Verify passkey registration (step 2)"""
+    try:
+        service.PasskeyService.verify_registration(db, data.email, data.credential)
+        return {"status": "ok", "message": "Passkey registered successfully"}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/authenticate/options")
+def authentication_options(
+    data: schemas.AuthenticationOptionsRequest = None,
+    db: Session = Depends(get_db)
+):
+    """Get WebAuthn authentication options (step 1)"""
+    email = data.email if data else None
+    options = service.PasskeyService.generate_authentication_options(db, email)
+    return options
+
+
+@router.post("/authenticate/verify", response_model=schemas.Token)
+def authentication_verify(
+    data: schemas.AuthenticationVerifyRequest,
+    db: Session = Depends(get_db)
+):
+    """Verify passkey authentication and return session token (step 2)"""
+    try:
+        user = service.PasskeyService.verify_authentication(db, data.credential)
+        token = create_access_token(data={"sub": str(user.id)})
+        return {"access_token": token, "token_type": "bearer"}
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+
+@router.get("/me", response_model=schemas.UserRead)
+async def get_me(current_user=Depends(get_current_active_user)):
+    """Get current user info"""
+    return current_user
+
+
+@router.get("/credentials", response_model=list[schemas.CredentialRead])
+async def list_credentials(
+    current_user=Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """List all registered passkeys for current user"""
+    return current_user.credentials
+
+
+@router.delete("/credentials/{credential_id}")
+async def delete_credential(
+    credential_id: int,
+    current_user=Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Remove a registered passkey"""
+    from . import models
+    cred = db.query(models.PasskeyCredential).filter(
+        models.PasskeyCredential.id == credential_id,
+        models.PasskeyCredential.user_id == current_user.id,
+    ).first()
+    if not cred:
+        raise HTTPException(status_code=404, detail="Credential not found")
+
+    db.delete(cred)
+    db.commit()
+    return {"status": "ok", "message": "Passkey removed"}

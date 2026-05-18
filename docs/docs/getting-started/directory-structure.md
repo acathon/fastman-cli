@@ -45,10 +45,10 @@ my-api/
 │   ├── factories/               # Model factories
 │   └── test_*.py                # Test files
 │
-├── .env                         # Default environment variables
-├── .env.development             # Development settings
+├── .env                         # Default / local override (gitignored)
+├── .env.develop                 # Development settings
 ├── .env.staging                 # Staging settings
-├── .env.production              # Production settings
+├── .fastmanrc                   # Project shape + env lock (gitignored)
 ├── alembic.ini                  # Migration config
 └── pyproject.toml               # Dependencies
 ```
@@ -99,7 +99,11 @@ my-api/
 | `app/core/database.py` | SQLAlchemy engine and session |
 | `public/` | Static files served at `/public` (HTML, images, CSS, JS) |
 | `alembic.ini` | Database migration configuration |
-| `.env` | Fallback environment variables (never commit!) |
-| `.env.development` | Development environment settings |
+| `.env` | Fallback / local override (gitignored) |
+| `.env.develop` | Development environment settings |
 | `.env.staging` | Staging environment settings |
-| `.env.production` | Production environment settings |
+| `.fastmanrc` | Project shape (pattern, db, package manager) and persisted env lock |
+
+:::note
+There is no `.env.production`. Production secrets should be injected by your deployment platform (AWS SSM, Vault, Kubernetes Secrets, etc.) rather than scaffolded into a committed file. See the [deployment guide](../deployment) for details.
+:::

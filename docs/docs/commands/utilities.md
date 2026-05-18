@@ -59,57 +59,36 @@ fastman env [--source=development|staging|production] [--reset]
 
 | Option | Description |
 |--------|-------------|
-| `--source` | Set and lock the active environment file (e.g., `development`, `staging`, `production`) |
+| `--source` | Set and lock the active environment file (`develop` or `staging`) |
 | `--reset` | Clear the locked selection and return to auto-detect |
 
 ```bash
 # Show current active environment, variables, and cert paths
 fastman env
 
-# Lock to .env.development — serve will use it automatically
-fastman env --source=development
+# Lock to .env.develop — serve will use it automatically
+fastman env --source=develop
 
 # Lock to .env.staging
 fastman env --source=staging
 
-# Clear the lock, return to auto-detect (.env.production > .env)
+# Clear the lock, return to auto-detect (.env.develop > .env)
 fastman env --reset
 ```
 
 Resolution priority for `fastman serve`:
 1. `--env=X` flag (always overrides)
-2. `.fastman` config file (set by `fastman env --source=`)
-3. `.env.production` (auto-detect default)
+2. `.fastmanrc` lock (set by `fastman env --source=`)
+3. `.env.develop` (auto-detect default)
 4. `.env` (fallback)
 
 :::tip
-Add `.fastman` to your `.gitignore` — this is a local developer preference, not a project setting.
+`.fastmanrc` is added to the generated `.gitignore` by default — it stores per-developer state (locked env) alongside the recorded project shape.
 :::
-
-### `inspect`
-
-Inspects a component of your application and displays its structure.
-
-```bash
-fastman inspect {type} {name}
-```
-
-| Argument | Description |
-|----------|-------------|
-| `type` | What to inspect: `model`, `feature`, or `api` |
-| `name` | The name of the component to inspect |
-
-```bash
-# Inspect a model's columns and types
-fastman inspect model user
-
-# Inspect a feature module's files
-fastman inspect feature product
-```
 
 ### `optimize`
 
-Formats your codebase using `black`, sorts imports with `isort`, and removes unused imports with `autoflake`. If any of these tools are missing, Fastman will offer to install them.
+Formats and lints your codebase using `ruff` (which replaced `black`/`isort`/`autoflake` in 0.3.x). If `ruff` is missing, Fastman will offer to install it.
 
 ```bash
 fastman optimize [--check]
@@ -187,7 +166,7 @@ fastman install:cert
 
 ### `config:appkey`
 
-Generates a cryptographically secure `SECRET_KEY` using `secrets.token_urlsafe()` and writes it to **all** environment files (`.env`, `.env.development`, `.env.staging`, `.env.production`).
+Generates a cryptographically secure `SECRET_KEY` using `secrets.token_urlsafe()` and writes it to **all** environment files (`.env`, `.env.develop`, `.env.staging`).
 
 ```bash
 fastman config:appkey [--show]
@@ -196,25 +175,6 @@ fastman config:appkey [--show]
 | Option | Description |
 |--------|-------------|
 | `--show` | Print the generated key to the terminal without writing to files |
-
-### `config:cache`
-
-Caches your environment configuration to `config_cache.json` for faster startup in production. Reads from the environment-specific file based on the `ENVIRONMENT` variable (defaults to `.env.development`, falls back to `.env`).
-
-```bash
-fastman config:cache
-
-# Cache staging config
-ENVIRONMENT=staging fastman config:cache
-```
-
-### `config:clear`
-
-Removes the cached configuration file so the application reads from `.env` again.
-
-```bash
-fastman config:clear
-```
 
 ### `cache:clear`
 
@@ -228,36 +188,55 @@ fastman cache:clear
 
 ## Package Management
 
-Fastman automatically detects your package manager (uv, poetry, pipenv, or pip) and uses it for all package operations.
+Fastman ships `package:install` and `package:remove` — thin wrappers that pick
+the right backend (uv / poetry / pipenv / pip) automatically and, on **pip**,
+install into the project's `.venv` even when the user hasn't activated it.
 
-### `package:import`
-
-Installs a Python package using your detected package manager.
-
-```bash
-fastman package:import {package_name}
-```
+### `package:install`
 
 ```bash
-fastman package:import requests
-fastman package:import "sqlalchemy>=2.0"
+fastman package:install requests
+fastman package:install "sqlalchemy>=2.0"
 ```
 
-### `package:list`
+What it does per backend:
 
-Lists all installed packages in the current environment.
+| Backend detected | Underlying call | Where the install lands |
+|------------------|-----------------|------------------------|
+| uv (`uv.lock` present) | `uv add <pkg>` | Project's uv-managed env |
+| poetry (`poetry.lock` present) | `poetry add <pkg>` | Project's poetry env |
+| pipenv (`Pipfile` present) | `pipenv install <pkg>` | Project's pipenv env |
+| pip (anything else) | `.venv/bin/pip install <pkg>` (or `.venv\Scripts\pip.exe` on Windows) | Project's `.venv` — **even when not activated** |
 
-```bash
-fastman package:list
-```
+If no `.venv` / `venv` / `env` directory exists, fastman warns and falls back
+to `python -m pip install`, which may write to a global site-packages
+(create or activate a venv first to avoid this).
+
+The pip backend also keeps `requirements.txt` in sync.
 
 ### `package:remove`
 
-Uninstalls a Python package.
-
 ```bash
-fastman package:remove {package_name}
+fastman package:remove requests
 ```
+
+Mirror of `package:install`: dispatches to the right backend and prunes
+`requirements.txt` on the pip backend.
+
+### Why not just use the underlying tool?
+
+If you're on uv / poetry / pipenv, calling those directly (`uv add X`,
+`poetry add X`, `pipenv install X`) is equally fine — they already manage the
+venv. The wrappers earn their keep mainly for the **pip** case, where bare
+`pip install` can land in the wrong interpreter when the user has fastman
+installed globally but hasn't activated their project's venv. Use whichever
+is faster for you.
+
+:::tip
+Listing packages is one underscore away in every backend (`uv pip list`,
+`poetry show`, `pipenv list`, `pip list`). Fastman intentionally does not
+wrap that — pick the one you already know.
+:::
 
 ---
 

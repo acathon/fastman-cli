@@ -5,177 +5,24 @@ Mail commands: install transport and scaffold Mailable classes.
 app/mail/base.py, an example template, and provider-specific env vars.
 
 `make:mail` scaffolds one Mailable per call, parallel to make:feature.
+
+Templates live in :mod:`fastman._templates.mail` as ``.j2`` files. The
+command modules dispatch + format env vars; the actual code we emit lives
+on disk where it can be syntax-highlighted, linted, and reviewed.
 """
 from pathlib import Path
-from typing import Optional
 
-from .base import Command, register
 from ..console import Output, Style
+from ..templates import TemplateLoader
 from ..utils import EnvManager, NameValidator, PackageManager, PathManager
+from .base import Command, register
 
 
-# ── Templates ────────────────────────────────────────────────────────────
-# Kept inline for now; if this file grows past ~600 lines, extract to
-# templates.py the way the roadmap calls for on auth.py.
-
-
-_MAIL_CORE = '''"""Mail transport configured at startup.
-
-The FastMail instance is built once from settings and reused for every
-send. Mailable subclasses call `send_mail()` / `send_mail_background()`
-rather than touching fastmail directly.
-"""
-from pathlib import Path
-from typing import Iterable, Optional
-
-from fastapi import BackgroundTasks
-from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
-
-from app.core.config import settings
-
-
-def _connection_config() -> ConnectionConfig:
-    template_folder = Path(settings.MAIL_TEMPLATE_FOLDER)
-    template_folder.mkdir(parents=True, exist_ok=True)
-    return ConnectionConfig(
-        MAIL_USERNAME=settings.MAIL_USERNAME,
-        MAIL_PASSWORD=settings.MAIL_PASSWORD,
-        MAIL_FROM=settings.MAIL_FROM,
-        MAIL_FROM_NAME=settings.MAIL_FROM_NAME,
-        MAIL_PORT=settings.MAIL_PORT,
-        MAIL_SERVER=settings.MAIL_SERVER,
-        MAIL_STARTTLS=settings.MAIL_STARTTLS,
-        MAIL_SSL_TLS=settings.MAIL_SSL_TLS,
-        USE_CREDENTIALS=bool(settings.MAIL_USERNAME),
-        VALIDATE_CERTS=True,
-        TEMPLATE_FOLDER=template_folder,
-    )
-
-
-mail_client = FastMail(_connection_config())
-
-
-async def send_mail(
-    *,
-    subject: str,
-    recipients: Iterable[str],
-    body: Optional[str] = None,
-    template_name: Optional[str] = None,
-    context: Optional[dict] = None,
-    subtype: MessageType = MessageType.html,
-    cc: Optional[Iterable[str]] = None,
-    bcc: Optional[Iterable[str]] = None,
-    attachments: Optional[list] = None,
-) -> None:
-    """Send synchronously. Use send_mail_background() inside request handlers."""
-    message = MessageSchema(
-        subject=subject,
-        recipients=list(recipients),
-        cc=list(cc) if cc else [],
-        bcc=list(bcc) if bcc else [],
-        body=body or "",
-        subtype=subtype,
-        attachments=attachments or [],
-    )
-    if template_name:
-        await mail_client.send_message(message, template_name=template_name)
-    else:
-        await mail_client.send_message(message)
-
-
-def send_mail_background(background_tasks: BackgroundTasks, **kwargs) -> None:
-    """Queue a send via FastAPI's BackgroundTasks (runs after response)."""
-    background_tasks.add_task(send_mail, **kwargs)
-'''
-
-
-_MAIL_BASE = '''"""Mailable base class — each email type subclasses this.
-
-Subclasses set `subject`, `template`, and override `context()` to provide
-template variables. Use either `.send(to=[...])` (synchronous, awaitable)
-or `.send_later(background_tasks, to=[...])` (queued).
-"""
-from typing import Iterable, Optional
-
-from fastapi import BackgroundTasks
-from fastapi_mail import MessageType
-
-from app.core.mail import send_mail, send_mail_background
-
-
-class Mailable:
-    """Base class for all email types."""
-
-    subject: str = ""
-    template: Optional[str] = None
-    subtype: MessageType = MessageType.html
-
-    def context(self) -> dict:
-        """Override to provide template variables."""
-        return {}
-
-    async def send(
-        self,
-        to: Iterable[str],
-        cc: Optional[Iterable[str]] = None,
-        bcc: Optional[Iterable[str]] = None,
-    ) -> None:
-        await send_mail(
-            subject=self.subject,
-            recipients=to,
-            cc=cc,
-            bcc=bcc,
-            template_name=self.template,
-            context=self.context(),
-            subtype=self.subtype,
-        )
-
-    def send_later(
-        self,
-        background_tasks: BackgroundTasks,
-        to: Iterable[str],
-        cc: Optional[Iterable[str]] = None,
-        bcc: Optional[Iterable[str]] = None,
-    ) -> None:
-        send_mail_background(
-            background_tasks,
-            subject=self.subject,
-            recipients=to,
-            cc=cc,
-            bcc=bcc,
-            template_name=self.template,
-            context=self.context(),
-            subtype=self.subtype,
-        )
-'''
-
-
-_MAIL_INIT = '''"""Mailables live here. Import them where you want to send."""
-from .base import Mailable
-
-__all__ = ["Mailable"]
-'''
-
-
-_WELCOME_TEMPLATE = '''<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Welcome</title>
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto; padding: 2rem;">
-    <h1>Welcome, {{ name }}!</h1>
-    <p>Thanks for signing up. We're glad to have you on board.</p>
-    <p>If you have any questions, just reply to this email.</p>
-    <hr>
-    <p style="color: #888; font-size: 0.85rem;">Sent by Fastman.</p>
-</body>
-</html>
-'''
-
-
+# Provider-specific env defaults. The env var keys are the same across all
+# providers — what differs is the MAIL_SERVER and a couple of conventions
+# (e.g. SendGrid uses the literal username "apikey" with the API key as
+# the password).
 def _provider_env(provider: str, from_email: str) -> dict:
-    """Provider-specific env defaults. Returns dict of (key, value)."""
     defaults = {
         "smtp": {
             "MAIL_USERNAME": "",
@@ -225,9 +72,9 @@ def _provider_env(provider: str, from_email: str) -> dict:
     return defaults.get(provider, defaults["smtp"])
 
 
-def _settings_fields() -> str:
-    """The block injected into app/core/config.py Settings class."""
-    return '''
+# Block injected into the user's app/core/config.py Settings class. Kept
+# inline because it's tiny and bound to the settings-injection logic below.
+_SETTINGS_FIELDS = """
     # Mail
     MAIL_USERNAME: str = ""
     MAIL_PASSWORD: str = ""
@@ -238,7 +85,7 @@ def _settings_fields() -> str:
     MAIL_STARTTLS: bool = True
     MAIL_SSL_TLS: bool = False
     MAIL_TEMPLATE_FOLDER: str = "templates/email"
-'''
+"""
 
 
 @register
@@ -281,16 +128,17 @@ Examples:
             Output.error("Failed to install dependencies")
             return
 
-        # 2. Files
+        # 2. Render + write files from _templates/mail/*.j2
         files = {
-            Path("app/core/mail.py"): _MAIL_CORE,
-            Path("app/mail/__init__.py"): _MAIL_INIT,
-            Path("app/mail/base.py"): _MAIL_BASE,
-            Path("templates/email/welcome.html"): _WELCOME_TEMPLATE,
+            Path("app/core/mail.py"): TemplateLoader.render("mail/core_mail.py.j2", {}),
+            Path("app/mail/__init__.py"): TemplateLoader.render("mail/__init__.py.j2", {}),
+            Path("app/mail/base.py"): TemplateLoader.render("mail/base.py.j2", {}),
+            Path("templates/email/welcome.html"): TemplateLoader.render(
+                "mail/welcome.html.j2", {}
+            ),
         }
 
-        # Ensure parent dirs (PathManager.write_file does this, but we want
-        # the templates/email dir specifically tracked).
+        # Ensure dirs that PathManager.write_file would skip (notably templates/email/).
         PathManager.ensure_dir(Path("app/mail"))
         Path("templates/email").mkdir(parents=True, exist_ok=True)
 
@@ -315,9 +163,12 @@ Examples:
         Output.echo("  app/mail/base.py     - Mailable base class", Style.GREEN)
         Output.echo("  templates/email/     - Email template directory", Style.GREEN)
         Output.info("\nNext steps:")
-        Output.echo(f"  1. Fill in MAIL_USERNAME/MAIL_PASSWORD in .env", Style.CYAN)
-        Output.echo(f"  2. fastman make:mail WelcomeEmail", Style.CYAN)
-        Output.echo(f"  3. In a route: await WelcomeEmail().send(to=['user@example.com'])", Style.CYAN)
+        Output.echo("  1. Fill in MAIL_USERNAME/MAIL_PASSWORD in .env", Style.CYAN)
+        Output.echo("  2. fastman make:mail WelcomeEmail", Style.CYAN)
+        Output.echo(
+            "  3. In a route: await WelcomeEmail().send(to=['user@example.com'])",
+            Style.CYAN,
+        )
 
         if provider == "sendgrid":
             Output.new_line()
@@ -346,15 +197,21 @@ Examples:
             Output.info("Mail settings already present in config.py — skipped injection.")
             return
 
-        fields = _settings_fields()
-        # Prefer to inject before the inner Config class, else append before the
-        # `settings = Settings()` line. Both injection points are conventional
-        # in the generated config.py.
-        if "    class Config:" in content:
-            content = content.replace("    class Config:", f"{fields}    class Config:")
+        # Prefer the modern SettingsConfigDict marker (Pydantic v2 generated
+        # projects), then fall back to the legacy nested ``class Config``,
+        # then append before ``settings = Settings()`` as a last resort.
+        if "    model_config = SettingsConfigDict(" in content:
+            content = content.replace(
+                "    model_config = SettingsConfigDict(",
+                f"{_SETTINGS_FIELDS}    model_config = SettingsConfigDict(",
+            )
+        elif "    class Config:" in content:
+            content = content.replace(
+                "    class Config:", f"{_SETTINGS_FIELDS}    class Config:"
+            )
         elif "settings = Settings()" in content:
             content = content.replace(
-                "settings = Settings()", f"{fields}\nsettings = Settings()"
+                "settings = Settings()", f"{_SETTINGS_FIELDS}\nsettings = Settings()"
             )
         else:
             Output.warn(
@@ -364,102 +221,6 @@ Examples:
 
         config_path.write_text(content, encoding="utf-8")
         Output.info("Updated config.py with mail settings")
-
-
-_MAILABLE_TEMPLATE = '''"""Mailable: {pascal}"""
-from app.mail.base import Mailable
-
-
-class {pascal}(Mailable):
-    """Override `context()` to inject template variables."""
-
-    subject = "{subject}"
-    template = "{template_file}"
-
-    def __init__(self, *, name: str = ""):
-        self.name = name
-
-    def context(self) -> dict:
-        return {{
-            "name": self.name,
-        }}
-'''
-
-
-_MAILABLE_TEMPLATE_MD = '''"""Mailable: {pascal} (Markdown-rendered)"""
-from pathlib import Path
-
-from markdown_it import MarkdownIt
-from fastapi_mail import MessageType
-
-from app.mail.base import Mailable
-
-
-_md = MarkdownIt()
-
-
-class {pascal}(Mailable):
-    """Markdown body is rendered to HTML at send time.
-
-    Place your Markdown source at `templates/email/{template_file}`.
-    """
-
-    subject = "{subject}"
-    template = None
-    subtype = MessageType.html
-
-    def __init__(self, *, name: str = ""):
-        self.name = name
-
-    def context(self) -> dict:
-        return {{
-            "name": self.name,
-        }}
-
-    async def send(self, to, cc=None, bcc=None):
-        from app.core.config import settings
-        from app.core.mail import send_mail
-
-        src = Path(settings.MAIL_TEMPLATE_FOLDER) / "{template_file}"
-        markdown_body = src.read_text(encoding="utf-8")
-        for key, value in self.context().items():
-            markdown_body = markdown_body.replace("{{{{ " + key + " }}}}", str(value))
-        html_body = _md.render(markdown_body)
-
-        await send_mail(
-            subject=self.subject,
-            recipients=to,
-            cc=cc,
-            bcc=bcc,
-            body=html_body,
-            subtype=self.subtype,
-        )
-'''
-
-
-_HTML_STUB = '''<!DOCTYPE html>
-<html>
-<body style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 2rem;">
-    <h1>{pascal}</h1>
-    <p>Hello {{{{ name }}}},</p>
-    <p>This is your {pascal} email. Edit me at <code>templates/email/{template_file}</code>.</p>
-</body>
-</html>
-'''
-
-
-_MD_STUB = '''# {pascal}
-
-Hello {{{{ name }}}},
-
-This is your **{pascal}** email rendered from Markdown.
-
-Edit me at `templates/email/{template_file}`.
-
----
-
-_Sent by Fastman._
-'''
 
 
 @register
@@ -474,7 +235,8 @@ Examples:
 """
 
     def handle(self):
-        name = self.validate_name(self.argument(0), "Mailable name is required")
+        name = self.prompt_argument(0, "Mailable name")
+        name = self.validate_name(name, "Mailable name is required")
         markdown = self.flag("markdown")
         subject = self.option("subject") or NameValidator.to_pascal_case(name)
 
@@ -495,18 +257,19 @@ Examples:
         template_ext = "md" if markdown else "html"
         template_file = f"{snake}.{template_ext}"
         template_path = Path("templates/email") / template_file
+        context = {
+            "pascal": pascal,
+            "subject": subject,
+            "template_file": template_file,
+        }
 
         if markdown:
             self._ensure_markdown_it()
-            py_content = _MAILABLE_TEMPLATE_MD.format(
-                pascal=pascal, subject=subject, template_file=template_file
-            )
-            tpl_content = _MD_STUB.format(pascal=pascal, template_file=template_file)
+            py_content = TemplateLoader.render("mail/mailable_md.py.j2", context)
+            tpl_content = TemplateLoader.render("mail/stub.md.j2", context)
         else:
-            py_content = _MAILABLE_TEMPLATE.format(
-                pascal=pascal, subject=subject, template_file=template_file
-            )
-            tpl_content = _HTML_STUB.format(pascal=pascal, template_file=template_file)
+            py_content = TemplateLoader.render("mail/mailable_html.py.j2", context)
+            tpl_content = TemplateLoader.render("mail/stub.html.j2", context)
 
         PathManager.write_file(py_path, py_content)
         if not template_path.exists():
@@ -518,7 +281,10 @@ Examples:
         Output.info(f"Template: {template_path}")
         Output.info("\nUse it:")
         Output.echo(f"  from app.mail.{snake} import {pascal}", Style.CYAN)
-        Output.echo(f"  await {pascal}(name='Alice').send(to=['user@example.com'])", Style.CYAN)
+        Output.echo(
+            f"  await {pascal}(name='Alice').send(to=['user@example.com'])",
+            Style.CYAN,
+        )
 
     def _ensure_markdown_it(self):
         """Install markdown-it-py if --markdown is requested and it's missing."""

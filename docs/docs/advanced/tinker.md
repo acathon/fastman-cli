@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Interactive Shell (Tinker)
 
-Fastman's `tinker` command provides an interactive Python shell with your application context pre-loaded. Inspired by Laravel's Tinker, it's perfect for quick debugging, data exploration, and testing.
+Fastman's `tinker` command provides an interactive Python shell (IPython when available, with a stdlib fallback) with your application context pre-loaded — `settings`, `db`, `SessionLocal`, and `Base` are ready to use. Perfect for quick debugging, data exploration, and ad-hoc database queries.
 
 ## Basic Usage
 

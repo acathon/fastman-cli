@@ -1,26 +1,55 @@
 """
 Database and migration commands.
 """
+import importlib
+import logging
 import re
 import subprocess
 import sys
-import importlib
 from pathlib import Path
 
-from .base import Command, register
 from ..console import Output, Style
-from ..utils import PackageManager, NameValidator
-import logging
+from ..utils import NameValidator, PackageManager
+from .base import Command, register
 
 logger = logging.getLogger("fastman")
+
+
+def _require_alembic() -> bool:
+    """Refuse to run alembic-backed commands when alembic isn't configured.
+
+    Firebase projects and any project where the user ran `fastman init` (which
+    doesn't scaffold alembic) will hit this. Returning False prints an
+    actionable hint instead of a cryptic alembic stack trace.
+    """
+    if Path("alembic.ini").exists():
+        return True
+    Output.error("alembic.ini not found in the current directory.")
+    Output.info("This project doesn't use Alembic migrations.")
+    Output.info(
+        "Alembic is scaffolded for SQL projects (sqlite/postgres/mysql/oracle). "
+        "Firebase projects don't use it."
+    )
+    return False
 
 
 @register
 class MakeMigrationCommand(Command):
     signature = "make:migration {message}"
     description = "Create database migration"
+    help = """
+Examples:
+  fastman make:migration "create users table"
+  fastman make:migration "add email_verified column"
+
+Wraps `alembic revision --autogenerate`. Spaces in the message are
+converted to underscores and non-word characters stripped.
+"""
 
     def handle(self):
+        if not _require_alembic():
+            return
+
         message = self.argument(0, "update")
 
         # Sanitize message for use in filenames and commands
@@ -38,9 +67,18 @@ class MakeMigrationCommand(Command):
             result = subprocess.run(cmd, capture_output=True, text=True)
             if result.returncode == 0:
                 Output.success(f"Migration created: {sanitized_message}")
-                Output.info("Review the migration file before running migrate")
+                if result.stdout.strip():
+                    # Surface alembic's "Detected added column..." chatter so
+                    # the user can spot empty/wrong migrations early.
+                    Output.info("Alembic output:")
+                    Output.echo(result.stdout.strip(), Style.DIM)
+                Output.info("Review the migration file before running database:migrate")
             else:
-                Output.error(f"Migration failed: {result.stderr}")
+                Output.error("Migration failed:")
+                if result.stderr.strip():
+                    Output.echo(result.stderr.strip(), Style.RED)
+        except FileNotFoundError:
+            Output.error("alembic command not found. Is it installed in your venv?")
         except Exception as e:
             Output.error(f"Failed to create migration: {e}")
 
@@ -49,8 +87,18 @@ class MakeMigrationCommand(Command):
 class DatabaseMigrateCommand(Command):
     signature = "database:migrate"
     description = "Run database migrations"
+    help = """
+Examples:
+  fastman database:migrate
+
+Runs `alembic upgrade head`. Refuses to run when alembic.ini is missing
+(Firebase projects don't scaffold Alembic).
+"""
 
     def handle(self):
+        if not _require_alembic():
+            return
+
         cmd = PackageManager.get_run_prefix() + ["python", "-m", "alembic", "upgrade", "head"]
 
         Output.info("Running migrations...")
@@ -60,6 +108,8 @@ class DatabaseMigrateCommand(Command):
                 Output.success("Migrations completed")
             else:
                 Output.error("Migration failed")
+        except FileNotFoundError:
+            Output.error("alembic command not found. Is it installed in your venv?")
         except Exception as e:
             Output.error(f"Failed to run migrations: {e}")
 
@@ -75,6 +125,9 @@ Examples:
 """
 
     def handle(self):
+        if not _require_alembic():
+            return
+
         steps = self.option("steps", "1")
 
         try:
@@ -97,42 +150,34 @@ Examples:
                 Output.success(f"Rolled back {steps_int} migration(s)")
             else:
                 Output.error("Rollback failed")
+        except FileNotFoundError:
+            Output.error("alembic command not found. Is it installed in your venv?")
         except Exception as e:
             Output.error(f"Failed to rollback: {e}")
-
-
-@register
-class MigrateResetCommand(Command):
-    signature = "migrate:reset"
-    description = "Reset database (rollback all migrations)"
-
-    def handle(self):
-        if not Output.confirm("⚠️  Reset ALL migrations? This cannot be undone!", default=False):
-            Output.info("Cancelled")
-            return
-
-        cmd = PackageManager.get_run_prefix() + ["python", "-m", "alembic", "downgrade", "base"]
-
-        try:
-            result = subprocess.run(cmd)
-            if result.returncode == 0:
-                Output.success("Database reset complete")
-            else:
-                Output.error("Reset failed")
-        except Exception as e:
-            Output.error(f"Failed to reset: {e}")
 
 
 @register
 class MigrateStatusCommand(Command):
     signature = "migrate:status"
     description = "Show migration status"
+    help = """
+Examples:
+  fastman migrate:status
+
+Prints the current Alembic revision. Useful as a "what state am I in"
+check before running fastman database:migrate.
+"""
 
     def handle(self):
+        if not _require_alembic():
+            return
+
         cmd = PackageManager.get_run_prefix() + ["python", "-m", "alembic", "current"]
 
         try:
             subprocess.run(cmd)
+        except FileNotFoundError:
+            Output.error("alembic command not found. Is it installed in your venv?")
         except Exception as e:
             Output.error(f"Failed to get status: {e}")
 

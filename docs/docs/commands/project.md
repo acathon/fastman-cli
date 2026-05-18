@@ -61,15 +61,21 @@ my-api/
 │   ├── migrations/           # Alembic migrations
 │   └── seeders/              # Database seeders
 ├── tests/                    # Test directory
-├── .env                      # Fallback environment variables
-├── .env.development          # Development settings
+├── .env                      # Default / local override (gitignored)
+├── .env.develop              # Development settings
 ├── .env.staging              # Staging settings
-├── .env.production           # Production settings
+├── .fastmanrc                # Project shape + env lock (gitignored)
 ├── .gitignore
-├── alembic.ini              # Migration config
-├── pyproject.toml           # Dependencies
+├── alembic.ini               # Migration config
+├── pyproject.toml            # Dependencies
 └── README.md
 ```
+
+:::note
+No `.env.production` is generated. Production secrets should come from a
+secrets manager (AWS SSM, Vault, k8s, etc.) rather than a committed
+placeholder file. See the [deployment guide](../deployment).
+:::
 
 ---
 
@@ -91,16 +97,16 @@ fastman serve [options]
 | `--reload` | Explicitly enable hot reload (this is the default behavior) | `true` |
 | `--no-reload` | Disable hot reload (for production-like testing) | — |
 
-When `--env` is not specified, Fastman auto-detects: `.env.production` if it exists, otherwise `.env`.
+When `--env` is not specified, Fastman auto-detects: `.env.develop` if it exists, otherwise `.env`.
 
 ### Serve Examples
 
 ```bash
-# Default — localhost:8000 with hot reload, auto-detects .env.production or .env
+# Default — localhost:8000 with hot reload, auto-detects .env.develop or .env
 fastman serve
 
-# Use development environment
-fastman serve --env=development
+# Use develop environment
+fastman serve --env=develop
 
 # Use staging environment
 fastman serve --env=staging

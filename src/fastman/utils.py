@@ -3,13 +3,14 @@ Utilities and helpers.
 """
 import builtins
 import keyword
+import logging
+import os
 import re
 import shutil
 import subprocess
 import sys
-import logging
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from .console import Output
 
@@ -216,7 +217,55 @@ class PathManager:
 
 
 class PackageManager:
-    """Handles package management across different tools"""
+    """Handles package management across different tools.
+
+    For uv / poetry / pipenv backends the underlying tool finds the project's
+    virtualenv on its own. For the **pip** backend, ``sys.executable`` points
+    at whatever Python is running fastman (often the *global* interpreter when
+    the CLI is installed system-wide), so we explicitly resolve the project's
+    ``.venv`` / ``venv`` / ``env`` directory and use *its* pip. That way
+    ``fastman install:auth`` and ``fastman package:install`` write to the
+    project's venv even if the user forgot to activate it.
+    """
+
+    # Directories scanned in order for an existing virtual environment.
+    _VENV_CANDIDATES = (".venv", "venv", "env")
+
+    @staticmethod
+    def _project_venv_pip() -> Optional[List[str]]:
+        """Return the pip executable inside the project's venv, or None.
+
+        Looks for the first venv among `.venv` / `venv` / `env` in the current
+        working directory and returns the absolute path to its pip binary.
+        """
+        cwd = Path.cwd()
+        for name in PackageManager._VENV_CANDIDATES:
+            venv = cwd / name
+            if not venv.is_dir():
+                continue
+            pip_path = (
+                venv / "Scripts" / "pip.exe"
+                if os.name == "nt"
+                else venv / "bin" / "pip"
+            )
+            if pip_path.exists():
+                return [str(pip_path.resolve())]
+        return None
+
+    @staticmethod
+    def _pip_command() -> List[str]:
+        """Resolve the right pip invocation.
+
+        Order:
+          1. Project's venv pip if it exists (best — installs into the project
+             even when the user hasn't activated the venv).
+          2. ``python -m pip`` using the current interpreter (last resort —
+             may install into the global env if fastman runs globally).
+        """
+        venv_pip = PackageManager._project_venv_pip()
+        if venv_pip:
+            return venv_pip
+        return [sys.executable, "-m", "pip"]
 
     @staticmethod
     def detect() -> tuple[str, List[str]]:
@@ -260,7 +309,14 @@ class PackageManager:
             elif manager == "pipenv":
                 subprocess.run(["pipenv", "install"] + packages, check=True, timeout=timeout)
             else:
-                subprocess.run([sys.executable, "-m", "pip", "install"] + packages, check=True, timeout=timeout)
+                pip_cmd = PackageManager._pip_command()
+                if pip_cmd[0] == sys.executable:
+                    Output.warn(
+                        "No project venv found (.venv/venv/env). Installing with the current "
+                        "Python interpreter — this may write to a global site-packages. "
+                        "Create a venv first or activate one to scope the install to your project."
+                    )
+                subprocess.run(pip_cmd + ["install"] + packages, check=True, timeout=timeout)
 
                 # Update requirements.txt
                 req_file = Path("requirements.txt")
@@ -317,7 +373,12 @@ class PackageManager:
             elif manager == "pipenv":
                 subprocess.run(["pipenv", "uninstall"] + packages, check=True, timeout=timeout)
             else:
-                subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y"] + packages, check=True, timeout=timeout)
+                pip_cmd = PackageManager._pip_command()
+                subprocess.run(
+                    pip_cmd + ["uninstall", "-y"] + packages,
+                    check=True,
+                    timeout=timeout,
+                )
 
                 # Update requirements.txt
                 req_file = Path("requirements.txt")
@@ -352,10 +413,37 @@ class PackageManager:
             return False
 
 
+class FastmanConfig:
+    """Read access to the per-project `.fastmanrc` file.
+
+    Written by `fastman create` and records `pattern`, `package_manager`,
+    and `database`. Other commands use this to detect pattern mismatches (e.g.
+    running `make:controller` in a feature-pattern project) without re-deriving
+    project shape from the filesystem.
+    """
+
+    PATH = Path(".fastmanrc")
+
+    @staticmethod
+    def read(cwd: Optional[Path] = None) -> dict:
+        """Return the parsed config, or {} if missing/malformed."""
+        import json
+        path = (cwd or Path.cwd()) / FastmanConfig.PATH
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except (FileNotFoundError, OSError, json.JSONDecodeError, ValueError):
+            return {}
+
+    @staticmethod
+    def pattern(cwd: Optional[Path] = None) -> Optional[str]:
+        """Return the project pattern, or None if unrecorded."""
+        return FastmanConfig.read(cwd).get("pattern")
+
+
 class EnvManager:
     """Manages environment files across all environments (dev/staging/prod)"""
 
-    ENV_FILES = [".env", ".env.development", ".env.staging", ".env.production"]
+    ENV_FILES = [".env", ".env.develop", ".env.staging"]
 
     @staticmethod
     def append_to_all(block: str, check_key: str, cwd: Path = None):

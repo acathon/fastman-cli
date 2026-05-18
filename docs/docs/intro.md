@@ -4,9 +4,9 @@ sidebar_position: 1
 
 # Fastman
 
-**The elegant CLI for FastAPI artisans.**
+**The elegant CLI for FastAPI developers.**
 
-Fastman is a Laravel-inspired command-line tool that brings structure, speed, and best practices to FastAPI development. Instead of manually wiring up project scaffolding, database configurations, migrations, and authentication — Fastman handles it all from the terminal so you can focus on building your application logic.
+Fastman is an opinionated, batteries-included command-line tool that brings structure, speed, and best practices to FastAPI development. Instead of manually wiring up project scaffolding, database configurations, migrations, and authentication — Fastman handles it all from the terminal so you can focus on building your application logic.
 
 ## 30 seconds to your first API
 
@@ -63,14 +63,15 @@ uv · poetry · pipenv · pip — auto-detected from your project
 - **API** — resource-grouped with built-in API versioning
 - **Layer** — traditional MVC-style separation of concerns
 
-## What's New in v0.3.6 (Cheetah)
+## What's New in v0.4.0 (Dolphin)
 
-- Keycloak switched to [`fastapi-keycloak`](https://github.com/fastapi-keycloak/fastapi-keycloak) with dependency-based route protection
-- `GET /me` endpoint automatically registered for Keycloak auth
-- Swagger Authorize button via `idp.add_swagger_config(app)`
-- Lazy Keycloak initialization — no network calls at import time, no SSL crashes on startup
-- Non-destructive SSL support — Fastman builds a merged CA bundle instead of modifying `certifi`
-- Graceful startup fallback — the app still boots if Keycloak is unreachable or admin token setup is incomplete
+- **Lean command surface** — 7 low-leverage commands removed (`package:*`, `config:cache/clear`, `inspect`, `migrate:reset`). Use the underlying tool directly instead.
+- **Mail scaffolding** — new `install:mail` (SMTP/SendGrid/Mailgun/SES) and `make:mail` commands with HTML or Markdown templates and FastAPI BackgroundTasks integration.
+- **Modern codegen** — generated models use SQLAlchemy 2.0 `DeclarativeBase` + typed `Mapped[]` columns; schemas use Pydantic v2 `ConfigDict`.
+- **Smart pluralization** — `address → addresses`, `category → categories`, `analysis → analyses`, `person → people`. No more `addresss` in your tablenames.
+- **Pattern-aware `make:*`** — `.fastmanrc` records the project pattern; running `make:controller` in a feature-pattern project now gives an actionable error.
+- **Keyword + builtin guard** — `fastman make:feature class` is rejected before any code is generated.
+- **Dynamic shell completions** — bash / zsh / fish / powershell auto-include every registered command, with zero static lists to keep in sync.
 
 See the full [changelog](./whats-new).
 

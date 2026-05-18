@@ -1,0 +1,23 @@
+"""OAuth authentication schemas"""
+from pydantic import BaseModel, ConfigDict, EmailStr
+from typing import Optional
+from datetime import datetime
+
+
+class UserRead(BaseModel):
+    """User response schema"""
+    id: int
+    email: EmailStr
+    name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    oauth_provider: str
+    is_active: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class OAuthCallback(BaseModel):
+    """OAuth callback data"""
+    code: str
+    state: Optional[str] = None

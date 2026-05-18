@@ -1,21 +1,21 @@
 """
 Miscellaneous commands (utils, config, docs, etc).
 """
-import sys
-import os
-import shutil
 import json
-import secrets
-import subprocess
-import re
 import logging
-import importlib
+import os
+import re
+import secrets
+import shutil
+import subprocess
+import sys
 from pathlib import Path
+from typing import Optional
 
-from .. import __version__, __codename__
-from .base import Command, register, COMMAND_REGISTRY
-from ..console import Output, Style, HAS_PYFIGLET, HAS_RICH, console
-from ..utils import PackageManager, NameValidator, PathManager, EnvManager
+from .. import __codename__, __version__
+from ..console import HAS_PYFIGLET, HAS_RICH, Output, Style, console
+from ..utils import EnvManager, PackageManager, PathManager
+from .base import COMMAND_REGISTRY, Command, register
 
 if HAS_PYFIGLET:
     import pyfiglet
@@ -26,6 +26,16 @@ logger = logging.getLogger('fastman')
 class RouteListCommand(Command):
     signature = "route:list {--path=} {--method=}"
     description = "List all API routes"
+    help = """
+Examples:
+  fastman route:list
+  fastman route:list --path=/users
+  fastman route:list --method=POST
+  fastman route:list --path=/api/v1 --method=GET
+
+Imports app/main.py and walks app.routes. If imports fail (missing
+deps in venv), falls back to running a subprocess in the project's env.
+"""
 
     def handle(self):
         path_filter = self.option("path")
@@ -186,6 +196,14 @@ except Exception as e:
 class TinkerCommand(Command):
     signature = "tinker"
     description = "Interactive Python shell with app context"
+    help = """
+Examples:
+  fastman tinker
+
+Starts an IPython REPL (or stdlib `code` fallback) with `settings`,
+`db`, `SessionLocal`, and `Base` pre-imported. Best for ad-hoc DB
+queries and inspecting app state.
+"""
 
     def handle(self):
         cwd = Path.cwd()
@@ -249,6 +267,14 @@ class TinkerCommand(Command):
 class GenerateKeyCommand(Command):
     signature = "config:appkey {--show}"
     description = "Generate secret key"
+    help = """
+Examples:
+  fastman config:appkey            Generate + write to all .env files
+  fastman config:appkey --show     Print to terminal only
+
+Uses secrets.token_urlsafe(32). Writes to .env, .env.develop, and
+.env.staging by default.
+"""
 
     def handle(self):
         key = secrets.token_urlsafe(32)
@@ -288,52 +314,16 @@ class GenerateKeyCommand(Command):
 
 
 @register
-class ConfigCacheCommand(Command):
-    signature = "config:cache"
-    description = "Cache environment configuration"
-
-    def handle(self):
-        environment = os.environ.get("ENVIRONMENT", "development")
-        env_file = Path(f".env.{environment}")
-        if not env_file.exists():
-            env_file = Path(".env")
-
-        if not env_file.exists():
-            Output.error(f"No env file found (.env.{environment} or .env)")
-            return
-
-        config = {}
-        for line in env_file.read_text(encoding='utf-8').splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                key, value = line.split("=", 1)
-                config[key.strip()] = value.strip()
-
-        cache_file = Path("config_cache.json")
-        cache_file.write_text(json.dumps(config, indent=2))
-
-        Output.success(f"Configuration cached ({len(config)} variables)")
-
-
-@register
-class ConfigClearCommand(Command):
-    signature = "config:clear"
-    description = "Clear configuration cache"
-
-    def handle(self):
-        cache_file = Path("config_cache.json")
-
-        if cache_file.exists():
-            cache_file.unlink()
-            Output.success("Configuration cache cleared")
-        else:
-            Output.info("No cache to clear")
-
-
-@register
 class CacheClearCommand(Command):
     signature = "cache:clear"
     description = "Clear Python cache files"
+    help = """
+Examples:
+  fastman cache:clear
+
+Recursively removes __pycache__/ and *.pyc files. Use after pulling
+upstream changes if you see stale import errors.
+"""
 
     def handle(self):
         # Collect paths first, then delete (avoid modifying dirs during iteration)
@@ -369,75 +359,20 @@ class CacheClearCommand(Command):
 
 
 @register
-class PackageImportCommand(Command):
-    signature = "package:import {package}"
-    description = "Install Python package"
-
-    def handle(self):
-        package = self.argument(0)
-
-        if not package:
-            Output.error("Package name required")
-            return
-
-        Output.info(f"Installing {package}...")
-
-        if PackageManager.install([package]):
-            Output.success(f"Package '{package}' installed")
-        else:
-            Output.error(f"Failed to install '{package}'")
-
-
-@register
-class PackageListCommand(Command):
-    signature = "package:list"
-    description = "List installed packages"
-
-    def handle(self):
-        manager, _ = PackageManager.detect()
-
-        Output.info(f"Using package manager: {manager}")
-
-        try:
-            if manager == "uv":
-                subprocess.run(["uv", "pip", "list"], check=True)
-            elif manager == "poetry":
-                subprocess.run(["poetry", "show"], check=True)
-            elif manager == "pipenv":
-                subprocess.run(["pipenv", "list"], check=True)
-            else:
-                subprocess.run([sys.executable, "-m", "pip", "list"], check=True)
-        except (FileNotFoundError, subprocess.CalledProcessError) as e:
-            Output.error(f"Failed to list packages: {e}")
-
-
-@register
-class PackageRemoveCommand(Command):
-    signature = "package:remove {package}"
-    description = "Remove Python package"
-
-    def handle(self):
-        package = self.argument(0)
-
-        if not package:
-            Output.error("Package name required")
-            return
-
-        Output.info(f"Removing {package}...")
-
-        if PackageManager.remove([package]):
-            Output.success(f"Package '{package}' removed")
-        else:
-            Output.error(f"Failed to remove '{package}'")
-
-
-@register
 class ListCommand(Command):
     signature = "list"
     description = "Show all available commands"
+    help = """
+Examples:
+  fastman list       Show all commands grouped by category
+  fastman            Same as above (default when no args)
+
+Categories are ordered by user frequency: Project, Development,
+Scaffolding, Database, Integrations, ...
+"""
 
     def handle(self):
-        """Display commands in Laravel Artisan style"""
+        """Display commands grouped by namespace category"""
 
         # Header
         if HAS_PYFIGLET:
@@ -467,95 +402,102 @@ class ListCommand(Command):
             console.print("[yellow]Usage:[/yellow]")
             console.print("  command [options] [arguments]")
             console.print()
-            console.print("[yellow]Options:[/yellow]")
-            console.print("  [green]-h, --help[/green]     Display help for a command")
-            console.print("  [green]-v, --version[/green]  Display application version")
+            console.print("[yellow]Global Options:[/yellow]")
+            console.print("  [green]-h, --help[/green]            Display help for a command")
+            console.print("  [green]-v, --version[/green]         Display application version")
+            console.print("  [green]-n, --no-interaction[/green]  Never prompt; fail fast if input is required (CI-friendly)")
             console.print()
         else:
             print(f"{Style.YELLOW}Usage:{Style.RESET}")
             print("  command [options] [arguments]\n")
-            print(f"{Style.YELLOW}Options:{Style.RESET}")
-            print(f"  {Style.GREEN}-h, --help{Style.RESET}     Display help for a command")
-            print(f"  {Style.GREEN}-v, --version{Style.RESET}  Display application version\n")
+            print(f"{Style.YELLOW}Global Options:{Style.RESET}")
+            print(f"  {Style.GREEN}-h, --help{Style.RESET}            Display help for a command")
+            print(f"  {Style.GREEN}-v, --version{Style.RESET}         Display application version")
+            print(f"  {Style.GREEN}-n, --no-interaction{Style.RESET}  Never prompt; fail fast if input is required\n")
 
-        # Organize commands by namespace/category
-        categories = {
-            "Project Setup": [],
+        # Organize commands by namespace/category.
+        # Order matters — these render top-to-bottom in the order listed,
+        # roughly by user frequency (project setup first, polish last).
+        categories: dict[str, list] = {
+            "Project": [],
             "Development": [],
             "Scaffolding": [],
-            "Routes": [],
             "Database": [],
+            "Integrations": [],
+            "Routes": [],
+            "Packages": [],
             "Testing": [],
-            "Third Party": [],
-            "Package Management": [],
             "Configuration": [],
             "Cache": [],
-            "Utilities": []
+            "Utilities": [],
         }
 
         for name, cls in sorted(COMMAND_REGISTRY.items()):
-            # Categorize commands
             if name in ["create", "init"]:
-                categories["Project Setup"].append((name, cls.description))
-            elif name in ["serve", "build"]:
+                categories["Project"].append((name, cls.description))
+            elif name in ["serve", "build", "optimize", "tinker"]:
                 categories["Development"].append((name, cls.description))
-            elif name.startswith("make:") and name not in ["make:migration", "make:seeder", "make:factory", "make:test"]:
+            elif name.startswith("make:") and name not in [
+                "make:migration", "make:seeder", "make:factory", "make:test", "make:mail",
+            ]:
                 categories["Scaffolding"].append((name, cls.description))
             elif name == "route:list":
                 categories["Routes"].append((name, cls.description))
-            elif name.startswith("database:") or name.startswith("migrate") or name in ["make:migration", "make:seeder"]:
+            elif (
+                name.startswith("database:")
+                or name.startswith("migrate")
+                or name in ["make:migration", "make:seeder"]
+            ):
                 categories["Database"].append((name, cls.description))
             elif name in ["make:test", "make:factory"]:
                 categories["Testing"].append((name, cls.description))
             elif (
-                name.startswith("install:auth")
-                or name.startswith("install:cert")
-                or name == "install:mail"
+                name.startswith("install:")
                 or name == "make:mail"
             ):
-                categories["Third Party"].append((name, cls.description))
+                categories["Integrations"].append((name, cls.description))
             elif name.startswith("package:"):
-                categories["Package Management"].append((name, cls.description))
-            elif name.startswith("config:") or name.startswith("generate:"):
+                categories["Packages"].append((name, cls.description))
+            elif name.startswith("config:"):
                 categories["Configuration"].append((name, cls.description))
-            elif name == "completion":
-                categories["Utilities"].append((name, cls.description))
             elif name.startswith("cache:"):
                 categories["Cache"].append((name, cls.description))
-            elif name == "activate":
-                categories["Utilities"].append((name, cls.description))
             else:
+                # version / list / docs / completion / activate / env / about
                 categories["Utilities"].append((name, cls.description))
 
-        # Display commands by category
+        # Compute a single global column width so every command name aligns
+        # across categories — one tidy column across the screen.
+        all_names = [cmd[0] for cmds in categories.values() for cmd in cmds]
+        column_width = max(len(n) for n in all_names) if all_names else 0
+
         if HAS_RICH:
             console.print("[yellow]Available commands:[/yellow]")
+            console.print()
         else:
-            print(f"{Style.YELLOW}Available commands:{Style.RESET}")
+            print(f"{Style.YELLOW}Available commands:{Style.RESET}\n")
 
         for category, commands in categories.items():
             if not commands:
                 continue
 
-            # Category header
+            # Category header with count, e.g. "Scaffolding  (12)"
+            count = f"({len(commands)})"
             if HAS_RICH:
-                console.print(f" [bold yellow]{category}[/bold yellow]")
+                console.print(f" [bold yellow]{category}[/bold yellow] [dim]{count}[/dim]")
             else:
-                print(f" {Style.BOLD}{Style.YELLOW}{category}{Style.RESET}")
+                print(f" {Style.BOLD}{Style.YELLOW}{category}{Style.RESET} {Style.DIM}{count}{Style.RESET}")
 
-            # Find the longest command name for alignment
-            max_length = max(len(cmd[0]) for cmd in commands) if commands else 0
-
-            # Display commands in this category
             for cmd_name, description in sorted(commands):
-                padding = " " * (max_length - len(cmd_name) + 2)
-
+                padding = " " * (column_width - len(cmd_name) + 2)
                 if HAS_RICH:
-                    console.print(f"  [green]{cmd_name}[/green]{padding}{description}")
+                    console.print(
+                        f"  [green]{cmd_name}[/green]{padding}"
+                        f"[dim]{description}[/dim]"
+                    )
                 else:
                     print(f"  {Style.GREEN}{cmd_name}{Style.RESET}{padding}{description}")
 
-            # Empty line between categories
             print()
 
 
@@ -563,6 +505,14 @@ class ListCommand(Command):
 class VersionCommand(Command):
     signature = "version"
     description = "Show Fastman version"
+    help = """
+Examples:
+  fastman version    Terse: version, Python, package manager
+  fastman -v         Alias
+
+For a fuller diagnostic (env, stack, integrations, routes), use:
+  fastman about
+"""
 
     def handle(self):
         Output.echo(f"Fastman v{__version__} ({__codename__})", Style.BOLD)
@@ -580,9 +530,220 @@ class VersionCommand(Command):
 
 
 @register
+class AboutCommand(Command):
+    """Full project & environment diagnostic in one screen.
+
+    Designed to be the first command a teammate runs in an unfamiliar
+    project: "what is this thing built on, and what state is it in?"
+    One-screen project diagnostic.
+    """
+
+    signature = "about"
+    description = "Show project, runtime, and integration diagnostics"
+    help = """
+Run anywhere — sections that don't apply are simply skipped. Useful as the
+first thing a new teammate runs on a freshly cloned project, or as a
+support-ticket attachment when something feels off.
+
+Examples:
+  fastman about
+"""
+
+    def handle(self):
+        import platform
+        from ..utils import FastmanConfig
+
+        in_project = Path("app").is_dir() or Path(".fastmanrc").exists()
+        config = FastmanConfig.read()
+
+        # ── Fastman / runtime section ──────────────────────────────────
+        self._section("Fastman")
+        self._row("Version", f"{__version__} ({__codename__})")
+        self._row("Python", platform.python_version())
+        self._row("Platform", f"{platform.system()} {platform.release()}")
+
+        # ── Project section (only if we're in one) ─────────────────────
+        if in_project:
+            self._section("Project")
+            self._row("Pattern", config.get("pattern") or self._infer_pattern() or "—")
+            manager, _ = PackageManager.detect()
+            self._row("Package Manager", manager)
+            self._row("Database", config.get("database") or self._infer_database() or "—")
+            self._row("Project Root", str(Path.cwd().resolve()))
+            self._row("Active Env File", self._active_env() or "—")
+
+        # ── Stack section ──────────────────────────────────────────────
+        stack = self._collect_stack_versions()
+        if stack:
+            self._section("Stack")
+            for name, version in stack:
+                self._row(name, version)
+
+        # ── Integrations section ───────────────────────────────────────
+        if in_project:
+            integrations = self._detect_integrations()
+            if integrations:
+                self._section("Integrations")
+                for name, value in integrations:
+                    self._row(name, value)
+
+        # ── Routes (best-effort — only if app/main.py imports cleanly) ─
+        if in_project:
+            route_count = self._count_routes()
+            if route_count is not None:
+                self._section("Routes")
+                self._row("Total Routes", str(route_count))
+
+        Output.new_line()
+
+    # ── Section / row primitives ────────────────────────────────────────
+
+    def _section(self, title: str) -> None:
+        """Print a section header. Renders using Rich when available."""
+        from ..console import HAS_RICH, console
+        if HAS_RICH:
+            console.print()
+            console.print(f"[bold cyan]{title}[/bold cyan]")
+            console.print(f"[dim]{'─' * 60}[/dim]")
+        else:
+            print()
+            print(f"{Style.BOLD}{Style.CYAN}{title}{Style.RESET}")
+            print("─" * 60)
+
+    def _row(self, label: str, value: str) -> None:
+        from ..console import HAS_RICH, console
+        if HAS_RICH:
+            console.print(f"  [dim]{label:<20}[/dim] [highlight]{value}[/highlight]")
+        else:
+            print(f"  {label:<20} {value}")
+
+    # ── Data collection ────────────────────────────────────────────────
+
+    def _infer_pattern(self) -> Optional[str]:
+        """Fallback when .fastmanrc is missing (older projects)."""
+        if Path("app/features").is_dir():
+            return "feature"
+        if Path("app/controllers").is_dir():
+            return "layer"
+        if Path("app/api").is_dir():
+            return "api"
+        return None
+
+    def _infer_database(self) -> Optional[str]:
+        """Detect database driver from generated app/core/."""
+        if Path("app/core/firebase.py").is_file():
+            return "firebase"
+        db_file = Path("app/core/database.py")
+        if not db_file.is_file():
+            return None
+        content = db_file.read_text(encoding="utf-8")
+        for driver, marker in (
+            ("postgresql", "postgresql"),
+            ("mysql", "pymysql"),
+            ("oracle", "oracledb"),
+            ("sqlite", "sqlite"),
+        ):
+            if marker in content.lower():
+                return driver
+        return None
+
+    def _active_env(self) -> Optional[str]:
+        """Mirror serve's env resolution priority."""
+        env = os.environ.get("ENVIRONMENT", "develop")
+        if env == "production" and Path(".env").exists():
+            return ".env"
+        if Path(f".env.{env}").exists():
+            return f".env.{env}"
+        if Path(".env.develop").exists():
+            return ".env.develop"
+        if Path(".env").exists():
+            return ".env"
+        return None
+
+    def _collect_stack_versions(self) -> list:
+        """Pull versions from installed packages — silently skip what's missing."""
+        from importlib.metadata import PackageNotFoundError, version
+        rows = []
+        for label, dist in (
+            ("FastAPI", "fastapi"),
+            ("SQLAlchemy", "sqlalchemy"),
+            ("Pydantic", "pydantic"),
+            ("Pydantic-Settings", "pydantic-settings"),
+            ("Alembic", "alembic"),
+            ("Uvicorn", "uvicorn"),
+            ("FastAPI-Mail", "fastapi-mail"),
+        ):
+            try:
+                rows.append((label, version(dist)))
+            except PackageNotFoundError:
+                continue
+        return rows
+
+    def _detect_integrations(self) -> list:
+        """Detect optional integrations from filesystem traces."""
+        rows = []
+
+        # Auth — keycloak puts file in app/core/, others in app/features/auth/
+        if Path("app/core/keycloak.py").is_file():
+            rows.append(("Auth Provider", "keycloak"))
+        elif Path("app/features/auth").is_dir():
+            # Distinguish JWT / OAuth / Passkey by what files exist
+            auth = Path("app/features/auth")
+            if (auth / "security.py").is_file():
+                rows.append(("Auth Provider", "jwt"))
+            elif (auth / "oauth_config.py").is_file():
+                rows.append(("Auth Provider", "oauth"))
+            elif any((auth / f).is_file() for f in ["passkey.py", "webauthn.py"]):
+                rows.append(("Auth Provider", "passkey"))
+            else:
+                rows.append(("Auth Provider", "auth (custom)"))
+
+        # Mail
+        if Path("app/core/mail.py").is_file():
+            rows.append(("Mail Transport", "fastapi-mail"))
+
+        # Certificates
+        certs = Path("certs")
+        if certs.is_dir():
+            cert_count = sum(
+                1 for f in certs.iterdir()
+                if f.is_file() and f.suffix in (".pem", ".crt")
+            )
+            if cert_count:
+                rows.append(("Certificates", f"{certs}/ ({cert_count} file{'s' if cert_count != 1 else ''})"))
+
+        # GraphQL
+        if Path("app/core/graphql.py").is_file():
+            rows.append(("GraphQL", "strawberry-graphql"))
+
+        return rows
+
+    def _count_routes(self) -> Optional[int]:
+        """Best-effort route count. Returns None if app can't be imported here."""
+        cwd_str = str(Path.cwd())
+        added = cwd_str not in sys.path
+        if added:
+            sys.path.insert(0, cwd_str)
+        try:
+            try:
+                from app.main import app  # type: ignore
+                return len(app.routes)
+            except Exception:
+                return None
+        finally:
+            if added and cwd_str in sys.path:
+                sys.path.remove(cwd_str)
+
+
+@register
 class DocsCommand(Command):
     signature = "docs {--open}"
     description = "Show documentation or open in browser"
+    help = """
+Examples:
+  fastman docs           Print quick-reference inline
+  fastman docs --open    Open the docs website in your browser
+"""
 
     def handle(self):
         should_open = self.flag("open")
@@ -613,120 +774,17 @@ class DocsCommand(Command):
 
 
 @register
-class InspectCommand(Command):
-    signature = "inspect {type} {name}"
-    description = "Inspect project component (model, route, feature)"
-
-    def handle(self):
-        comp_type = self.argument(0)
-        comp_name = self.argument(1)
-
-        if not comp_type or not comp_name:
-            Output.error("Usage: fastman inspect {type} {name}")
-            Output.info("Types: model, feature, api, route")
-            return
-
-        sys.path.insert(0, str(Path.cwd()))
-
-        if comp_type == "feature":
-            self._inspect_feature(comp_name)
-        elif comp_type == "api":
-            self._inspect_api(comp_name)
-        elif comp_type == "model":
-            self._inspect_model(comp_name)
-        else:
-            Output.error(f"Unknown type: {comp_type}")
-
-    def _inspect_feature(self, name: str):
-        """Inspect a feature"""
-        snake = NameValidator.to_snake_case(name)
-        path = Path("app/features") / snake
-
-        if not path.exists():
-            Output.error(f"Feature '{snake}' not found")
-            return
-
-        Output.echo(f"\n📦 Feature: {snake}", Style.BOLD + Style.CYAN)
-        Output.echo("=" * 80)
-
-        files = {
-            "models.py": "Database Models",
-            "schemas.py": "Pydantic Schemas",
-            "service.py": "Business Logic",
-            "router.py": "API Routes"
-        }
-
-        for file_name, description in files.items():
-            file_path = path / file_name
-            if file_path.exists():
-                size = file_path.stat().st_size
-                Output.echo(f"  ✓ {file_name.ljust(15)} - {description} ({size} bytes)", Style.GREEN)
-            else:
-                Output.echo(f"  ✗ {file_name.ljust(15)} - {description}", Style.RED)
-
-        # Try to load router and show endpoints
-        try:
-            module = importlib.import_module(f"app.features.{snake}.router")
-            if hasattr(module, "router"):
-                router = module.router
-                Output.echo(f"\n  Endpoints:", Style.BOLD)
-                for route in router.routes:
-                    methods = ",".join(getattr(route, "methods", []))
-                    route_path = getattr(route, "path", "")
-                    Output.echo(f"    {methods.ljust(10)} {route_path}", Style.CYAN)
-        except (ImportError, AttributeError):
-            logger.debug(f"Could not inspect router for feature: {name}")
-
-    def _inspect_api(self, name: str):
-        """Inspect an API"""
-        snake = NameValidator.to_snake_case(name)
-        path = Path("app/api") / snake
-
-        if not path.exists():
-            Output.error(f"API '{snake}' not found")
-            return
-
-        Output.echo(f"\n🔌 API: {snake}", Style.BOLD + Style.CYAN)
-        Output.echo("=" * 80)
-
-        router_path = path / "router.py"
-        schema_path = path / "schema.py"
-
-        if router_path.exists():
-            Output.echo(f"  Type: REST API", Style.GREEN)
-        elif schema_path.exists():
-            Output.echo(f"  Type: GraphQL API", Style.GREEN)
-
-    def _inspect_model(self, name: str):
-        """Inspect a model"""
-        snake = NameValidator.to_snake_case(name)
-        pascal = NameValidator.to_pascal_case(name)
-
-        try:
-            module = importlib.import_module(f"app.models.{snake}")
-            model_class = getattr(module, pascal)
-
-            Output.echo(f"\n🗄️  Model: {pascal}", Style.BOLD + Style.CYAN)
-            Output.echo("=" * 80)
-            Output.echo(f"  Table: {model_class.__tablename__}", Style.GREEN)
-            Output.echo(f"  Columns:", Style.BOLD)
-
-            for column in model_class.__table__.columns:
-                col_type = str(column.type)
-                nullable = "NULL" if column.nullable else "NOT NULL"
-                pk = "PRIMARY KEY" if column.primary_key else ""
-                Output.echo(f"    {column.name.ljust(20)} {col_type.ljust(15)} {nullable} {pk}", Style.CYAN)
-
-        except (ImportError, AttributeError) as e:
-            Output.error(f"Could not load model '{pascal}': {e}")
-        except Exception as e:
-            Output.error(f"An unexpected error occurred while inspecting model: {e}")
-
-
-@register
 class OptimizeCommand(Command):
     signature = "optimize {--check}"
     description = "Optimize project (lint, format, fix imports)"
+    help = """
+Examples:
+  fastman optimize           Format and fix in place
+  fastman optimize --check   Check without modifying (CI-friendly)
+
+Runs `ruff check --fix` then `ruff format` on app/ and tests/. Offers
+to install ruff via your detected package manager if missing.
+"""
 
     def handle(self):
         check_only = self.flag("check")
@@ -793,6 +851,14 @@ class OptimizeCommand(Command):
 class BuildCommand(Command):
     signature = "build {--docker}"
     description = "Build project for production"
+    help = """
+Examples:
+  fastman build              Runs tests + mypy as a green-check sanity pass
+  fastman build --docker     Builds a Docker image (generates Dockerfile if missing)
+
+The non-Docker mode is the \"is everything green?\" check you'd run before
+pushing. The Docker mode tags the image as <project_name>:latest.
+"""
 
     def handle(self):
         use_docker = self.flag("docker")
@@ -863,7 +929,18 @@ class CompletionCommand(Command):
     """Generate shell completion scripts"""
     signature = "completion {shell} {--install}"
     description = "Generate shell completion script (bash, zsh, fish, powershell)"
-    
+    help = """
+Examples:
+  fastman completion bash                Print the script to stdout
+  fastman completion bash --install      Save + wire into ~/.bashrc
+  fastman completion zsh --install
+  fastman completion fish --install
+  fastman completion powershell --install
+
+Completions are generated dynamically from COMMAND_REGISTRY, so newly
+added commands show up automatically with no edits to this file.
+"""
+
     def handle(self):
         shell = self.argument(0, "bash").lower()
         install = self.flag("install")
@@ -964,7 +1041,104 @@ class ActivateCommand(Command):
     """Detect and display virtual environment activation command"""
     signature = "activate {--create-script}"
     description = "Show virtual environment activation command"
+    help = """
+Examples:
+  fastman activate                     Print the activation command for your shell
+  fastman activate --create-script     Drop activate.sh / activate.bat helper
 
+Detects .venv/, venv/, or env/ in the cwd. Detects shell via $SHELL.
+"""
+
+    help = """
+Examples:
+  fastman route:list
+  fastman route:list --path=/users
+  fastman route:list --method=POST
+  fastman route:list --path=/api/v1 --method=GET
+
+Imports app/main.py and walks app.routes. If imports fail (missing
+dependencies in venv), falls back to running a subprocess in the
+project's environment.
+"""
+    help = """
+Examples:
+  fastman tinker
+
+Starts an IPython REPL (or stdlib fallback) with , ,
+, and  pre-imported. Best for ad-hoc database
+queries and inspecting app state.
+"""
+    help = """
+Examples:
+  fastman config:appkey            Generate + write to all .env files
+  fastman config:appkey --show     Print to terminal only
+
+Generates a cryptographically secure key via secrets.token_urlsafe(32).
+Writes to .env, .env.develop, and .env.staging by default.
+"""
+    help = """
+Examples:
+  fastman cache:clear
+
+Recursively removes __pycache__/ and *.pyc files. Use after pulling
+upstream changes if you see stale import errors.
+"""
+    help = """
+Examples:
+  fastman optimize           Format and fix
+  fastman optimize --check   Check without modifying (CI-friendly)
+
+Runs ruff check --fix + ruff format on app/ and tests/. Offers to
+install ruff if missing.
+"""
+    help = """
+Examples:
+  fastman build              Runs tests then mypy
+  fastman build --docker     Builds a Docker image instead
+
+The non-Docker mode is a CI-style "is everything green?" check.
+The Docker mode generates a Dockerfile if missing.
+"""
+    help = """
+Examples:
+  fastman completion bash               Print the script to stdout
+  fastman completion bash --install     Save + wire into ~/.bashrc
+  fastman completion zsh --install
+  fastman completion fish --install
+  fastman completion powershell --install
+
+Completions are generated dynamically from the registered command list,
+so newly added commands show up automatically.
+"""
+    help = """
+Examples:
+  fastman activate                     Show the activation command
+  fastman activate --create-script     Drop activate.bat/.sh helper
+
+Detects .venv/, venv/, or env/ in cwd and prints the right command
+for your shell.
+"""
+    help = """
+Examples:
+  fastman docs           Print quick-reference inline
+  fastman docs --open    Open the docs website in your browser
+"""
+    help = """
+Examples:
+  fastman list           Show all available commands grouped by category
+  fastman                Same as fastman list
+
+Categories order by user frequency: Project, Development, Scaffolding,
+Database, Integrations, ...
+"""
+    help = """
+Examples:
+  fastman version    Terse: version, Python, package manager
+  fastman -v         Alias
+
+For a fuller diagnostic (env, stack, integrations, routes), use:
+  fastman about
+"""
     def handle(self):
         """Detect venv and display activation command"""
         cwd = Path.cwd()
