@@ -13,6 +13,7 @@ on disk where it can be syntax-highlighted, linted, and reviewed.
 from pathlib import Path
 
 from ..console import Output, Style
+from ..injection import InjectionStatus, inject_into_class_body
 from ..templates import TemplateLoader
 from ..utils import EnvManager, NameValidator, PackageManager, PathManager
 from .base import Command, register
@@ -72,19 +73,19 @@ def _provider_env(provider: str, from_email: str) -> dict:
     return defaults.get(provider, defaults["smtp"])
 
 
-# Block injected into the user's app/core/config.py Settings class. Kept
-# inline because it's tiny and bound to the settings-injection logic below.
-_SETTINGS_FIELDS = """
-    # Mail
-    MAIL_USERNAME: str = ""
-    MAIL_PASSWORD: str = ""
-    MAIL_FROM: str = "noreply@example.com"
-    MAIL_FROM_NAME: str = "Fastman App"
-    MAIL_SERVER: str = "localhost"
-    MAIL_PORT: int = 587
-    MAIL_STARTTLS: bool = True
-    MAIL_SSL_TLS: bool = False
-    MAIL_TEMPLATE_FOLDER: str = "templates/email"
+# Block injected into the user's Settings class body. Column-zero indent;
+# inject_into_class_body re-indents at write time so it lines up with
+# whatever indent the user's class uses.
+_SETTINGS_FIELDS = """# Mail
+MAIL_USERNAME: str = ""
+MAIL_PASSWORD: str = ""
+MAIL_FROM: str = "noreply@example.com"
+MAIL_FROM_NAME: str = "Fastman App"
+MAIL_SERVER: str = "localhost"
+MAIL_PORT: int = 587
+MAIL_STARTTLS: bool = True
+MAIL_SSL_TLS: bool = False
+MAIL_TEMPLATE_FOLDER: str = "templates/email"
 """
 
 
@@ -186,41 +187,36 @@ Examples:
         return "\n".join(lines) + "\n"
 
     def _inject_settings(self):
-        """Add MAIL_* fields to Settings class in app/core/config.py if missing."""
+        """Add MAIL_* fields to the Settings class in app/core/config.py.
+
+        AST-aware: locates the ``Settings`` class structurally and inserts a
+        marker-bracketed block at the end of its body. Idempotent on re-run
+        (block gets replaced, not duplicated). Refuses to write if the result
+        wouldn't parse as Python.
+        """
         config_path = Path("app/core/config.py")
         if not config_path.exists():
             Output.warn("app/core/config.py not found — skipping settings injection.")
             return
 
-        content = config_path.read_text(encoding="utf-8")
-        if "MAIL_SERVER" in content:
-            Output.info("Mail settings already present in config.py — skipped injection.")
-            return
-
-        # Prefer the modern SettingsConfigDict marker (Pydantic v2 generated
-        # projects), then fall back to the legacy nested ``class Config``,
-        # then append before ``settings = Settings()`` as a last resort.
-        if "    model_config = SettingsConfigDict(" in content:
-            content = content.replace(
-                "    model_config = SettingsConfigDict(",
-                f"{_SETTINGS_FIELDS}    model_config = SettingsConfigDict(",
-            )
-        elif "    class Config:" in content:
-            content = content.replace(
-                "    class Config:", f"{_SETTINGS_FIELDS}    class Config:"
-            )
-        elif "settings = Settings()" in content:
-            content = content.replace(
-                "settings = Settings()", f"{_SETTINGS_FIELDS}\nsettings = Settings()"
-            )
+        result = inject_into_class_body(
+            config_path, "mail:settings", "Settings", _SETTINGS_FIELDS
+        )
+        if result.status == InjectionStatus.INSERTED:
+            Output.info(f"Added mail settings to {config_path}")
+        elif result.status == InjectionStatus.REPLACED:
+            Output.info(f"Updated mail settings in {config_path}")
+        elif result.status == InjectionStatus.SKIPPED:
+            Output.info(f"Mail settings already present in {config_path}")
         else:
-            Output.warn(
-                "Could not locate injection point in config.py — please add MAIL_* fields manually."
+            Output.error(
+                f"Could not inject mail settings into {config_path}: {result.reason}"
             )
-            return
-
-        config_path.write_text(content, encoding="utf-8")
-        Output.info("Updated config.py with mail settings")
+            Output.info(
+                "  Hint: add the MAIL_* fields to your Settings class manually, "
+                "or wrap an existing block with "
+                "'# fastman:mail:settings:start' / '# fastman:mail:settings:end'."
+            )
 
 
 @register

@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Iterable
 
 from ..console import Output, Style
+from ..injection import InjectionStatus, inject_block, inject_into_class_body
 from ..templates import TemplateLoader
 from ..utils import EnvManager, PackageManager, PathManager
 from .base import Command, register
@@ -46,16 +47,25 @@ _OAUTH_PROVIDERS = {
 
 # ── Settings + env block fragments (kept inline — small + injection-bound) ──
 
-_KEYCLOAK_SETTINGS_BLOCK = """
-    # Keycloak
-    KEYCLOAK_URL: str = "http://localhost:8080"
-    KEYCLOAK_REALM: str = "master"
-    KEYCLOAK_CLIENT_ID: str = ""
-    KEYCLOAK_CLIENT_SECRET: str = ""
-    KEYCLOAK_ADMIN_SECRET: str = ""
-    KEYCLOAK_CALLBACK_URI: str = "http://localhost:8000/callback"
-    KEYCLOAK_VERIFY_SSL: str = "true"
-    """
+# Settings fields injected into Settings class body. The leading column-zero
+# layout matches what `inject_into_class_body` re-indents at write time.
+_KEYCLOAK_SETTINGS_BLOCK = """# Keycloak
+KEYCLOAK_URL: str = "http://localhost:8080"
+KEYCLOAK_REALM: str = "master"
+KEYCLOAK_CLIENT_ID: str = ""
+KEYCLOAK_CLIENT_SECRET: str = ""
+KEYCLOAK_ADMIN_SECRET: str = ""
+KEYCLOAK_CALLBACK_URI: str = "http://localhost:8000/callback"
+KEYCLOAK_VERIFY_SSL: str = "true"
+"""
+
+# Import + initialisation block spliced into app/main.py. Goes near the top,
+# right before the health-check route.
+_KEYCLOAK_MAIN_BLOCK = """from app.core.keycloak import init_keycloak
+
+# Initialize Keycloak
+init_keycloak(app)
+"""
 
 _KEYCLOAK_ENV_BLOCK = """
 # Keycloak Authentication
@@ -85,6 +95,23 @@ def _write_rendered(
     for template_name, dest, ctx in files:
         content = TemplateLoader.render(template_name, ctx)
         PathManager.write_file(target_dir / dest, content)
+
+
+def _report_injection(path: Path, what: str, result) -> None:
+    """Translate an :class:`InjectionResult` into a human-readable line."""
+    if result.status == InjectionStatus.INSERTED:
+        Output.info(f"Added {what} to {path}")
+    elif result.status == InjectionStatus.REPLACED:
+        Output.info(f"Updated {what} in {path}")
+    elif result.status == InjectionStatus.SKIPPED:
+        Output.info(f"{what} already present in {path} (no changes)")
+    else:
+        Output.error(f"Could not inject {what} into {path}: {result.reason}")
+        Output.info(
+            "  Hint: the file has been customized beyond fastman's pattern. "
+            "Add the block manually or wrap your edits in "
+            "'# fastman:<tag>:start' / '# fastman:<tag>:end' markers."
+        )
 
 
 @register
@@ -235,34 +262,29 @@ Examples:
             Output.error(f"Failed to create {keycloak_path}")
             return
 
-        # 2. Inject Keycloak settings into config.py
+        # 2. Inject Keycloak settings into the Settings class body.
+        #    AST-aware: finds the class structurally; user can rename anchors
+        #    or reorder fields freely.
         config_path = Path("app/core/config.py")
         if config_path.exists():
-            config_content = config_path.read_text(encoding="utf-8")
-            if "KEYCLOAK_URL" not in config_content:
-                config_content = config_content.replace(
-                    "    # API",
-                    _KEYCLOAK_SETTINGS_BLOCK + "\n    # API",
-                )
-                config_path.write_text(config_content, encoding="utf-8")
-                Output.info("Updated config.py with Keycloak settings")
+            result = inject_into_class_body(
+                config_path, "keycloak:settings", "Settings", _KEYCLOAK_SETTINGS_BLOCK
+            )
+            _report_injection(config_path, "Keycloak settings", result)
 
-        # 3. Wire init_keycloak() into main.py
+        # 3. Wire init_keycloak() into main.py before the health check.
+        #    Marker-bracketed for idempotent re-runs; falls back to the
+        #    "# Health check" anchor when markers are absent (fresh install).
         main_path = Path("app/main.py")
         if main_path.exists():
-            main_content = main_path.read_text(encoding="utf-8")
-            if "from app.core.keycloak import init_keycloak" not in main_content:
-                main_content = main_content.replace(
-                    "from app.core.logging import setup_logging",
-                    "from app.core.logging import setup_logging\n"
-                    "from app.core.keycloak import init_keycloak",
-                )
-                main_content = main_content.replace(
-                    "# Health check",
-                    "# Initialize Keycloak\ninit_keycloak(app)\n\n# Health check",
-                )
-                main_path.write_text(main_content, encoding="utf-8")
-                Output.info("Updated main.py with Keycloak initialization")
+            result = inject_block(
+                main_path,
+                "keycloak:init",
+                _KEYCLOAK_MAIN_BLOCK,
+                fallback_anchor="# Health check",
+                fallback_position="before",
+            )
+            _report_injection(main_path, "Keycloak initialization", result)
 
         # 4. Env vars
         EnvManager.append_to_all(_KEYCLOAK_ENV_BLOCK, "KEYCLOAK_URL")
