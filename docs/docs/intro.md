@@ -63,6 +63,12 @@ uv · poetry · pipenv · pip — auto-detected from your project
 - **API** — resource-grouped with built-in API versioning
 - **Layer** — traditional MVC-style separation of concerns
 
+## What's New in v0.4.2 (Dolphin)
+
+- **`route:list --json`** — machine-readable route export, ready to pipe into `jq` or feed into CI scripts that verify expected routes.
+- **`db:fresh`** — one-shot "wipe + migrate + (optional) seed" for the common dev-reset loop. Refuses to run when `ENVIRONMENT=production` as a safety net.
+- **`model:show <name>`** — SQLAlchemy model introspection that walks every model module, finds the named class (snake/Pascal-case tolerant), and renders columns / relationships / indexes as Rich tables. Replaces the `inspect` command dropped in v0.4.0.
+
 ## What's New in v0.4.1 (Dolphin)
 
 - **`fastman update`** — re-scaffold drifted project files against current templates. Diff each fastman-owned file (database.py, config.py, alembic/env.py, mail/, auth/) against what fastman would generate today; pick keep/update per file. Closes the mid-project lifecycle gap: pull in SQLAlchemy 2.0, Pydantic v2, dropped `.env.production`, etc. without recreating your project. Supports `--check` for CI and `--all` for unattended runs.

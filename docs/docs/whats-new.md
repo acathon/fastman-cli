@@ -8,6 +8,81 @@ Stay up to date with the latest Fastman releases and features.
 
 ---
 
+## v0.4.2 (Dolphin) — May 2026
+
+**Polish wave: JSON route export, one-shot DB reset, model introspection.**
+
+### `route:list --json` for tooling integration
+
+The Rich table is great for humans; tooling needs JSON. `--json` swaps
+the table for a flat list of `{methods, path, name}` objects on stdout —
+nothing else — so it's safe to pipe directly into editors or CI scripts:
+
+```bash
+# All POST routes
+fastman route:list --json | jq '.[] | select(.methods | contains(["POST"]))'
+
+# Diff against an expected routes file in CI
+diff <(fastman route:list --json) expected-routes.json
+```
+
+WebSocket routes (which have no HTTP methods in FastAPI) serialize their
+`methods` as `["WS"]`. Filters like `--path=/api/v1` combine cleanly with
+`--json`.
+
+### `db:fresh` — one-shot dev reset
+
+The common "blow it away and start fresh" loop is now one command:
+
+```bash
+fastman db:fresh                # confirm + downgrade base + upgrade head
+fastman db:fresh --seed         # also re-run all seeders
+fastman db:fresh --force        # skip the confirmation prompt (CI)
+fastman db:fresh --seed --force # full pipeline, unattended
+```
+
+What it does under the hood:
+
+1. `alembic downgrade base` — drops every migrated table.
+2. `alembic upgrade head` — reapplies every migration.
+3. `database:seed` (if `--seed`) — runs all seeders.
+
+**Production safety net.** Even with `--force`, the command refuses to
+run when `ENVIRONMENT=production`. If you really need this (you almost
+never do), unset the env var or run the alembic commands manually.
+
+### `model:show <name>` — SQLAlchemy introspection
+
+Replaces the `inspect` command dropped in v0.4.0 for the SA-model case
+(which was its main use). Walks `app/models/`,
+`app/features/*/models.py`, and `app/api/*/models.py`, finds the named
+class (tolerant of snake_case / PascalCase), and renders three tables:
+columns + types + constraints + defaults; relationships with
+direction and collection-vs-singular; indexes.
+
+```bash
+fastman model:show User
+fastman model:show user_profile    # auto-resolves to UserProfile
+```
+
+Example output:
+
+```text
+▶ Model: User
+  table: users
+
+  Column      | Type           | Constraints       | Default
+  id          | INTEGER        | PK NOT NULL INDEX | —
+  email       | VARCHAR(255)   | NOT NULL UNIQUE   | —
+  name        | VARCHAR(100)   | NOT NULL          | —
+
+  Relations
+  Relationship | Target | Direction | Collection
+  posts        | Post   | onetomany | yes
+```
+
+---
+
 ## v0.4.1 (Dolphin) — May 2026
 
 **`fastman update` for mid-project template upgrades, and AST-aware code injection.**

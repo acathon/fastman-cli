@@ -24,7 +24,7 @@ logger = logging.getLogger('fastman')
 
 @register
 class RouteListCommand(Command):
-    signature = "route:list {--path=} {--method=}"
+    signature = "route:list {--path=} {--method=} {--json}"
     description = "List all API routes"
     help = """
 Examples:
@@ -32,14 +32,21 @@ Examples:
   fastman route:list --path=/users
   fastman route:list --method=POST
   fastman route:list --path=/api/v1 --method=GET
+  fastman route:list --json                 # machine-readable output
 
 Imports app/main.py and walks app.routes. If imports fail (missing
 deps in venv), falls back to running a subprocess in the project's env.
+
+The --json output is suitable for piping to jq, importing into
+editors, or feeding into CI scripts that check for expected routes:
+
+  fastman route:list --json | jq '.[] | select(.methods | contains(["POST"]))'
 """
 
     def handle(self):
         path_filter = self.option("path")
         method_filter = self.option("method", "").upper()
+        as_json = self.flag("json")
 
         cwd_path = str(Path.cwd())
         path_added = cwd_path not in sys.path
@@ -57,9 +64,16 @@ deps in venv), falls back to running a subprocess in the project's env.
                 try:
                     routes = self._get_routes_via_subprocess()
                 except Exception as e:
+                    if as_json:
+                        # Even on error, emit valid JSON so tooling can parse it.
+                        print(json.dumps({"error": str(e)}))
+                        sys.exit(1)
                     Output.error(f"Failed to load routes: {e}")
                     return
             except Exception as e:
+                if as_json:
+                    print(json.dumps({"error": str(e)}))
+                    sys.exit(1)
                 Output.error(f"An unexpected error occurred while loading routes: {e}")
                 logger.exception(e)
                 return
@@ -68,16 +82,30 @@ deps in venv), falls back to running a subprocess in the project's env.
             if path_added and cwd_path in sys.path:
                 sys.path.remove(cwd_path)
 
-        # Filter and display routes
+        # Filter
         filtered_routes = []
         for methods_str, route_path, name in routes:
-            # Apply filters
             if path_filter and path_filter not in route_path:
                 continue
             if method_filter and method_filter not in methods_str:
                 continue
-
             filtered_routes.append([methods_str, route_path, name])
+
+        # JSON output path — print nothing else to stdout. Tooling-friendly.
+        if as_json:
+            payload = [
+                {
+                    "methods": (
+                        ["WS"] if methods_str == "WS"
+                        else methods_str.split(",")
+                    ),
+                    "path": route_path,
+                    "name": name,
+                }
+                for methods_str, route_path, name in filtered_routes
+            ]
+            print(json.dumps(payload, indent=2))
+            return
 
         if filtered_routes:
             Output.table(

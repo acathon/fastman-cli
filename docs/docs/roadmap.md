@@ -28,29 +28,21 @@ package_manager -> graphql` instead of requiring all flags up front.
 - Honor `--no-interaction` for CI parity with the rest of `make:*`
 - Default to the same shape as the current flagless `fastman create`
 
-#### 2. `route:list --json` for tooling integration
+#### 2. Multi-tenant authentication support
 
-Render the route table as JSON so editors / pipelines can consume it.
+`install:auth` currently assumes a single-tenant model. Add a tenancy
+mode where users belong to organizations / workspaces, with
+organization-scoped permissions.
 
-- `--json` returns `[{"methods": [...], "path": ..., "name": ...}]`
-- `--filter` already exists; combine cleanly with `--json`
-
-#### 3. `db:fresh` / `db:wipe`
-
-Combined dev-loop commands. `db:fresh` = wipe + migrate + seed in one.
-Destructive, so confirm prompt + `--force` flag.
-
-#### 4. `model:show <name>`
-
-Properly introspect SQLAlchemy models, render columns + relations as a
-table. The old `inspect` command was incomplete and was dropped in
-v0.4.0; this is the right replacement.
+- New `User.organization_id` foreign key in the JWT/OAuth/Passkey models
+- `get_current_organization` dependency next to `get_current_user`
+- Optional `--multi-tenant` flag on `install:auth`
 
 ---
 
 ### Medium Priority
 
-#### 5. Wire remaining `.fastmanrc` keys
+#### 3. Wire remaining `.fastmanrc` keys
 
 Keys already working: `env`, `pattern`, `package_manager`, `database`. Keys to wire up:
 
@@ -62,7 +54,7 @@ Keys already working: `env`, `pattern`, `package_manager`, `database`. Keys to w
 | `auth` | Auth provider |
 | `mail` | Mail provider |
 
-#### 5. Robust database seeder discovery
+#### 4. Robust database seeder discovery
 
 `DatabaseSeedCommand` uses `importlib.import_module()` on `*_seeder.py` files
 without validating they have a `Seeder` class with a `run()` method.
@@ -71,7 +63,7 @@ without validating they have a `Seeder` class with a `run()` method.
 - Add error recovery so one broken seeder doesn't crash the entire seed operation
 - Clean up `sys.path` on exception
 
-#### 6. Configurable subprocess timeouts
+#### 5. Configurable subprocess timeouts
 
 Hardcoded 300s for package install and 60s for route discovery may be insufficient
 in CI/CD or slow network environments.
@@ -79,7 +71,7 @@ in CI/CD or slow network environments.
 - Read timeouts from `.fastmanrc` or environment variables
 - Provide sensible defaults with override capability
 
-#### 7. `make:feature --include` flag
+#### 6. `make:feature --include` flag
 
 Additive convenience: let one command scaffold a feature plus its tests, seeder,
 factory, websocket, or migration in a single invocation.
@@ -92,17 +84,17 @@ fastman make:feature orders --crud --include=tests,seeder,factory
 
 ### Low Priority / Polish
 
-#### 8. Generated code syntax validation
+#### 7. Generated code syntax validation
 
 Run `ast.parse()` on generated Python files before writing to catch template
 errors early rather than at runtime.
 
-#### 9. Ruff integration in generated projects
+#### 8. Ruff integration in generated projects
 
 Wire `ruff` into generated projects' `pyproject.toml` templates with a sensible
 default configuration.
 
-#### 10. Rich-first terminal improvements
+#### 9. Rich-first terminal improvements
 
 Shared panel/key-value helpers already added in Cheetah. Continue upgrading
 remaining commands to branded Rich layouts.
@@ -111,12 +103,18 @@ remaining commands to branded Rich layouts.
 
 ### Out of Scope (Future)
 
-- Multi-tenant authentication support
 - Alternative migration tools (Flyway, Liquibase)
 - GraphQL-first project pattern
 - Plugin system for third-party command packages
 
 ---
+
+## Completed in v0.4.2 "Dolphin"
+
+- ✅ **`route:list --json`** — machine-readable JSON for editors / CI
+- ✅ **`db:fresh`** — one-shot wipe + migrate + (optional) seed, with production guard
+- ✅ **`model:show <name>`** — SQLAlchemy model introspection (columns / relations / indexes)
+- ✅ 13 new fast unit tests
 
 ## Completed in v0.4.1 "Dolphin"
 

@@ -30,13 +30,14 @@ See the full [Tinker guide](../advanced/tinker) for tips and tricks.
 Displays a formatted table of all registered API routes in your application. Useful for verifying endpoint registration and debugging routing issues.
 
 ```bash
-fastman route:list [--path=/api] [--method=GET]
+fastman route:list [--path=/api] [--method=GET] [--json]
 ```
 
 | Option | Description |
 |--------|-------------|
 | `--path` | Filter routes that contain this path segment (e.g., `/api/v1`) |
 | `--method` | Filter by HTTP method: `GET`, `POST`, `PUT`, `PATCH`, `DELETE` |
+| `--json` | Emit machine-readable JSON instead of a Rich table (since 0.4.2) |
 
 ```bash
 # Show all routes
@@ -47,7 +48,12 @@ fastman route:list --method=GET
 
 # Only routes under /users
 fastman route:list --path=/users
+
+# Pipe into jq for tooling
+fastman route:list --json | jq '.[] | select(.methods | contains(["POST"]))'
 ```
+
+The `--json` output shape is `[{"methods": [...], "path": "...", "name": "..."}]`. WebSocket routes serialize their methods as `["WS"]`.
 
 ### `env`
 

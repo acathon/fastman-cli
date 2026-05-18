@@ -62,6 +62,37 @@ Displays the current migration revision, so you can see which migrations have be
 fastman migrate:status
 ```
 
+### `db:fresh`
+
+Wipes every migrated table and reapplies all migrations in one shot — the "blow it away and start fresh" loop that's common during development. Optionally re-seeds afterwards.
+
+```bash
+fastman db:fresh [--seed] [--force]
+```
+
+| Option | Description |
+|--------|-------------|
+| `--seed` | Also run `database:seed` after re-applying migrations |
+| `--force` | Skip the confirmation prompt (use in CI / non-interactive runs) |
+
+What it does, in order:
+
+1. `alembic downgrade base` — drops every migrated table.
+2. `alembic upgrade head` — reapplies every migration.
+3. `database:seed` (if `--seed`) — runs all seeders.
+
+```bash
+# Confirm + wipe + migrate
+fastman db:fresh
+
+# Wipe + migrate + seed, unattended
+fastman db:fresh --seed --force
+```
+
+:::danger Production safety net
+`db:fresh` refuses to run when `ENVIRONMENT=production`, even with `--force`. If you genuinely need this, unset the env var or invoke the underlying `alembic` commands directly.
+:::
+
 ---
 
 ## Seeding
@@ -112,4 +143,43 @@ class UserSeeder:
         ]
         db.add_all(users)
         db.commit()
+```
+
+---
+
+## Introspection
+
+### `model:show`
+
+Introspects a SQLAlchemy model and renders its structure as Rich tables — columns with types/constraints/defaults, relationships with direction, and indexes.
+
+```bash
+fastman model:show <name>
+```
+
+The locator walks `app/models/`, `app/features/*/models.py`, and `app/api/*/models.py` and matches case-insensitively, tolerant of snake_case ↔ PascalCase (so `model:show user_profile` resolves to `class UserProfile`).
+
+```bash
+fastman model:show User
+fastman model:show user_profile      # auto-converts to UserProfile
+```
+
+Example output:
+
+```text
+▶ Model: User
+  table: users
+
+  Column      | Type           | Constraints       | Default
+  id          | INTEGER        | PK NOT NULL INDEX | —
+  email       | VARCHAR(255)   | NOT NULL UNIQUE   | —
+  created_at  | DATETIME       | NOT NULL          | —
+
+  Relations
+  Relationship | Target | Direction | Collection
+  posts        | Post   | onetomany | yes
+
+  Indexes
+  Index            | Columns | Unique
+  ix_users_email   | email   | yes
 ```

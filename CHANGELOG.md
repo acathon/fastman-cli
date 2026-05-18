@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] "Dolphin" - 2026-05-19
+
+Polish wave — three small but high-leverage additions, all backward-compatible.
+
+### ✨ Added
+
+- **`route:list --json`** — emits machine-readable JSON instead of a
+  Rich table, suitable for piping to `jq` or feeding into CI scripts
+  that check for expected routes. Combines with `--path` and `--method`
+  filters. WebSocket routes serialize their `methods` as `["WS"]`.
+  ```bash
+  fastman route:list --json | jq '.[] | select(.methods | contains(["POST"]))'
+  ```
+- **`db:fresh`** — combined dev-loop command: `alembic downgrade base`
+  → `alembic upgrade head` → optionally `database:seed`. Always
+  destructive, so it prompts for confirmation (skippable with `--force`
+  or `--no-interaction`). **Refuses to run when `ENVIRONMENT=production`**
+  as a safety net, even with `--force`.
+  ```bash
+  fastman db:fresh                # confirm, then wipe + migrate
+  fastman db:fresh --seed         # also re-run all seeders
+  fastman db:fresh --force        # skip the prompt (CI)
+  ```
+- **`model:show <name>`** — SQLAlchemy model introspection done right.
+  Walks `app/models/`, `app/features/*/models.py`, and
+  `app/api/*/models.py`, locates the named class (snake/Pascal-case
+  tolerant), and renders columns + types + constraints + defaults,
+  relationships (with direction), and indexes as Rich tables. Replaces
+  the v0.4.0-dropped `inspect` command for the SA-model case, which
+  was its main use.
+  ```bash
+  fastman model:show User
+  fastman model:show user_profile    # auto-converts to UserProfile
+  ```
+
+### Tests
+
+13 new fast unit tests covering: route:list --json shape + filter
+combinations + websocket handling, db:fresh production guard +
+missing-alembic gate, model:show snake_case ↔ PascalCase locator.
+
+69 fast tests now pass (was 56; +13 polish tests).
+
 ## [0.4.1] "Dolphin" - 2026-05-18
 
 Additive patch on top of 0.4.0. Two new pieces, both backward-compatible:
@@ -362,7 +405,8 @@ shell completions out of the static lookup table they used to live in.
 
 ---
 
-[Unreleased]: https://github.com/acathon/fastman-cli/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/acathon/fastman-cli/compare/v0.4.2...HEAD
+[0.4.2]: https://github.com/acathon/fastman-cli/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/acathon/fastman-cli/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/acathon/fastman-cli/compare/v0.3.6...v0.4.0
 [0.3.6]: https://github.com/acathon/fastman-cli/compare/v0.3.5...v0.3.6

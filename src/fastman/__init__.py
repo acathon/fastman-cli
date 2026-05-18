@@ -1,4 +1,4 @@
-__version__ = "0.4.1"
+__version__ = "0.4.2"
 __codename__ = "Dolphin"
 
 from .commands.base import Command, register
