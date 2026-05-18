@@ -17,6 +17,7 @@ from .commands import (
     database,
     auth,
     certificate,
+    mail,
     misc
 )
 

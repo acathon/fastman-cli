@@ -574,44 +574,66 @@ FIREBASE_CREDENTIALS_PATH=./firebase-credentials.json
         }
         return fields.get(database, fields["sqlite"])
 
+    # Lower bounds picked to guarantee Pydantic v2 / SQLAlchemy 2.0 / FastAPI
+    # 0.110+ semantics across the generated code. Bump these when generated
+    # templates rely on newer APIs.
+    _DEPENDENCY_PINS = {
+        "fastapi": ">=0.110.0",
+        "uvicorn[standard]": ">=0.27.0",
+        "pydantic-settings": ">=2.1.0",
+        "python-dotenv": ">=1.0.0",
+        "pydantic[email]": ">=2.5.0",
+        "sqlalchemy": ">=2.0.0",
+        "alembic": ">=1.13.0",
+        "psycopg2-binary": ">=2.9.0",
+        "pymysql": ">=1.1.0",
+        "oracledb": ">=2.0.0",
+        "firebase-admin": ">=6.4.0",
+        "faker": ">=22.0.0",
+        "pytest": ">=8.0.0",
+        "httpx": ">=0.27.0",
+        "strawberry-graphql[fastapi]": ">=0.220.0",
+    }
+
+    @classmethod
+    def _pin(cls, package: str) -> str:
+        """Attach a sensible lower-bound version specifier to a package name."""
+        return f"{package}{cls._DEPENDENCY_PINS.get(package, '')}"
+
     def _get_database_dependencies(self, database: str, graphql: bool = False, minimal: bool = False) -> list:
-        """Get database-specific dependencies"""
+        """Get database-specific dependencies (pinned to known-good lower bounds)."""
 
         # Base dependencies (always included)
-        base_deps = [
+        packages = [
             "fastapi",
             "uvicorn[standard]",
             "pydantic-settings",
             "python-dotenv",
-            "pydantic[email]"
+            "pydantic[email]",
         ]
 
         # Database-specific dependencies (unless minimal)
         if not minimal:
             if database == "sqlite":
-                base_deps.extend(["sqlalchemy", "alembic"])
+                packages.extend(["sqlalchemy", "alembic"])
             elif database == "postgresql":
-                base_deps.extend(["sqlalchemy", "alembic", "psycopg2-binary"])
+                packages.extend(["sqlalchemy", "alembic", "psycopg2-binary"])
             elif database == "mysql":
-                base_deps.extend(["sqlalchemy", "alembic", "pymysql"])
+                packages.extend(["sqlalchemy", "alembic", "pymysql"])
             elif database == "oracle":
-                base_deps.extend(["sqlalchemy", "alembic", "oracledb"])
+                packages.extend(["sqlalchemy", "alembic", "oracledb"])
             elif database == "firebase":
-                base_deps.append("firebase-admin")
+                packages.append("firebase-admin")
 
         # Dev dependencies (unless minimal)
         if not minimal:
-            base_deps.extend([
-                "faker",
-                "pytest",
-                "httpx"
-            ])
+            packages.extend(["faker", "pytest", "httpx"])
 
         # Add GraphQL dependency only if requested
         if graphql:
-            base_deps.append("strawberry-graphql[fastapi]")
+            packages.append("strawberry-graphql[fastapi]")
 
-        return base_deps
+        return [self._pin(p) for p in packages]
 
     def _create_requirements_txt(self, dependencies: list, cwd: Path = None):
         """Fallback: create requirements.txt"""

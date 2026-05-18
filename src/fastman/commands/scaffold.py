@@ -23,6 +23,7 @@ Examples:
 
         snake = NameValidator.to_snake_case(name)
         pascal = NameValidator.to_pascal_case(name)
+        plural = NameValidator.pluralize(snake)
 
         # Verify project pattern
         features_dir = Path("app/features")
@@ -49,7 +50,7 @@ from app.core.database import Base
 
 class {pascal}(Base):
     """{pascal} model"""
-    __tablename__ = "{snake}s"
+    __tablename__ = "{plural}"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
@@ -104,7 +105,7 @@ class {pascal}Service:
 
     @staticmethod
     def get_all(db: Session, skip: int = 0, limit: int = 100) -> List[models.{pascal}]:
-        """Get all {snake}s"""
+        """Get all {plural}"""
         return db.query(models.{pascal}).offset(skip).limit(limit).all()
 
     @staticmethod
@@ -163,13 +164,13 @@ from . import service, schemas
 api_version = "v1"
 
 router = APIRouter(
-    prefix="/{snake}s",
+    prefix="/{plural}",
     tags=["{pascal}"]
 )
 
 
 @router.get("/", response_model=List[schemas.{pascal}Read])
-def list_{snake}s(
+def list_{plural}(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
@@ -237,13 +238,13 @@ from . import service, schemas
 api_version = "v1"
 
 router = APIRouter(
-    prefix="/{snake}s",
+    prefix="/{plural}",
     tags=["{pascal}"]
 )
 
 
 @router.get("/", response_model=List[schemas.{pascal}Read])
-def list_{snake}s(db: Session = Depends(get_db)):
+def list_{plural}(db: Session = Depends(get_db)):
     """Get all {snake}s"""
     return service.{pascal}Service.get_all(db)
 '''
@@ -270,11 +271,11 @@ def list_{snake}s(db: Session = Depends(get_db)):
         if crud:
             Output.section("Generated Endpoints")
             endpoints = [
-                (f"GET    /api/v1/{snake}s", "List all items"),
-                (f"GET    /api/v1/{snake}s/{{id}}", "Get single item"),
-                (f"POST   /api/v1/{snake}s", "Create new item"),
-                (f"PUT    /api/v1/{snake}s/{{id}}", "Update item"),
-                (f"DELETE /api/v1/{snake}s/{{id}}", "Delete item"),
+                (f"GET    /api/v1/{plural}", "List all items"),
+                (f"GET    /api/v1/{plural}/{{id}}", "Get single item"),
+                (f"POST   /api/v1/{plural}", "Create new item"),
+                (f"PUT    /api/v1/{plural}/{{id}}", "Update item"),
+                (f"DELETE /api/v1/{plural}/{{id}}", "Delete item"),
             ]
             Output.listing(endpoints)
             Output.info("Versioning is applied automatically by the router discovery layer.")
@@ -295,6 +296,7 @@ class MakeApiCommand(Command):
 
         snake = NameValidator.to_snake_case(name)
         pascal = NameValidator.to_pascal_case(name)
+        plural = NameValidator.pluralize(snake)
 
         base = Path("app/api") / snake
 
@@ -322,8 +324,8 @@ class Query:
     """GraphQL queries for {pascal}"""
 
     @strawberry.field
-    def {snake}s(self) -> List[{pascal}Type]:
-        """Get all {snake}s"""
+    def {plural}(self) -> List[{pascal}Type]:
+        """Get all {plural}"""
         # TODO: Implement query logic
         return []
 
@@ -368,8 +370,8 @@ class {pascal}Response(BaseModel):
 
 
 @router.get("/", response_model=List[{pascal}Response])
-def list_{snake}s():
-    """List all {snake}s"""
+def list_{plural}():
+    """List all {plural}"""
     # TODO: Implement logic
     return []
 
@@ -552,7 +554,7 @@ class MakeModelCommand(Command):
 
         snake = NameValidator.to_snake_case(name)
         pascal = NameValidator.to_pascal_case(name)
-        table_name = table or f"{snake}s"
+        table_name = table or NameValidator.pluralize(snake)
 
         path = Path("app/models") / f"{snake}.py"
 

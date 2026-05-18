@@ -14,7 +14,6 @@ exclude .editorconfig
 
 # Exclude development files
 recursive-exclude tests *
-recursive-include docs/assets *
 recursive-exclude docs *
 recursive-exclude examples *
 

@@ -19,12 +19,29 @@ class TestNameValidator:
         with pytest.raises(ValueError):
             NameValidator.validate_identifier("invalid name")
 
+    def test_validate_identifier_rejects_keywords(self):
+        for reserved in ["class", "import", "async", "def", "return", "True", "None"]:
+            with pytest.raises(ValueError, match="reserved word"):
+                NameValidator.validate_identifier(reserved)
+
+    def test_validate_identifier_rejects_builtins(self):
+        # `type` and `match` are soft keywords in 3.12+, so use pure builtins here.
+        for builtin in ["list", "dict", "id", "open", "len", "print"]:
+            with pytest.raises(ValueError, match="shadows a Python builtin"):
+                NameValidator.validate_identifier(builtin)
+
     def test_validate_path_component(self):
         assert NameValidator.validate_path_component("valid") == "valid"
         with pytest.raises(ValueError):
             NameValidator.validate_path_component("../invalid")
         with pytest.raises(ValueError):
             NameValidator.validate_path_component("in/valid")
+
+    def test_validate_path_component_rejects_keywords(self):
+        with pytest.raises(ValueError, match="reserved word"):
+            NameValidator.validate_path_component("class")
+        with pytest.raises(ValueError, match="shadows a Python builtin"):
+            NameValidator.validate_path_component("list")
 
     def test_to_snake_case(self):
         assert NameValidator.to_snake_case("CamelCase") == "camel_case"
@@ -36,6 +53,46 @@ class TestNameValidator:
         assert NameValidator.to_pascal_case("snake_case") == "SnakeCase"
         assert NameValidator.to_pascal_case("simple") == "Simple"
         assert NameValidator.to_pascal_case("http_response") == "HttpResponse"
+
+    def test_pluralize_regular(self):
+        assert NameValidator.pluralize("user") == "users"
+        assert NameValidator.pluralize("order") == "orders"
+        assert NameValidator.pluralize("product") == "products"
+
+    def test_pluralize_sibilant_endings(self):
+        # The cases that the naive `+s` rule got wrong.
+        assert NameValidator.pluralize("bus") == "buses"
+        assert NameValidator.pluralize("box") == "boxes"
+        assert NameValidator.pluralize("address") == "addresses"
+        assert NameValidator.pluralize("dish") == "dishes"
+        assert NameValidator.pluralize("batch") == "batches"
+        assert NameValidator.pluralize("quiz") == "quizes"  # naive; acceptable
+
+    def test_pluralize_y_endings(self):
+        assert NameValidator.pluralize("category") == "categories"
+        assert NameValidator.pluralize("party") == "parties"
+        # Vowel + y just adds -s
+        assert NameValidator.pluralize("day") == "days"
+        assert NameValidator.pluralize("key") == "keys"
+
+    def test_pluralize_irregular(self):
+        assert NameValidator.pluralize("person") == "people"
+        assert NameValidator.pluralize("child") == "children"
+        assert NameValidator.pluralize("sheep") == "sheep"
+        assert NameValidator.pluralize("fish") == "fish"
+
+    def test_pluralize_latin_greek_endings(self):
+        # Words common in DB schemas — naive rule would mangle these.
+        assert NameValidator.pluralize("analysis") == "analyses"
+        assert NameValidator.pluralize("diagnosis") == "diagnoses"
+        assert NameValidator.pluralize("thesis") == "theses"
+
+    def test_pluralize_mass_nouns_unchanged(self):
+        assert NameValidator.pluralize("data") == "data"
+        assert NameValidator.pluralize("equipment") == "equipment"
+
+    def test_pluralize_preserves_empty(self):
+        assert NameValidator.pluralize("") == ""
 
 
 class TestPackageManager:

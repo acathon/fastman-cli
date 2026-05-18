@@ -10,6 +10,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 from typing import Generator
+from unittest.mock import patch
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -271,6 +272,30 @@ class TestScaffoldCommands:
 
         assert 'api_version = "v1"' in content, "Non-crud router.py should declare api_version = 'v1'"
 
+    def test_make_feature_uses_correct_plural_for_sibilant(self, temp_dir: Path, cli: CLI):
+        """make:feature address should produce __tablename__ = 'addresses' and prefix /addresses."""
+        cli.run(["create", "test_plural", "--pattern=feature", "--package=pip", "--database=sqlite"])
+        os.chdir(temp_dir / "test_plural")
+
+        cli.run(["make:feature", "address", "--crud"])
+
+        models = (temp_dir / "test_plural" / "app" / "features" / "address" / "models.py").read_text()
+        router = (temp_dir / "test_plural" / "app" / "features" / "address" / "router.py").read_text()
+
+        assert '__tablename__ = "addresses"' in models, "Sibilant-ending nouns must take -es"
+        assert 'prefix="/addresses"' in router, "Router prefix must use correct plural"
+        assert "addresss" not in models, "Naive +s pluralization should be gone"
+
+    def test_make_feature_uses_correct_plural_for_consonant_y(self, temp_dir: Path, cli: CLI):
+        """make:feature category should produce __tablename__ = 'categories'."""
+        cli.run(["create", "test_plural_y", "--pattern=feature", "--package=pip", "--database=sqlite"])
+        os.chdir(temp_dir / "test_plural_y")
+
+        cli.run(["make:feature", "category", "--crud"])
+
+        models = (temp_dir / "test_plural_y" / "app" / "features" / "category" / "models.py").read_text()
+        assert '__tablename__ = "categories"' in models
+
 
 class TestApiVersioningDiscovery:
     """Tests for the API versioning _resolve_prefix logic."""
@@ -316,6 +341,98 @@ class TestApiVersioningDiscovery:
         """Sanity-check: /api/v1 and /api/v2 must be different strings."""
         s = self._make_settings()
         assert self._resolve_prefix(s, "v1") != self._resolve_prefix(s, "v2")
+
+
+class TestMailCommands:
+    """Integration tests for install:mail and make:mail."""
+
+    def test_install_mail_creates_core_and_base(self, temp_dir: Path, cli: CLI):
+        cli.run(["create", "test_mail", "--pattern=feature", "--package=pip", "--database=sqlite"])
+        os.chdir(temp_dir / "test_mail")
+
+        with patch("fastman.commands.mail.PackageManager.install", return_value=True):
+            cli.run(["install:mail", "--provider=smtp"])
+
+        project = temp_dir / "test_mail"
+        assert (project / "app" / "core" / "mail.py").exists()
+        assert (project / "app" / "mail" / "base.py").exists()
+        assert (project / "app" / "mail" / "__init__.py").exists()
+        assert (project / "templates" / "email" / "welcome.html").exists()
+
+        env = (project / ".env").read_text()
+        assert "MAIL_SERVER=" in env
+        assert "MAIL_FROM=" in env
+
+        config = (project / "app" / "core" / "config.py").read_text()
+        assert "MAIL_SERVER" in config
+
+    def test_install_mail_provider_specific_env(self, temp_dir: Path, cli: CLI):
+        cli.run(["create", "test_sg", "--pattern=feature", "--package=pip", "--database=sqlite"])
+        os.chdir(temp_dir / "test_sg")
+
+        with patch("fastman.commands.mail.PackageManager.install", return_value=True):
+            cli.run(["install:mail", "--provider=sendgrid"])
+
+        env = (temp_dir / "test_sg" / ".env").read_text()
+        assert "smtp.sendgrid.net" in env
+        assert "MAIL_USERNAME=apikey" in env
+
+    def test_install_mail_rejects_invalid_provider(self, temp_dir: Path, cli: CLI):
+        cli.run(["create", "test_bad", "--pattern=feature", "--package=pip", "--database=sqlite"])
+        os.chdir(temp_dir / "test_bad")
+
+        cli.run(["install:mail", "--provider=carrier-pigeon"])
+
+        # Nothing should be created.
+        assert not (temp_dir / "test_bad" / "app" / "core" / "mail.py").exists()
+
+    def test_make_mail_requires_install_first(self, temp_dir: Path, cli: CLI):
+        cli.run(["create", "test_pre", "--pattern=feature", "--package=pip", "--database=sqlite"])
+        os.chdir(temp_dir / "test_pre")
+
+        cli.run(["make:mail", "WelcomeEmail"])
+
+        assert not (temp_dir / "test_pre" / "app" / "mail" / "welcome_email.py").exists()
+
+    def test_make_mail_html_default(self, temp_dir: Path, cli: CLI):
+        cli.run(["create", "test_make", "--pattern=feature", "--package=pip", "--database=sqlite"])
+        os.chdir(temp_dir / "test_make")
+
+        with patch("fastman.commands.mail.PackageManager.install", return_value=True):
+            cli.run(["install:mail"])
+            cli.run(["make:mail", "WelcomeEmail"])
+
+        py = temp_dir / "test_make" / "app" / "mail" / "welcome_email.py"
+        tpl = temp_dir / "test_make" / "templates" / "email" / "welcome_email.html"
+        assert py.exists()
+        assert tpl.exists()
+        body = py.read_text()
+        assert "class WelcomeEmail(Mailable):" in body
+        assert "welcome_email.html" in body
+
+    def test_make_mail_markdown_flag(self, temp_dir: Path, cli: CLI):
+        cli.run(["create", "test_md", "--pattern=feature", "--package=pip", "--database=sqlite"])
+        os.chdir(temp_dir / "test_md")
+
+        with patch("fastman.commands.mail.PackageManager.install", return_value=True):
+            cli.run(["install:mail"])
+            cli.run(["make:mail", "OrderShipped", "--markdown"])
+
+        py = (temp_dir / "test_md" / "app" / "mail" / "order_shipped.py").read_text()
+        assert "MarkdownIt" in py
+        assert "order_shipped.md" in py
+        assert (temp_dir / "test_md" / "templates" / "email" / "order_shipped.md").exists()
+
+    def test_make_mail_custom_subject(self, temp_dir: Path, cli: CLI):
+        cli.run(["create", "test_subj", "--pattern=feature", "--package=pip", "--database=sqlite"])
+        os.chdir(temp_dir / "test_subj")
+
+        with patch("fastman.commands.mail.PackageManager.install", return_value=True):
+            cli.run(["install:mail"])
+            cli.run(["make:mail", "PasswordReset", "--subject=Reset your password"])
+
+        body = (temp_dir / "test_subj" / "app" / "mail" / "password_reset.py").read_text()
+        assert 'subject = "Reset your password"' in body
 
 
 class TestUtilityFunctions:

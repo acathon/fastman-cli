@@ -642,4 +642,5 @@ Thumbs.db
 
 # Fastman
 config_cache.json
+.fastman
 '''

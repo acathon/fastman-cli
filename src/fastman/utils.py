@@ -1,6 +1,8 @@
 """
 Utilities and helpers.
 """
+import builtins
+import keyword
 import re
 import shutil
 import subprocess
@@ -27,6 +29,7 @@ class NameValidator:
                 f"Invalid name '{name}'. Must start with letter and contain only letters, numbers, underscores"
             )
 
+        NameValidator._reject_keyword_or_builtin(name)
         return name
 
     @staticmethod
@@ -41,7 +44,25 @@ class NameValidator:
         if name.startswith('-'):
             raise ValueError(f"Invalid name '{name}'. Cannot start with a hyphen.")
 
+        NameValidator._reject_keyword_or_builtin(name.replace('-', '_'))
         return name
+
+    @staticmethod
+    def _reject_keyword_or_builtin(name: str) -> None:
+        """Raise if `name` collides with a Python keyword, soft keyword, or builtin.
+
+        Generated code would `import` or define this identifier; collision breaks
+        either at parse time (hard keywords like ``class``) or causes confusing
+        shadowing (``list``, ``type``).
+        """
+        if keyword.iskeyword(name) or keyword.issoftkeyword(name):
+            raise ValueError(
+                f"Invalid name '{name}'. It is a Python reserved word."
+            )
+        if name in dir(builtins):
+            raise ValueError(
+                f"Invalid name '{name}'. It shadows a Python builtin."
+            )
 
     @staticmethod
     def to_snake_case(name: str) -> str:
@@ -63,6 +84,64 @@ class NameValidator:
     def to_kebab_case(name: str) -> str:
         """Convert to kebab-case"""
         return NameValidator.to_snake_case(name).replace('_', '-')
+
+    # Common English nouns whose plural form is irregular and not covered by
+    # simple suffix rules. Kept short on purpose — anything outside this list
+    # falls through to the suffix logic.
+    _IRREGULAR_PLURALS = {
+        "person": "people",
+        "man": "men",
+        "woman": "women",
+        "child": "children",
+        "tooth": "teeth",
+        "foot": "feet",
+        "mouse": "mice",
+        "goose": "geese",
+        "ox": "oxen",
+        # Latin/Greek -is → -es (common in DB table names)
+        "analysis": "analyses",
+        "basis": "bases",
+        "crisis": "crises",
+        "diagnosis": "diagnoses",
+        "thesis": "theses",
+        "hypothesis": "hypotheses",
+        # Words identical in singular & plural (incl. mass nouns)
+        "sheep": "sheep",
+        "fish": "fish",
+        "deer": "deer",
+        "series": "series",
+        "species": "species",
+        "data": "data",
+        "info": "info",
+        "equipment": "equipment",
+    }
+
+    @staticmethod
+    def pluralize(name: str) -> str:
+        """Return an English plural of `name`.
+
+        Handles irregulars from `_IRREGULAR_PLURALS` and the common suffix
+        rules: words ending in s/x/z/ch/sh take `-es`, consonant+y becomes
+        `-ies`, vowel+y just adds `-s`. Preserves the original case style by
+        operating on a lowered copy and only adjusting the trailing suffix.
+        """
+        if not name:
+            return name
+
+        lowered = name.lower()
+        if lowered in NameValidator._IRREGULAR_PLURALS:
+            return NameValidator._IRREGULAR_PLURALS[lowered]
+
+        # consonant + y → -ies (party → parties; but day → days)
+        if len(lowered) >= 2 and lowered.endswith("y") and lowered[-2] not in "aeiou":
+            return name[:-1] + "ies"
+
+        # sibilant endings → -es (bus → buses, box → boxes, dish → dishes, batch → batches)
+        if lowered.endswith(("s", "x", "z", "ch", "sh")):
+            return name + "es"
+
+        # Default
+        return name + "s"
 
 
 class PathManager:

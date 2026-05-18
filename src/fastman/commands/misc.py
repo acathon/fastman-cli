@@ -507,7 +507,12 @@ class ListCommand(Command):
                 categories["Database"].append((name, cls.description))
             elif name in ["make:test", "make:factory"]:
                 categories["Testing"].append((name, cls.description))
-            elif name.startswith("install:auth") or name.startswith("install:cert"):
+            elif (
+                name.startswith("install:auth")
+                or name.startswith("install:cert")
+                or name == "install:mail"
+                or name == "make:mail"
+            ):
                 categories["Third Party"].append((name, cls.description))
             elif name.startswith("package:"):
                 categories["Package Management"].append((name, cls.description))
