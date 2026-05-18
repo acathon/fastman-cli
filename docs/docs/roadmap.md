@@ -10,51 +10,47 @@ Planning and priorities for upcoming Fastman releases.
 
 ## v0.5.x "Eagle" — Next Major Release
 
-The Dolphin (v0.4.0) release delivered the high-priority codegen safety + DX
-items. v0.5.x focuses on **template maintainability**, **safer auth/mail
-injection**, and **mid-project lifecycle** support.
+The Dolphin (v0.4.x) line cleared the high-priority codegen-safety,
+template-maintainability, and mid-project-lifecycle items. v0.5.x will
+focus on **polish wave** wins, **multi-tenant authentication** support,
+and **richer model introspection**.
 
 ---
 
 ### High Priority
 
-#### 1. Extract auth + mail templates from inline strings
+#### 1. Interactive `fastman create` wizard
 
-`auth.py` embeds full service/router/model code as ~1000+ line string literals.
-`mail.py` shipped in v0.4.0 with the same pattern (~450 lines of inline templates).
-Both are hard to maintain, review, or lint.
+Multi-step prompt flow walks new users through `pattern -> database ->
+package_manager -> graphql` instead of requiring all flags up front.
 
-Now that the template engine is Jinja2 (v0.4.0), the path is clearer:
+- Build on the existing `prompt_argument` + `Output.choice` helpers
+- Honor `--no-interaction` for CI parity with the rest of `make:*`
+- Default to the same shape as the current flagless `fastman create`
 
-- Move templates to separate `.py.j2` files under `src/fastman/_templates/`
-- Use `jinja2.PackageLoader("fastman", "_templates")` for include support
-- Enable syntax highlighting + linting on the template content
-- Allow templates to share fragments via `{% include %}` / `{% extends %}`
+#### 2. `route:list --json` for tooling integration
 
-#### 2. Resilient AST-based config injection
+Render the route table as JSON so editors / pipelines can consume it.
 
-`install:auth` and `install:mail` use string `.replace()` on `app/main.py` and
-`app/core/config.py`. If the user has customized those files, the replacements
-silently fail or corrupt the file.
+- `--json` returns `[{"methods": [...], "path": ..., "name": ...}]`
+- `--filter` already exists; combine cleanly with `--json`
 
-- Use AST-aware insertion or marker comments for injection points
-- Validate file structure before modifying
-- Refuse to inject if shape is unrecognized
+#### 3. `db:fresh` / `db:wipe`
 
-#### 3. `fastman update` command — mid-project lifecycle
+Combined dev-loop commands. `db:fresh` = wipe + migrate + seed in one.
+Destructive, so confirm prompt + `--force` flag.
 
-Once `fastman create` runs, the tool never touches the project again. There's
-no upgrade story for adopting new template features or pulling in security fixes.
+#### 4. `model:show <name>`
 
-- Diff project files against the latest template
-- Offer per-file upgrade with diff preview
-- Track template version in `.fastmanrc`
+Properly introspect SQLAlchemy models, render columns + relations as a
+table. The old `inspect` command was incomplete and was dropped in
+v0.4.0; this is the right replacement.
 
 ---
 
 ### Medium Priority
 
-#### 4. Wire remaining `.fastmanrc` keys
+#### 5. Wire remaining `.fastmanrc` keys
 
 Keys already working: `env`, `pattern`, `package_manager`, `database`. Keys to wire up:
 
@@ -122,8 +118,19 @@ remaining commands to branded Rich layouts.
 
 ---
 
+## Completed in v0.4.1 "Dolphin"
+
+- ✅ **AST-aware code injection** for `install:auth --type=keycloak` and `install:mail` — survives anchor renames, idempotent on re-run, parse-validated before write
+- ✅ **`fastman update` command** — diff drifted fastman-owned files against current templates, interactive review or `--check` for CI, closes the mid-project lifecycle gap
+- ✅ Marker-bracket convention (`# fastman:<tag>:start` / `:end`) so re-running installs replaces blocks instead of duplicating
+- ✅ 26 new fast unit tests (13 injection + 13 update)
+
 ## Completed in v0.4.0 "Dolphin"
 
+- ✅ **Mail scaffolding** (`install:mail` + `make:mail`, fastapi-mail, 4 providers)
+- ✅ **Template engine swapped to Jinja2** (order-independent, StrictUndefined catches missing keys, fixed a latent nested-substitution bug for postgres/mysql)
+- ✅ **Auth + mail templates extracted to `.j2` files** — `auth.py` shrunk from 1,403 → 358 lines, `mail.py` from 530 → 297 lines
+- ✅ **SQLAlchemy 2.0 + Pydantic v2 codegen** in all generated projects
 - ✅ Python keyword + builtin guard on `NameValidator`
 - ✅ Smart pluralization (sibilants, consonant+y, Latin/Greek, irregulars, mass nouns)
 - ✅ Auto-generated shell completions from `COMMAND_REGISTRY`
@@ -131,13 +138,13 @@ remaining commands to branded Rich layouts.
 - ✅ `.fastmanrc` in generated `.gitignore`
 - ✅ `MANIFEST.in` cleanup
 - ✅ Pattern-aware `make:*` commands via `.fastmanrc`
-- ✅ Mail scaffolding (`install:mail` + `make:mail`, fastapi-mail, 4 providers)
-- ✅ **Template engine swapped to Jinja2** (order-independent, StrictUndefined catches missing keys, fixed a latent nested-substitution bug for postgres/mysql)
 - ✅ Venv-aware `PackageManager` (project's `.venv` pip is used even when not activated)
 - ✅ Alembic env.py walks feature/api models so autogenerate sees them
 - ✅ `database:migrate` & friends refuse to run when `alembic.ini` is missing
-- ✅ SQLAlchemy 2.0 + Pydantic v2 codegen
-- ✅ 7 low-leverage commands removed (package:*, config:cache/clear, inspect, migrate:reset)
+- ✅ 6 low-leverage commands removed (`package:list`, `config:cache`/`:clear`, `inspect`, `migrate:reset`, `package:import` renamed to `package:install`)
+- ✅ `fastman about` — one-screen project diagnostic
+- ✅ Interactive prompts on `make:*` + global `--no-interaction` / `-n` flag
+- ✅ 100% help-text coverage across all 42 commands
 
 ## Completed in v0.3.x "Cheetah"
 

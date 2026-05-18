@@ -138,7 +138,7 @@ const config: Config = {
           price: '0',
           priceCurrency: 'USD',
         },
-        softwareVersion: '0.4.0',
+        softwareVersion: '0.4.1',
         programmingLanguage: 'Python',
       }),
     },
@@ -183,8 +183,8 @@ const config: Config = {
     },
 
     announcementBar: {
-      id: 'v0.4.0',
-      content: '🐬 <strong>Fastman v0.4.0 "Dolphin"</strong> is out! Leaner command surface, modern SQLAlchemy 2.0 + Pydantic v2 codegen, new <code>install:mail</code> + <code>make:mail</code>, smart pluralization, and pattern-aware <code>make:*</code>. <a href="/fastman-cli/docs/whats-new">What\'s new</a>',
+      id: 'v0.4.1',
+      content: '🐬 <strong>Fastman v0.4.1</strong> ships <code>fastman update</code> for mid-project template upgrades, and AST-aware code injection that survives user customization of <code>main.py</code> / <code>config.py</code>. <a href="/fastman-cli/docs/whats-new">What\'s new</a>',
       backgroundColor: '#2563eb',
       textColor: '#ffffff',
       isCloseable: true,

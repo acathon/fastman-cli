@@ -63,9 +63,14 @@ uv · poetry · pipenv · pip — auto-detected from your project
 - **API** — resource-grouped with built-in API versioning
 - **Layer** — traditional MVC-style separation of concerns
 
+## What's New in v0.4.1 (Dolphin)
+
+- **`fastman update`** — re-scaffold drifted project files against current templates. Diff each fastman-owned file (database.py, config.py, alembic/env.py, mail/, auth/) against what fastman would generate today; pick keep/update per file. Closes the mid-project lifecycle gap: pull in SQLAlchemy 2.0, Pydantic v2, dropped `.env.production`, etc. without recreating your project. Supports `--check` for CI and `--all` for unattended runs.
+- **AST-aware code injection** — `install:auth --type=keycloak` and `install:mail` no longer rely on fragile `str.replace()` on hardcoded anchor strings. Both now parse `app/main.py` and `app/core/config.py` with `ast` to locate the target class structurally, wrap injected blocks in `# fastman:<tag>:start` / `:end` markers for idempotent re-runs, and `ast.parse()` the result to guarantee the file still compiles. No more silent no-ops when you've customized a comment.
+
 ## What's New in v0.4.0 (Dolphin)
 
-- **Lean command surface** — 7 low-leverage commands removed (`package:*`, `config:cache/clear`, `inspect`, `migrate:reset`). Use the underlying tool directly instead.
+- **Lean command surface** — 6 low-leverage commands removed (`package:list`, `config:cache/clear`, `inspect`, `migrate:reset`, `package:import` → `package:install`). Use the underlying tool directly or the renamed equivalent.
 - **Mail scaffolding** — new `install:mail` (SMTP/SendGrid/Mailgun/SES) and `make:mail` commands with HTML or Markdown templates and FastAPI BackgroundTasks integration.
 - **Modern codegen** — generated models use SQLAlchemy 2.0 `DeclarativeBase` + typed `Mapped[]` columns; schemas use Pydantic v2 `ConfigDict`.
 - **Smart pluralization** — `address → addresses`, `category → categories`, `analysis → analyses`, `person → people`. No more `addresss` in your tablenames.

@@ -8,6 +8,104 @@ Stay up to date with the latest Fastman releases and features.
 
 ---
 
+## v0.4.1 (Dolphin) — May 2026
+
+**`fastman update` for mid-project template upgrades, and AST-aware code injection.**
+
+### `fastman update` — re-scaffold drifted files
+
+The biggest mid-project DX gap is closed. Once you ran `fastman create`,
+fastman used to never touch your project again — meaning template
+improvements (SQLAlchemy 2.0 `DeclarativeBase`, Pydantic v2 `ConfigDict`,
+dropped `.env.production`, ...) were stuck until you recreated the
+project from scratch.
+
+`fastman update` diffs every file fastman originally generated against
+what the current version would generate today and lets you pick
+keep/update per file:
+
+```bash
+# Interactive — review each drifted file with a unified diff
+fastman update
+
+# CI-friendly — exit 1 if anything has drifted
+fastman update --check
+
+# Apply every drift without prompting
+fastman update --all
+
+# Narrow scope
+fastman update --file=app/core/config.py
+fastman update --mail          # only files install:mail generated
+fastman update --auth          # only files install:auth generated
+```
+
+For each file in the catalog (`main.py`, `core/config.py`, `core/database.py`,
+`alembic/env.py`, `mail/*`, `auth/<provider>/*`, ...), `update` renders
+the current template using your `.fastmanrc` and shows a unified diff:
+
+```text
+(1/2)  app/core/database.py  +5 -3 lines
+--- app/core/database.py (your version)
++++ app/core/database.py (fastman target)
+@@ -1,8 +1,10 @@
+-from sqlalchemy.orm import declarative_base, Session, sessionmaker
++from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+ ...
+-Base = declarative_base()
++class Base(DeclarativeBase):
++    """Declarative base for all ORM models (SQLAlchemy 2.0 style)."""
+
+  [u]pdate, [k]eep, [a]ll remaining, [q]uit
+```
+
+**Files fastman did not originate are never touched.** Your own
+features, routes, models, custom middleware, env files — `update` walks
+its own catalog, not your project tree. Commit before running, since
+there's no rollback inside the command.
+
+Pre-0.4.0 projects without `.fastmanrc` still work via filesystem
+inference (the database driver is detected from `app/core/database.py`'s
+import strings).
+
+### AST-aware code injection for `install:auth` / `install:mail`
+
+The old `install:auth --type=keycloak` and `install:mail` commands
+patched `app/main.py` and `app/core/config.py` using `str.replace()` on
+hardcoded anchors like `"    # API"` and
+`"from app.core.logging import setup_logging"`. The moment you renamed
+a comment or reordered imports, the install silently no-oped while
+still reporting success — leaving you with an app that didn't actually
+wire up the new feature.
+
+v0.4.1 swaps that out for a hybrid marker + AST strategy:
+
+- **Marker-bracketed blocks.** Inserted code is wrapped in literal
+  `# fastman:<tag>:start` / `# fastman:<tag>:end` comments. Re-running
+  an install replaces the block between markers in place — idempotent,
+  no duplicates.
+
+- **AST class-body insertion.** When fastman injects fields into your
+  `Settings` class, it parses the file with `ast` and locates the class
+  structurally, not by matching surrounding text. Rename comments,
+  reorder fields, add new fields — the next `install:mail` still finds
+  `Settings` and appends correctly.
+
+- **Parse-before-write.** Every injection runs `ast.parse()` on the
+  result. If injecting would break Python parsing (a template bug, or
+  a wildly customized file), the write is aborted and your file is
+  left untouched.
+
+- **Explicit status.** Each injection returns `INSERTED` / `REPLACED` /
+  `SKIPPED` / `FAILED` with a reason. No more silent failures.
+
+### Tests
+
+26 new fast unit tests (13 for injection, 13 for update). Total 56
+fast tests pass.
+
+---
+
 ## v0.4.0 (Dolphin) — May 2026
 
 **Lean command surface, modern codegen, mail scaffolding, pattern-aware tooling.**

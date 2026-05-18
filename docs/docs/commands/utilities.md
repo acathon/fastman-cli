@@ -308,130 +308,60 @@ $ fastman activate
 # Linux/macOS:  source .venv/bin/activate
 # Windows:      .\.venv\Scripts\activate
 ```
-```
 
-### `inspect`
+### `about`
 
-Inspects a component of your application.
-
-```bash
-fastman inspect {type} {name}
-```
-
-- **Types**: `model`, `feature`, `api`.
-
-### `optimize`
-
-Optimizes the codebase by formatting and sorting imports. Will prompt to install missing tools.
+One-screen project diagnostic. Shows fastman version, Python, platform,
+project pattern, package manager, database driver, active env file,
+detected stack versions (FastAPI / SQLAlchemy / Pydantic / Alembic /
+Uvicorn / fastapi-mail), detected integrations (auth provider, mail
+transport, certificate count), and total registered routes.
 
 ```bash
-fastman optimize [--check]
+fastman about
 ```
 
-- Uses `black`, `isort`, and `autoflake`.
-**Options:**
+Runs anywhere — sections that don't apply (e.g. "Project" outside a
+fastman project) are silently skipped. Useful as the first command a
+new teammate runs in an unfamiliar project, or as a support-ticket
+attachment when something feels off.
 
-- `--check`: Only check for issues without modifying files.
+### `update`
 
-## Configuration
-
-### `config:appkey`
-
-Generates a new `SECRET_KEY` and updates `.env`.
+Re-scaffolds drifted fastman-owned files against the current version's
+templates. For each file fastman originally generated (database.py,
+config.py, alembic/env.py, mail/, auth/), renders the current template
+using your `.fastmanrc` and shows a unified diff. You pick keep/update
+per file.
 
 ```bash
-fastman config:appkey [--show]
+fastman update                  # interactive review of each drift
+fastman update --check          # report drifts, exit 1 if any (CI-friendly)
+fastman update --all            # apply every drift without prompting
+fastman update --file=<path>    # update just one specific file
+fastman update --mail           # only files install:mail generated
+fastman update --auth           # only files install:auth generated
 ```
 
-### `config:cache`
+| Option | Description |
+|--------|-------------|
+| `--check` | Print drifted paths and exit 1 if any differ. No writes. |
+| `--all` | Apply every drift without per-file prompts (use with care). |
+| `--file=<path>` | Limit to one file; useful for `update --file=app/core/config.py`. |
+| `--mail` | Restrict to mail-installed files only. |
+| `--auth` | Restrict to auth-installed files only. |
 
-Caches environment variables to `config_cache.json` for faster loading in production.
+**What `update` does NOT touch.** Your own features, routes, models,
+schemas, custom middleware, env files — none of these are in fastman's
+catalog. `update` walks its own list of (template, destination) pairs,
+not your project tree. Commit before running, since there's no rollback
+inside the command.
 
-```bash
-fastman config:cache
-```
+**Pre-0.4.0 projects** (no `.fastmanrc`) still work — `update` infers
+the database driver from `app/core/database.py`'s imports and the
+pattern from the project layout.
 
-### `config:clear`
 
-Clears the configuration cache.
-
-```bash
-fastman config:clear
-```
-
-### `cache:clear`
-
-Clears Python `__pycache__` directories and `.pyc` files. Handles permission errors gracefully.
-
-```bash
-fastman cache:clear
-```
-
-## Package Management
-
-### `package:import`
-
-Installs a Python package using the detected package manager (uv, poetry, pipenv, or pip).
-
-```bash
-fastman package:import {package_name}
-```
-
-### `package:list`
-
-Lists installed packages.
-
-```bash
-fastman package:list
-```
-
-### `package:remove`
-
-Removes a Python package.
-
-```bash
-fastman package:remove {package_name}
-```
-
----
-
-## CLI Helpers
-
-### `list`
-
-Lists all available Fastman commands.
-
-```bash
-fastman list
-```
-
-### `version`
-
-Shows the installed Fastman version and environment info.
-
-```bash
-fastman version
-```
-
-### `docs`
-
-Prints quick documentation links, or opens the docs site.
-
-```bash
-fastman docs [--open]
-```
-
-### `completion`
-
-Generates shell completion scripts.
-
-```bash
-fastman completion <shell> [--install]
-```
-
-- **Shells**: `bash`, `zsh`, `fish`, `powershell`
-
-### `activate`
 
 Shows the activation command for an existing virtual environment in the current directory.
 

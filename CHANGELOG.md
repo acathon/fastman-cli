@@ -7,6 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] "Dolphin" - 2026-05-18
+
+Additive patch on top of 0.4.0. Two new pieces, both backward-compatible:
+
+### ✨ Added
+
+- **AST-aware code injection (`src/fastman/injection.py`).**
+  `install:auth --type=keycloak` and `install:mail` previously patched
+  `app/main.py` and `app/core/config.py` via brittle `str.replace()` on
+  anchor strings. If the user renamed an anchor or reordered imports,
+  the install silently no-oped — but the command still reported success,
+  leaving the user with an app that didn't actually wire up the new
+  feature. The new module exposes:
+  - `inject_block()` — wraps the inserted code in
+    `# fastman:<tag>:start` / `# fastman:<tag>:end` markers so re-runs
+    replace instead of duplicating, with a fallback string anchor when
+    no markers are present yet.
+  - `inject_into_class_body()` — parses the file with `ast`, locates
+    the target class structurally, and appends the marker-bracketed
+    block to the end of its body. The user's anchor-comment renames
+    are irrelevant because we navigate the class definition, not the
+    literal text around it.
+  Every injection runs `ast.parse()` on the post-write result and
+  aborts if the file wouldn't parse, leaving the user's file
+  untouched. Returns explicit `INSERTED` / `REPLACED` / `SKIPPED` /
+  `FAILED` status — no more silent no-op.
+
+- **`fastman update` command.** Re-scaffolds drifted fastman-owned
+  files against the current version's templates. For each file fastman
+  originally generated (database.py, config.py, alembic/env.py, mail/,
+  ...), renders the current template using the project's recorded
+  `.fastmanrc` and compares it to what's on disk. The user picks
+  keep/update per file. Modes:
+  - `fastman update` — interactive review with `[u]pdate / [k]eep /
+    [a]ll remaining / [q]uit`.
+  - `fastman update --check` — drift report only, exit 1 if anything
+    differs (CI-friendly).
+  - `fastman update --all` — apply every drift without prompting.
+  - `fastman update --file=<path>` — narrow to one file.
+  - `fastman update --mail` / `--auth` — narrow by integration scope.
+  Files fastman did not originate (your features, routes, models) are
+  never touched. A pre-0.4.0 project without `.fastmanrc` still works
+  via filesystem inference. **This closes the mid-project lifecycle
+  gap — projects can now adopt new template improvements (SQLAlchemy
+  2.0, Pydantic v2 ConfigDict, etc.) without recreating from scratch.**
+
+### 🔧 Fixed
+
+- The naive `str.replace()` in `install:auth --type=keycloak` and
+  `install:mail` could silently no-op when users renamed anchor
+  comments. Both now go through AST-aware injection (see above) and
+  report `INSERTED` / `REPLACED` / `SKIPPED` / `FAILED` explicitly.
+
+### Tests
+
+13 unit tests for injection (markers, idempotence, parse-validation,
+hard fail without touching user file). 13 unit tests for update (zero
+drift on fresh project, modified-file detection, missing-file
+detection, all four database variants, fallback inference). 56 fast
+tests pass overall.
+
 ## [0.4.0] "Dolphin" - 2026-05-18
 
 This release tightens the command surface, modernizes generated code for
@@ -301,7 +362,8 @@ shell completions out of the static lookup table they used to live in.
 
 ---
 
-[Unreleased]: https://github.com/acathon/fastman-cli/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/acathon/fastman-cli/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/acathon/fastman-cli/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/acathon/fastman-cli/compare/v0.3.6...v0.4.0
 [0.3.6]: https://github.com/acathon/fastman-cli/compare/v0.3.5...v0.3.6
 [0.3.5]: https://github.com/acathon/fastman-cli/compare/v0.3.2...v0.3.5
