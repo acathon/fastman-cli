@@ -244,7 +244,7 @@ const config: Config = {
         {
           title: 'More',
           items: [
-            { label: 'PyPI', href: 'https://pypi.org/project/fastman/' },
+            { label: 'TestPyPI', href: 'https://test.pypi.org/project/fastman/' },
             { label: 'Changelog', href: 'https://github.com/acathon/fastman-cli/releases' },
           ],
         },

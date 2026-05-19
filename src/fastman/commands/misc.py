@@ -796,8 +796,8 @@ Examples:
             Output.echo("  database:migrate       - Run migrations", Style.CYAN)
             Output.echo("  route:list             - List all routes", Style.CYAN)
 
-            Output.echo("\nDocumentation: https://fastman.dev/docs")
-            Output.echo("Repository: https://github.com/fastman/fastman")
+            Output.echo("\nDocumentation: https://acathon.github.io/fastman-cli/")
+            Output.echo("Repository: https://github.com/acathon/fastman-cli")
             Output.echo("=" * 80)
 
 

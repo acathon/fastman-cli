@@ -61,6 +61,7 @@ dev = [
 
 [project.urls]
 Homepage = "https://github.com/acathon/fastman-cli"
+Documentation = "https://acathon.github.io/fastman-cli/"
 Repository = "https://github.com/acathon/fastman-cli"
 "Bug Tracker" = "https://github.com/acathon/fastman-cli/issues"
 Changelog = "https://github.com/acathon/fastman-cli/blob/main/CHANGELOG.md"

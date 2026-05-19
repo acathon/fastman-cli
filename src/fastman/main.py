@@ -7,6 +7,16 @@ from pathlib import Path
 import importlib
 from typing import List
 
+# Force UTF-8 on stdout/stderr so Unicode box-drawing and emoji-bearing output
+# survives piped/captured contexts on Windows (default cp1252 chokes on U+2500).
+for _stream in (sys.stdout, sys.stderr):
+    reconfigure = getattr(_stream, "reconfigure", None)
+    if reconfigure is not None:
+        try:
+            reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
 from .commands.base import CommandContext, COMMAND_REGISTRY
 from .console import Output, logger
 # Import commands to ensure registration

@@ -19,9 +19,9 @@
 
 ---
 
-## Installation
+## How to install
 
-Fastman is currently in **beta** on TestPyPI. Install with:
+Fastman is currently in **beta** on TestPyPI:
 
 ```bash
 pip install -i https://test.pypi.org/simple/ fastman
@@ -53,7 +53,7 @@ fastman make:feature users --crud
 
 # Create and run a migration
 fastman make:migration "create users table"
-fastman migrate
+fastman database:migrate
 ```
 
 Visit `http://localhost:8000/docs` to see your API.
@@ -64,11 +64,11 @@ Visit `http://localhost:8000/docs` to see your API.
 
 | Category | Commands |
 |----------|----------|
-| **Project** | `create`, `init`, `serve`, `activate`, `tinker` |
-| **Scaffolding** | `make:feature`, `make:model`, `make:api`, `make:middleware`, `make:seeder`, `make:factory` |
-| **Database** | `make:migration`, `migrate`, `migrate:rollback`, `db:seed` |
-| **Auth** | `install:auth --type=jwt\|oauth\|keycloak\|passkey` |
-| **Utilities** | `config:appkey`, `optimize`, `route:list`, `build --docker`, `env`, `completion` |
+| **Project** | `create`, `init`, `serve`, `activate`, `tinker`, `about`, `update` |
+| **Scaffolding** | `make:feature`, `make:model`, `make:api`, `make:controller`, `make:service`, `make:repository`, `make:middleware`, `make:seeder`, `make:factory`, `make:command`, `make:test` |
+| **Database** | `make:migration`, `database:migrate`, `migrate:rollback`, `migrate:status`, `database:seed`, `db:fresh`, `model:show` |
+| **Install** | `install:auth --type=jwt\|oauth\|keycloak\|passkey`, `install:mail`, `install:cert` |
+| **Utilities** | `config:appkey`, `optimize`, `route:list --json`, `build --docker`, `env`, `completion`, `docs` |
 
 ### Architecture Patterns
 
